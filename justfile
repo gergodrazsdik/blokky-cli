@@ -70,7 +70,7 @@ lint: lint-md lint-yaml lint-actions lint-sh typos editorconfig
 # Lint Markdown (markdownlint-cli2)
 [group('lint')]
 lint-md:
-    scripts/with-tool.sh markdownlint-cli2
+    git ls-files -z '*.md' | xargs -0 scripts/with-tool.sh markdownlint-cli2
 
 # Lint YAML (yamllint)
 [group('lint')]
