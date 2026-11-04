@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0016 [specs] Draft `spec/reference.md`
-2. T-0017 [specs] Draft `spec/execution-model.md`
-3. T-0018 [specs] Draft `spec/variables.md`
+1. T-0017 [specs] Draft `spec/execution-model.md`
+2. T-0018 [specs] Draft `spec/variables.md`
+3. T-0019 [specs] Draft `spec/conditions.md`
 
 ## Phase 0 — Bootstrap
 
@@ -46,7 +46,7 @@ Main agent, sequential, PRs marked **Draft spec** (brief §8.3).
 
 - [x] T-0014 [specs] `spec/glossary.md` — 2026-11-04, specs PR #9 (draft), cli PR #12
 - [x] T-0015 [specs] `spec/syntax.md` (surface rules, root document, inputs syntax, per-field table, pitfalls, targeted errors) — 2026-11-04, specs PR #10 (draft; [specs ADR 0007](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0007-syntax-details.md)), cli PR #13
-- [ ] T-0016 [specs] `spec/reference.md` (all planned features, milestone-tagged, validity matrix)
+- [x] T-0016 [specs] `spec/reference.md` (all planned features, milestone-tagged, validity matrix) — 2026-11-04, specs PR #11 (draft; [specs ADR 0008](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0008-repetition-details.md)), cli PR #14
 - [ ] T-0017 [specs] `spec/execution-model.md`
 - [ ] T-0018 [specs] `spec/variables.md`
 - [ ] T-0019 [specs] `spec/conditions.md`
@@ -166,3 +166,4 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - 2026-11-04 [specs] `.cmd` shims and the spec license, batch 6 (Q-l, Q-q part): `pwsh-cmd-shim-args` lint, Apache-2.0 for all of blokky-specs, testkit split confirmed: [specs ADR 0006](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0006-shims-and-license.md)
 - 2026-11-04 [cli] Launcher, Windows invocation and conformance, batch 6 (Q-e, Q-h, Q-o, Q-q part): spike #1 decides the launcher against fixed criteria, heredoc in bash and file form in PowerShell, no heredoc sentinel, pinned explicit conformance checkout: [cli ADR 0004](../adr/0004-platform-invocation-conformance.md)
 - 2026-11-04 [specs] Syntax details raised while drafting (T-0015): plan caps 4 MiB / depth 128, input caps 4 KiB / 32 KiB, strict integer-unit durations, empty lists only where a field allows them (`mounts`): [specs ADR 0007](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0007-syntax-details.md)
+- 2026-11-04 [specs] Repetition details raised while drafting (T-0016): `every` is a delay after the end (default 1s), mapping backoff `{ factor, max }` and fractional jitter, `retry: true` retries process failures only (default `max` 3), zero-iteration `while` succeeds, 0-based `count` items: [specs ADR 0008](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0008-repetition-details.md)
