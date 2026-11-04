@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0015 [specs] Draft `spec/syntax.md`
-2. T-0016 [specs] Draft `spec/reference.md`
-3. T-0017 [specs] Draft `spec/execution-model.md`
+1. T-0016 [specs] Draft `spec/reference.md`
+2. T-0017 [specs] Draft `spec/execution-model.md`
+3. T-0018 [specs] Draft `spec/variables.md`
 
 ## Phase 0 — Bootstrap
 
@@ -45,7 +45,7 @@ Proposed batches; IDs are the brief's. Each batch ends in one grouped ADR in the
 Main agent, sequential, PRs marked **Draft spec** (brief §8.3).
 
 - [x] T-0014 [specs] `spec/glossary.md` — 2026-11-04, specs PR #9 (draft), cli PR #12
-- [ ] T-0015 [specs] `spec/syntax.md` (surface rules, root document, inputs syntax, per-field table, pitfalls, targeted errors)
+- [x] T-0015 [specs] `spec/syntax.md` (surface rules, root document, inputs syntax, per-field table, pitfalls, targeted errors) — 2026-11-04, specs PR #10 (draft; [specs ADR 0007](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0007-syntax-details.md)), cli PR #13
 - [ ] T-0016 [specs] `spec/reference.md` (all planned features, milestone-tagged, validity matrix)
 - [ ] T-0017 [specs] `spec/execution-model.md`
 - [ ] T-0018 [specs] `spec/variables.md`
@@ -165,3 +165,4 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - 2026-11-04 [specs] Containers, `become` and locks, batch 5 (Q16, Q17, Q-j): ephemeral containers only with the cwd mounted by default and mapping-form `mounts`, `become`/`defaults.become` with `invoker`, `sudo` and `doas`, root-owned config as root, trampoline transport, no nested locks: [specs ADR 0005](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0005-containers-become-locks.md)
 - 2026-11-04 [specs] `.cmd` shims and the spec license, batch 6 (Q-l, Q-q part): `pwsh-cmd-shim-args` lint, Apache-2.0 for all of blokky-specs, testkit split confirmed: [specs ADR 0006](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0006-shims-and-license.md)
 - 2026-11-04 [cli] Launcher, Windows invocation and conformance, batch 6 (Q-e, Q-h, Q-o, Q-q part): spike #1 decides the launcher against fixed criteria, heredoc in bash and file form in PowerShell, no heredoc sentinel, pinned explicit conformance checkout: [cli ADR 0004](../adr/0004-platform-invocation-conformance.md)
+- 2026-11-04 [specs] Syntax details raised while drafting (T-0015): plan caps 4 MiB / depth 128, input caps 4 KiB / 32 KiB, strict integer-unit durations, empty lists only where a field allows them (`mounts`): [specs ADR 0007](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0007-syntax-details.md)
