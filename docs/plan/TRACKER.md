@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0012 [specs] Ask open-question batch 5 (containers, `become`, locks)
-2. T-0013 [both] Ask open-question batch 6 (platform and repo split)
-3. T-0014 [specs] Draft `spec/glossary.md`
+1. T-0013 [both] Ask open-question batch 6 (platform and repo split)
+2. T-0014 [specs] Draft `spec/glossary.md`
+3. T-0015 [specs] Draft `spec/syntax.md`
 
 ## Phase 0 — Bootstrap
 
@@ -35,7 +35,7 @@ Proposed batches; IDs are the brief's. Each batch ends in one grouped ADR in the
 - [x] T-0009 [specs] Batch 2, execution and defaults: Q4, Q5, Q7, Q8, Q-k, Q-r — 2026-11-04, specs PR #5 ([specs ADR 0003](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0003-execution-defaults.md)), cli PR #7
 - [x] T-0010 [cli] Batch 3, CLI and run lifecycle: Q6, Q15, Q-u, Q-f, Q-t — 2026-11-04, cli PR #8 ([cli ADR 0002](../adr/0002-cli-run-lifecycle.md))
 - [x] T-0011 [both] Batch 4, validation, config and inputs: Q9, Q10, Q11, Q-a, Q-b, Q-c, Q-d, Q-g, Q-in1, Q-in2, Q-in3, Q-in4, Q-in5, Q-in6 — 2026-11-04, specs PR #6 ([specs ADR 0004](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0004-validator-and-inputs.md)), cli PR #9 ([cli ADR 0003](../adr/0003-validation-config-lint.md))
-- [ ] T-0012 [specs] Batch 5, containers, `become` and locks (language level): Q16, Q17, Q-j
+- [x] T-0012 [specs] Batch 5, containers, `become` and locks (language level): Q16, Q17, Q-j — 2026-11-04, specs PR #7 ([specs ADR 0005](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0005-containers-become-locks.md)), cli PR #10
 - [ ] T-0013 [both] Batch 6, platform and repo split: Q-e, Q-h, Q-l, Q-o, Q-q
 
 ### M1.2 Draft spec PRs
@@ -108,9 +108,9 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 | Q13 | Plan version scheme for `blokky:`; required? | answered | Required, `MAJOR.MINOR`; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
 | Q14 | Leaf descendants at leaf completion | answered | Brief §3.8: killed by default; `keep_descendants: true` opts out; [specs ADR 0001](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0001-language-baseline.md) |
 | Q15 | How `clean` reports partial deletion failure; exit code | answered | JSON list of removed and failed items, exit 9; rerun is idempotent; `run --cleanup` keeps the plan's code and reports `cleaned: partial`; [cli ADR 0002](../adr/0002-cli-run-lifecycle.md) |
-| Q16 | Containers, language level: existing-mode scope, default mount policy | open (draft) | |
+| Q16 | Containers, language level: existing-mode scope, default mount policy | answered | Ephemeral mode only (existing mode dropped); cwd always mounted read-write by default; `mounts` as `{ host, path, read_only }` mappings; [specs ADR 0005](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0005-containers-become-locks.md) |
 | Q16b | Container engine detection order and termination mechanism | open (later) | |
-| Q17 | `become`, language level: `defaults.become`, root-run lint, `doas`, config under sudo, transport across `become` | open (draft) | |
+| Q17 | `become`, language level: `defaults.become`, root-run lint, `doas`, config under sudo, transport across `become` | answered | `become`/`defaults.become`: user name or `invoker`; root-run lint warning; `sudo` and `doas` from the start; root-owned root config as euid 0; trampoline pipe transport; [specs ADR 0005](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0005-containers-become-locks.md) |
 | Q18 | Out-of-band consent: mechanisms, timeout, unattended detection | open (later) | |
 | Q-a | Approval binding: records, `require_hook_approval`, hook input rewriting | answered | Single-use approval records (15m TTL), hook rewrites to `blokky run --approval <id>`; `require_hook_approval` off by default; [cli ADR 0003](../adr/0003-validation-config-lint.md) |
 | Q-b | Does `blokky run` call the validator itself without an approval record? | answered | No; only `hook check` and `validate` call it; [cli ADR 0003](../adr/0003-validation-config-lint.md) |
@@ -120,7 +120,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 | Q-f | Default run budget vs harness timeouts | answered | 1m50s fallback default; explicit sources may exceed it (smallest wins); hook margin 10s; [cli ADR 0002](../adr/0002-cli-run-lifecycle.md) |
 | Q-g | Which dynamic constructs force `ask` by default | answered | `dynamic_exec`, `exec_env_risk`, dynamic nested plans, dynamic stdin into an interpreter, dynamic cwd, missing inputs; [cli ADR 0003](../adr/0003-validation-config-lint.md) |
 | Q-h | Windows agent invocation; pwsh grammar for `--input` | open (draft) | |
-| Q-j | Nested locks: forbid or fixed order | open (draft) | |
+| Q-j | Nested locks: forbid or fixed order | answered | Forbidden; one lock per node, static error on nesting; [specs ADR 0005](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0005-containers-become-locks.md) |
 | Q-k | Does the grace period count against `timeout`? | answered | No: TERM when `timeout` fires, KILL after grace; [specs ADR 0003](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0003-execution-defaults.md) |
 | Q-l | `.cmd` shims from pwsh with variable args: lint or document | open (draft) | |
 | Q-m | `empty`/`not_empty` on an undefined variable | answered | Condition error; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
@@ -160,3 +160,4 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - 2026-11-04 [cli] CLI and run lifecycle, batch 3 (Q6, Q15, Q-f, Q-t, Q-u): dense exit-code table, partial cleanup exits 9 with a JSON list, 1m50s fallback run budget with a 10s hook margin, `clean` keeps report and events, hook auto-allows `clean <run-id>` only: [cli ADR 0002](../adr/0002-cli-run-lifecycle.md)
 - 2026-11-04 [specs] Validator protocol and input scope, batch 4 (Q9, Q-in1, Q-in3, Q-in4, Q-in5): spawn-per-request JSON validator, failures → ask, per-unit verdicts; no nested-plan node; input conveniences later: [specs ADR 0004](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0004-validator-and-inputs.md)
 - 2026-11-04 [cli] Validation, hook, config and lint, batch 4 (Q10, Q11, Q-a, Q-b, Q-c, Q-d, Q-g, Q-in2, Q-in6): single-use approval records with rewriting, rules mode for `exec` units, code-like dynamics force ask, input errors deny, env-honouring config with a drift check, user-only key list, kebab-case lint rules with a `strict` preset: [cli ADR 0003](../adr/0003-validation-config-lint.md)
+- 2026-11-04 [specs] Containers, `become` and locks, batch 5 (Q16, Q17, Q-j): ephemeral containers only with the cwd mounted by default and mapping-form `mounts`, `become`/`defaults.become` with `invoker`, `sudo` and `doas`, root-owned config as root, trampoline transport, no nested locks: [specs ADR 0005](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0005-containers-become-locks.md)
