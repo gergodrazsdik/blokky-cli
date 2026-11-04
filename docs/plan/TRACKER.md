@@ -8,10 +8,10 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0008 [specs] Ask open-question batch 1 (language core)
-2. T-0009 [specs] Ask open-question batch 2 (execution and defaults)
-3. T-0010 [cli] Ask open-question batch 3 (CLI and run lifecycle)
-4. T-0011 [both] Ask open-question batch 4 (validation, config and inputs)
+1. T-0009 [specs] Ask open-question batch 2 (execution and defaults)
+2. T-0010 [cli] Ask open-question batch 3 (CLI and run lifecycle)
+3. T-0011 [both] Ask open-question batch 4 (validation, config and inputs)
+4. T-0012 [specs] Ask open-question batch 5 (containers, `become`, locks)
 
 ## Phase 0 — Bootstrap
 
@@ -32,7 +32,7 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 Proposed batches; IDs are the brief's. Each batch ends in one grouped ADR in the repo it concerns.
 
 - [x] T-0007 [both] Baseline ADR per repo: record brief §2 baseline decisions (specs: language; cli: runtime, distribution, process) — 2026-11-04, specs PR #3 ([ADR 0001](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0001-language-baseline.md)), cli PR #5 ([ADR 0001](../adr/0001-baseline.md))
-- [ ] T-0008 [specs] Batch 1, language core: Q1, Q2, Q3, Q12, Q13, Q-m, Q-n, Q-s
+- [x] T-0008 [specs] Batch 1, language core: Q1, Q2, Q3, Q12, Q13, Q-m, Q-n, Q-s — 2026-11-04, specs PR #4 ([specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md)), cli PR #6
 - [ ] T-0009 [specs] Batch 2, execution and defaults: Q4, Q5, Q7, Q8, Q-k, Q-r
 - [ ] T-0010 [cli] Batch 3, CLI and run lifecycle: Q6, Q15, Q-u, Q-f, Q-t
 - [ ] T-0011 [both] Batch 4, validation, config and inputs: Q9, Q10, Q11, Q-a, Q-b, Q-c, Q-d, Q-g, Q-in1, Q-in2, Q-in3, Q-in4, Q-in5, Q-in6
@@ -94,9 +94,9 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 
 | ID | Question (short) | Status | Answer / ADR |
 |---|---|---|---|
-| Q1 | Confirm the modifier order (§3.1) | open (draft) | |
-| Q2 | JSON path subset; `collect` milestone and syntax | open (draft) | |
-| Q3 | Condition tables; `matches` semantics; trimming; number grammar; `probe_timeout` and probe capture limit | open (draft) | |
+| Q1 | Confirm the modifier order (§3.1) | answered | Confirmed as written; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
+| Q2 | JSON path subset; `collect` milestone and syntax | answered | Minimal jq-like paths (`.a`, `.["k"]`, `[N]`); `collect` later, brief syntax; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
+| Q3 | Condition tables; `matches` semantics; trimming; number grammar; `probe_timeout` and probe capture limit | answered | Tables as written; unanchored whole-value search; strip all trailing CR/LF; plain decimal; 30s / 64 KiB; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
 | Q4 | Shells: v0.1 set, detection lists, invocation table (pipefail/-e), Git Bash policy | open (draft) | |
 | Q5 | Duration defaults: global `timeout`, `leaf_timeout`, `finally_timeout`, `drain_timeout`, `cleanup_reserve` | open (draft) | |
 | Q6 | Exit codes of `blokky` | open (draft) | |
@@ -105,8 +105,8 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 | Q9 | Validator plugin protocol | open (draft) | |
 | Q10 | Strict-mode lint rule set: rules, IDs, severities, config, suppression | open (draft) | |
 | Q11 | Config file names; full list of user-only keys | open (draft) | |
-| Q12 | Must `name` values be unique? | open (draft) | |
-| Q13 | Plan version scheme for `blokky:`; required? | open (draft) | |
+| Q12 | Must `name` values be unique? | answered | No; lint flags duplicate sibling names; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
+| Q13 | Plan version scheme for `blokky:`; required? | answered | Required, `MAJOR.MINOR`; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
 | Q14 | Leaf descendants at leaf completion | answered | Brief §3.8: killed by default; `keep_descendants: true` opts out; [specs ADR 0001](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0001-language-baseline.md) |
 | Q15 | How `clean` reports partial deletion failure; exit code | open (draft) | |
 | Q16 | Containers, language level: existing-mode scope, default mount policy | open (draft) | |
@@ -124,13 +124,13 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 | Q-j | Nested locks: forbid or fixed order | open (draft) | |
 | Q-k | Does the grace period count against `timeout`? | open (draft) | |
 | Q-l | `.cmd` shims from pwsh with variable args: lint or document | open (draft) | |
-| Q-m | `empty`/`not_empty` on an undefined variable | open (draft) | |
-| Q-n | Condition error inside `assert`: user `code`? | open (draft) | |
+| Q-m | `empty`/`not_empty` on an undefined variable | answered | Condition error; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
+| Q-n | Condition error inside `assert`: user `code`? | answered | No: built-in condition-error code, user code as context; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
 | Q-o | Heredoc-expansion sentinel, or document the gap | open (draft) | |
 | Q-p | How plan variables reach commands | answered | Brief §2, §3.1: only via explicit `env:`/`export:`; [specs ADR 0001](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0001-language-baseline.md) |
 | Q-q | Repo split: names, testkit interface vs implementation, submodule vs pinned checkout, spec text license | open (draft); partly settled by bootstrap | Repos created as `blokky-specs`/`blokky-cli`; both currently Apache-2.0 (spec-text license still open) |
 | Q-r | Default/max `concurrency`; `any` error aggregation | open (draft) | |
-| Q-s | May `finally` nodes `capture`? | open (draft) | |
+| Q-s | May `finally` nodes `capture`? | answered | Yes, finally-local (later `finally` siblings only); [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
 | Q-t | May `hook check` auto-allow `clean`/`gc`? | open (draft) | |
 | Q-u | Does `clean` remove report and logs too? | open (draft) | |
 | Q-in1 | Native nested-plan invocation (`call`/`plan:` node) | open (draft; recommended: not now) | |
@@ -156,3 +156,4 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 
 - 2026-11-04 [specs] Language baseline from brief §1–§3 (scope, YAML surface, nodes, leaves and shells, variables, inputs, conditions, contracts): [specs ADR 0001](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0001-language-baseline.md)
 - 2026-11-04 [cli] Implementation, distribution and process baseline from brief §0–§2 (repo split, .NET 11 AOT, architecture, CLI rules, config trust classes, process control, artefacts, distribution, process): [cli ADR 0001](../adr/0001-baseline.md)
+- 2026-11-04 [specs] Language core, batch 1 (Q1, Q2, Q3, Q12, Q13, Q-m, Q-n, Q-s): modifier order confirmed, jq-like JSON paths, `collect` later, whole-value regex search, trailing-newline trimming, decimal numbers, `blokky:` required as `MAJOR.MINOR`, finally-local captures: [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md)
