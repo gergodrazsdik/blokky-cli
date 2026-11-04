@@ -8,10 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0010 [cli] Ask open-question batch 3 (CLI and run lifecycle)
-2. T-0011 [both] Ask open-question batch 4 (validation, config and inputs)
-3. T-0012 [specs] Ask open-question batch 5 (containers, `become`, locks)
-4. T-0013 [both] Ask open-question batch 6 (platform and repo split)
+1. T-0011 [both] Ask open-question batch 4 (validation, config and inputs)
+2. T-0012 [specs] Ask open-question batch 5 (containers, `become`, locks)
+3. T-0013 [both] Ask open-question batch 6 (platform and repo split)
 
 ## Phase 0 — Bootstrap
 
@@ -34,7 +33,7 @@ Proposed batches; IDs are the brief's. Each batch ends in one grouped ADR in the
 - [x] T-0007 [both] Baseline ADR per repo: record brief §2 baseline decisions (specs: language; cli: runtime, distribution, process) — 2026-11-04, specs PR #3 ([ADR 0001](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0001-language-baseline.md)), cli PR #5 ([ADR 0001](../adr/0001-baseline.md))
 - [x] T-0008 [specs] Batch 1, language core: Q1, Q2, Q3, Q12, Q13, Q-m, Q-n, Q-s — 2026-11-04, specs PR #4 ([specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md)), cli PR #6
 - [x] T-0009 [specs] Batch 2, execution and defaults: Q4, Q5, Q7, Q8, Q-k, Q-r — 2026-11-04, specs PR #5 ([specs ADR 0003](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0003-execution-defaults.md)), cli PR #7
-- [ ] T-0010 [cli] Batch 3, CLI and run lifecycle: Q6, Q15, Q-u, Q-f, Q-t
+- [x] T-0010 [cli] Batch 3, CLI and run lifecycle: Q6, Q15, Q-u, Q-f, Q-t — 2026-11-04, cli PR #8 ([cli ADR 0002](../adr/0002-cli-run-lifecycle.md))
 - [ ] T-0011 [both] Batch 4, validation, config and inputs: Q9, Q10, Q11, Q-a, Q-b, Q-c, Q-d, Q-g, Q-in1, Q-in2, Q-in3, Q-in4, Q-in5, Q-in6
 - [ ] T-0012 [specs] Batch 5, containers, `become` and locks (language level): Q16, Q17, Q-j
 - [ ] T-0013 [both] Batch 6, platform and repo split: Q-e, Q-h, Q-l, Q-o, Q-q
@@ -99,7 +98,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 | Q3 | Condition tables; `matches` semantics; trimming; number grammar; `probe_timeout` and probe capture limit | answered | Tables as written; unanchored whole-value search; strip all trailing CR/LF; plain decimal; 30s / 64 KiB; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
 | Q4 | Shells: v0.1 set, detection lists, invocation table (pipefail/-e), Git Bash policy | answered | Set confirmed; detection bash→sh / pwsh→powershell; bash `-o pipefail`, no `-e`; `sh <file>`; pwsh `$ErrorActionPreference = 'Stop'`; Git Bash only via a config path; [specs ADR 0003](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0003-execution-defaults.md) |
 | Q5 | Duration defaults: global `timeout`, `leaf_timeout`, `finally_timeout`, `drain_timeout`, `cleanup_reserve` | answered | No global `timeout` or `leaf_timeout`; `finally_timeout` 5m; grace 5s, `drain_timeout` 2s, `cleanup_reserve` 30s; [specs ADR 0003](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0003-execution-defaults.md) |
-| Q6 | Exit codes of `blokky` | open (draft) | |
+| Q6 | Exit codes of `blokky` | answered | 0 success, 1 plan failed, 2 usage, 3 plan invalid, 4 config, 5 ask, 6 deny, 7 sha mismatch, 8 budget, 9 cleanup incomplete, 70 internal, 128+N signal; [cli ADR 0002](../adr/0002-cli-run-lifecycle.md) |
 | Q7 | Output defaults: tail size, report byte budget, log caps | answered | Tails 50 lines ≤ 4 KiB; report 32 KiB; logs 100 MiB per leaf, 1 GiB per run; `max_capture_bytes` 1 MiB; [specs ADR 0003](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0003-execution-defaults.md) |
 | Q8 | Default `max_items` for `for` over captured output | answered | Optional, default 1000; exceeding it is an error; [specs ADR 0003](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0003-execution-defaults.md) |
 | Q9 | Validator plugin protocol | open (draft) | |
@@ -108,7 +107,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 | Q12 | Must `name` values be unique? | answered | No; lint flags duplicate sibling names; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
 | Q13 | Plan version scheme for `blokky:`; required? | answered | Required, `MAJOR.MINOR`; [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
 | Q14 | Leaf descendants at leaf completion | answered | Brief §3.8: killed by default; `keep_descendants: true` opts out; [specs ADR 0001](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0001-language-baseline.md) |
-| Q15 | How `clean` reports partial deletion failure; exit code | open (draft) | |
+| Q15 | How `clean` reports partial deletion failure; exit code | answered | JSON list of removed and failed items, exit 9; rerun is idempotent; `run --cleanup` keeps the plan's code and reports `cleaned: partial`; [cli ADR 0002](../adr/0002-cli-run-lifecycle.md) |
 | Q16 | Containers, language level: existing-mode scope, default mount policy | open (draft) | |
 | Q16b | Container engine detection order and termination mechanism | open (later) | |
 | Q17 | `become`, language level: `defaults.become`, root-run lint, `doas`, config under sudo, transport across `become` | open (draft) | |
@@ -118,7 +117,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 | Q-c | Runner-rules mode matching semantics and `ask` fallbacks | open (draft) | |
 | Q-d | Trust of `XDG_CONFIG_HOME`/`APPDATA`/`HOME` vs passwd home | open (draft) | |
 | Q-e | `setsid` via `posix_spawn` vs trampoline; per-leaf lifeline vs per-run watchdog | open (draft; spike) | |
-| Q-f | Default run budget vs harness timeouts | open (draft) | |
+| Q-f | Default run budget vs harness timeouts | answered | 1m50s fallback default; explicit sources may exceed it (smallest wins); hook margin 10s; [cli ADR 0002](../adr/0002-cli-run-lifecycle.md) |
 | Q-g | Which dynamic constructs force `ask` by default | open (draft) | |
 | Q-h | Windows agent invocation; pwsh grammar for `--input` | open (draft) | |
 | Q-j | Nested locks: forbid or fixed order | open (draft) | |
@@ -131,8 +130,8 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 | Q-q | Repo split: names, testkit interface vs implementation, submodule vs pinned checkout, spec text license | open (draft); partly settled by bootstrap | Repos created as `blokky-specs`/`blokky-cli`; both currently Apache-2.0 (spec-text license still open) |
 | Q-r | Default/max `concurrency`; `any` error aggregation | answered | Defaults unchanged; `max_concurrency` 16 per node, clamp and warn; `any` fails with a built-in code and every cause; [specs ADR 0003](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0003-execution-defaults.md) |
 | Q-s | May `finally` nodes `capture`? | answered | Yes, finally-local (later `finally` siblings only); [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md) |
-| Q-t | May `hook check` auto-allow `clean`/`gc`? | open (draft) | |
-| Q-u | Does `clean` remove report and logs too? | open (draft) | |
+| Q-t | May `hook check` auto-allow `clean`/`gc`? | answered | Auto-allow exactly `blokky clean <run-id>`; `clean --all` and `gc` ask; [cli ADR 0002](../adr/0002-cli-run-lifecycle.md) |
+| Q-u | Does `clean` remove report and logs too? | answered | Everything except `report.json` and `events.jsonl`; `clean --all` removes those too; `gc` removes everything; [cli ADR 0002](../adr/0002-cli-run-lifecycle.md) |
 | Q-in1 | Native nested-plan invocation (`call`/`plan:` node) | open (draft; recommended: not now) | |
 | Q-in2 | Template approval for constraint-satisfying inputs | open (draft; recommended: no for v0.1) | |
 | Q-in3 | `--input-file` with `--expect-inputs-sha256` | open (later, if needed) | |
@@ -158,3 +157,4 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - 2026-11-04 [cli] Implementation, distribution and process baseline from brief §0–§2 (repo split, .NET 11 AOT, architecture, CLI rules, config trust classes, process control, artefacts, distribution, process): [cli ADR 0001](../adr/0001-baseline.md)
 - 2026-11-04 [specs] Language core, batch 1 (Q1, Q2, Q3, Q12, Q13, Q-m, Q-n, Q-s): modifier order confirmed, jq-like JSON paths, `collect` later, whole-value regex search, trailing-newline trimming, decimal numbers, `blokky:` required as `MAJOR.MINOR`, finally-local captures: [specs ADR 0002](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0002-language-core.md)
 - 2026-11-04 [specs] Execution and defaults, batch 2 (Q4, Q5, Q7, Q8, Q-k, Q-r): shell set and detection confirmed, bash `pipefail` without `-e`, `sh` without options, PowerShell stops on cmdlet errors, Git Bash only by config path, no implicit leaf or group timeouts, grace outside `timeout`, per-node concurrency cap 16, output and capture limits, `max_items` default 1000: [specs ADR 0003](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0003-execution-defaults.md)
+- 2026-11-04 [cli] CLI and run lifecycle, batch 3 (Q6, Q15, Q-f, Q-t, Q-u): dense exit-code table, partial cleanup exits 9 with a JSON list, 1m50s fallback run budget with a 10s hook margin, `clean` keeps report and events, hook auto-allows `clean <run-id>` only: [cli ADR 0002](../adr/0002-cli-run-lifecycle.md)
