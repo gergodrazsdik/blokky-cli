@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0014 [specs] Draft `spec/glossary.md`
-2. T-0015 [specs] Draft `spec/syntax.md`
-3. T-0016 [specs] Draft `spec/reference.md`
+1. T-0015 [specs] Draft `spec/syntax.md`
+2. T-0016 [specs] Draft `spec/reference.md`
+3. T-0017 [specs] Draft `spec/execution-model.md`
 
 ## Phase 0 — Bootstrap
 
@@ -44,7 +44,7 @@ Proposed batches; IDs are the brief's. Each batch ends in one grouped ADR in the
 
 Main agent, sequential, PRs marked **Draft spec** (brief §8.3).
 
-- [ ] T-0014 [specs] `spec/glossary.md`
+- [x] T-0014 [specs] `spec/glossary.md` — 2026-11-04, specs PR #9 (draft), cli PR #12
 - [ ] T-0015 [specs] `spec/syntax.md` (surface rules, root document, inputs syntax, per-field table, pitfalls, targeted errors)
 - [ ] T-0016 [specs] `spec/reference.md` (all planned features, milestone-tagged, validity matrix)
 - [ ] T-0017 [specs] `spec/execution-model.md`
