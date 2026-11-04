@@ -10,6 +10,7 @@ ADRs are **grouped**: a baseline ADR, then one ADR per batch of answered open qu
 |---|---|---|---|
 | [0001](0001-baseline.md) | Implementation, distribution and process baseline | accepted | — (partly Q-q) |
 | [0002](0002-cli-run-lifecycle.md) | CLI and run lifecycle (open-question batch 3) | accepted | Q6, Q15, Q-f, Q-t, Q-u |
+| [0003](0003-validation-config-lint.md) | Validation, hook, configuration and lint (open-question batch 4) | accepted | Q10, Q11, Q-a, Q-b, Q-c, Q-d, Q-g, Q-in2, Q-in6 |
 
 ## Format
 
