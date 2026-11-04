@@ -47,3 +47,5 @@ Claude Code reads `CLAUDE.md`, which imports `AGENTS.md`. Other agents read `AGE
 ## Local overrides
 
 `local.just` (extra recipes), `lefthook-local.yml`, `CLAUDE.local.md` and `.claude/settings.local.json` are personal and gitignored.
+
+<!-- CI smoke test; this PR is closed without merging. -->
