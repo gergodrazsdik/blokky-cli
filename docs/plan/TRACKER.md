@@ -12,15 +12,17 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 2. T-0008 [both] Ask open-question batch 1 (language core)
 3. T-0009 [both] Ask open-question batch 2 (execution and defaults)
 4. T-0005 [both] Code of Conduct contact (maintainer)
+5. T-0042 [specs] Required status checks, right after the first blokky-specs PR has run CI
 
 ## Phase 0 — Bootstrap
 
 ### M0.1 Repositories and tooling
 
-- [x] T-0001 [both] Create local repos and skeleton: community docs, layout from brief §5, placeholders — 2026-11-04, initial commit
-- [x] T-0002 [both] Lint tooling: justfile, lefthook hooks (DCO, Conventional Commits, gitleaks), `lint` workflow with DCO job — 2026-11-04, initial commit
-- [x] T-0003 [both] Create GitHub repos; general, security and Actions settings; `main` and `v*` tag rulesets; labels, topics — 2026-11-04
-- [ ] T-0004 [both] Add the `lint` job as a required status check on `main` once it has run on a PR
+- [x] T-0001 [both] Create local repos and skeleton: community docs, layout from brief §5, placeholders — 2026-11-04, cli 5136918, specs 3434b5f
+- [x] T-0002 [both] Lint tooling: justfile, lefthook hooks (DCO, Conventional Commits, gitleaks), `lint` workflow with DCO job — 2026-11-04, cli 5136918, specs 3434b5f
+- [x] T-0003 [both] Create GitHub repos; general, security and Actions settings; `main` and `v*` tag rulesets; labels, topics — 2026-11-04 (settings read back; see F-0004)
+- [x] T-0004 [cli] Add the `lint` and `dco` jobs as required status checks on `main` — 2026-11-04, after smoke-test PR #1 (closed unmerged)
+- [ ] T-0042 [specs] Add `lint` and `dco` as required status checks on `main` (GitHub Actions app, id 15368) once they have run on the first blokky-specs PR
 - [!] T-0005 [both] Code of Conduct: replace the `TODO(maintainer)` contact with a real address (maintainer decision)
 - [ ] T-0006 [both] Optional: enable GitHub Discussions for questions (maintainer decision; off for now)
 
@@ -145,6 +147,8 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 
 - F-0001 [both] Tag rulesets accept `required_signatures` but GitHub only checks the commits a tag points at, not the tag object's signature. Release tags are therefore created only by the maintainer as signed annotated tags (CONTRIBUTING.md), and T-0040 adds a `git verify-tag` check.
 - F-0002 [both] The CI `lint` job pins linter versions in `.github/workflows/lint.yml`. Dependabot only updates the actions, so linter versions are bumped by hand.
+- F-0003 [both] With `just claude`, the added repo's `CLAUDE.md` loads but its `@AGENTS.md` import isn't expanded: Claude Code treats it as an external import that needs a per-project approval. Each `CLAUDE.md` tells Claude to read the sibling's `AGENTS.md` with the Read tool instead.
+- F-0004 [both] The `main` rulesets' pull-request rule came back with GitHub's default `require_extra_approval_for_unattributed_changes: true`. Harmless for signed, attributed commits; revisit if it ever blocks a merge.
 
 ## Decisions
 
