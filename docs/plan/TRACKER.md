@@ -148,6 +148,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - F-0002 [both] The CI `lint` job pins linter versions in `.github/workflows/lint.yml`. Dependabot only updates the actions, so linter versions are bumped by hand.
 - F-0003 [both] With `just claude`, the added repo's `CLAUDE.md` loads but its `@AGENTS.md` import isn't expanded: Claude Code treats it as an external import that needs a per-project approval. Each `CLAUDE.md` tells Claude to read the sibling's `AGENTS.md` with the Read tool instead.
 - F-0004 [both] The `main` rulesets' pull-request rule came back with GitHub's default `require_extra_approval_for_unattributed_changes: true`. Harmless for signed, attributed commits; revisit if it ever blocks a merge.
+- F-0005 [both] `just lint-md` failed inside Claude Code's Bash sandbox (`EACCES` on placeholder files such as `.claude/loop.md`): `.markdownlint-cli2.yaml` globbed the whole work tree, and markdownlint-cli2 adds config `globs` to command-line files, so the pre-commit hook also linted every file instead of the staged ones. Fixed 2026-11-04 (branch `chore/lint-md-tracked-files` in both repos): no `globs` in the config; `lint-md` passes `git ls-files '*.md'`. Untracked Markdown is linted once staged.
 
 ## Decisions
 
