@@ -8,10 +8,10 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0007 [both] Baseline ADR per repo
-2. T-0008 [specs] Ask open-question batch 1 (language core)
-3. T-0009 [specs] Ask open-question batch 2 (execution and defaults)
-4. T-0010 [cli] Ask open-question batch 3 (CLI and run lifecycle)
+1. T-0008 [specs] Ask open-question batch 1 (language core)
+2. T-0009 [specs] Ask open-question batch 2 (execution and defaults)
+3. T-0010 [cli] Ask open-question batch 3 (CLI and run lifecycle)
+4. T-0011 [both] Ask open-question batch 4 (validation, config and inputs)
 
 ## Phase 0 — Bootstrap
 
@@ -31,7 +31,7 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 Proposed batches; IDs are the brief's. Each batch ends in one grouped ADR in the repo it concerns.
 
-- [ ] T-0007 [both] Baseline ADR per repo: record brief §2 baseline decisions (specs: language; cli: runtime, distribution, process)
+- [x] T-0007 [both] Baseline ADR per repo: record brief §2 baseline decisions (specs: language; cli: runtime, distribution, process) — 2026-11-04, specs PR #3 ([ADR 0001](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0001-language-baseline.md)), cli PR #5 ([ADR 0001](../adr/0001-baseline.md))
 - [ ] T-0008 [specs] Batch 1, language core: Q1, Q2, Q3, Q12, Q13, Q-m, Q-n, Q-s
 - [ ] T-0009 [specs] Batch 2, execution and defaults: Q4, Q5, Q7, Q8, Q-k, Q-r
 - [ ] T-0010 [cli] Batch 3, CLI and run lifecycle: Q6, Q15, Q-u, Q-f, Q-t
@@ -107,7 +107,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 | Q11 | Config file names; full list of user-only keys | open (draft) | |
 | Q12 | Must `name` values be unique? | open (draft) | |
 | Q13 | Plan version scheme for `blokky:`; required? | open (draft) | |
-| Q14 | Leaf descendants at leaf completion | answered | Brief §3.8: killed by default; `keep_descendants: true` opts out |
+| Q14 | Leaf descendants at leaf completion | answered | Brief §3.8: killed by default; `keep_descendants: true` opts out; [specs ADR 0001](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0001-language-baseline.md) |
 | Q15 | How `clean` reports partial deletion failure; exit code | open (draft) | |
 | Q16 | Containers, language level: existing-mode scope, default mount policy | open (draft) | |
 | Q16b | Container engine detection order and termination mechanism | open (later) | |
@@ -127,7 +127,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 | Q-m | `empty`/`not_empty` on an undefined variable | open (draft) | |
 | Q-n | Condition error inside `assert`: user `code`? | open (draft) | |
 | Q-o | Heredoc-expansion sentinel, or document the gap | open (draft) | |
-| Q-p | How plan variables reach commands | answered | Brief §2, §3.1: only via explicit `env:`/`export:` |
+| Q-p | How plan variables reach commands | answered | Brief §2, §3.1: only via explicit `env:`/`export:`; [specs ADR 0001](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0001-language-baseline.md) |
 | Q-q | Repo split: names, testkit interface vs implementation, submodule vs pinned checkout, spec text license | open (draft); partly settled by bootstrap | Repos created as `blokky-specs`/`blokky-cli`; both currently Apache-2.0 (spec-text license still open) |
 | Q-r | Default/max `concurrency`; `any` error aggregation | open (draft) | |
 | Q-s | May `finally` nodes `capture`? | open (draft) | |
@@ -153,3 +153,6 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 ## Decisions
 
 <!-- one line per decision with a link to its ADR -->
+
+- 2026-11-04 [specs] Language baseline from brief §1–§3 (scope, YAML surface, nodes, leaves and shells, variables, inputs, conditions, contracts): [specs ADR 0001](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0001-language-baseline.md)
+- 2026-11-04 [cli] Implementation, distribution and process baseline from brief §0–§2 (repo split, .NET 11 AOT, architecture, CLI rules, config trust classes, process control, artefacts, distribution, process): [cli ADR 0001](../adr/0001-baseline.md)
