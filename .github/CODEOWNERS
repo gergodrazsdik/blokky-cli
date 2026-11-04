@@ -1,0 +1,5 @@
+# Default owner for everything.
+* @gergodrazsdik
+
+# Agents author PRs in this repo; workflow changes always need human review.
+/.github/workflows/ @gergodrazsdik

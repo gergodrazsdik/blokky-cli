@@ -1,0 +1,33 @@
+# OS and editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.vscode/*
+!.vscode/extensions.json
+.vs/
+.idea/
+*.user
+*.suo
+
+# Personal, machine-specific files (see CONTRIBUTING.md "Local overrides")
+local.just
+lefthook-local.yml
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Secrets never belong in the repo
+.env
+.env.*
+
+# .NET
+bin/
+obj/
+artifacts/
+TestResults/
+*.binlog
+*.nupkg
+*.snupkg
+coverage*.json
+coverage*.xml

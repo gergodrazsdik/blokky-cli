@@ -1,0 +1,9 @@
+---
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/gergodrazsdik/blokky-cli/security/advisories/new
+    about: Please report vulnerabilities privately (see SECURITY.md), not as public issues.
+  - name: Language specification questions
+    url: https://github.com/gergodrazsdik/blokky-specs/issues/new/choose
+    about: Questions about the plan language itself belong in blokky-specs.
