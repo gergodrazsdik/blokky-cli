@@ -9,10 +9,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
 1. T-0007 [both] Baseline ADR per repo
-2. T-0008 [both] Ask open-question batch 1 (language core)
-3. T-0009 [both] Ask open-question batch 2 (execution and defaults)
-4. T-0005 [both] Code of Conduct contact (maintainer)
-5. T-0042 [specs] Required status checks, right after the first blokky-specs PR has run CI
+2. T-0008 [specs] Ask open-question batch 1 (language core)
+3. T-0009 [specs] Ask open-question batch 2 (execution and defaults)
+4. T-0010 [cli] Ask open-question batch 3 (CLI and run lifecycle)
 
 ## Phase 0 — Bootstrap
 
@@ -22,9 +21,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 - [x] T-0002 [both] Lint tooling: justfile, lefthook hooks (DCO, Conventional Commits, gitleaks), `lint` workflow with DCO job — 2026-11-04, cli 5136918, specs 3434b5f
 - [x] T-0003 [both] Create GitHub repos; general, security and Actions settings; `main` and `v*` tag rulesets; labels, topics — 2026-11-04 (settings read back; see F-0004)
 - [x] T-0004 [cli] Add the `lint` and `dco` jobs as required status checks on `main` — 2026-11-04, after smoke-test PR #1 (closed unmerged)
-- [ ] T-0042 [specs] Add `lint` and `dco` as required status checks on `main` (GitHub Actions app, id 15368) once they have run on the first blokky-specs PR
-- [!] T-0005 [both] Code of Conduct: replace the `TODO(maintainer)` contact with a real address (maintainer decision)
-- [ ] T-0006 [both] Optional: enable GitHub Discussions for questions (maintainer decision; off for now)
+- [x] T-0042 [specs] Add `lint` and `dco` as required status checks on `main` (GitHub Actions app, id 15368) — 2026-11-04, after specs PR #1
+- [x] T-0005 [both] Code of Conduct: replace the `TODO(maintainer)` contact with a real address — 2026-11-04, specs PR #1, cli PR #3
+- [-] T-0006 [both] Optional: enable GitHub Discussions for questions — dropped 2026-11-04: maintainer keeps Discussions off; questions go to issues
 
 ## Phase 1 — Language spec draft (brief §8.2–8.3)
 
