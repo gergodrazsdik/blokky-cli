@@ -6,7 +6,7 @@ Status: **draft**. The exit codes (below) are drafted with the language spec dra
 
 ## Exit codes
 
-Decisions: [ADR 0002](adr/0002-cli-run-lifecycle.md) (the table), [ADR 0005](adr/0005-exit-code-details.md) (precedence, Windows events). Error codes and phases: [blokky-specs `spec/errors.md`](https://github.com/gergodrazsdik/blokky-specs/blob/main/spec/errors.md).
+Decisions: [ADR 0002](adr/0002-cli-run-lifecycle.md) (the table), [ADR 0005](adr/0005-exit-code-details.md) (precedence, Windows events). Error codes and phases: [contracts/errors.md](contracts/errors.md) (CLI codes and the phase → exit-code mapping) and [blokky-specs `spec/errors.md`](https://github.com/gergodrazsdik/blokky-specs/blob/main/spec/errors.md) (the language's codes).
 
 | Code | Meaning | Typical error codes |
 |---|---|---|

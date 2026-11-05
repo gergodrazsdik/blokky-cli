@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:blokky:cli:schema:0.1:events",
+  "title": "Blokky event log",
+  "description": "One line of events.jsonl (blokky-cli contract, schema_version 0.1, draft). Semantics: docs/contracts/output-contract.md section 6. New event types and fields may be added; consumers ignore unknown ones.",
+  "type": "object",
+  "properties": {
+    "seq": { "type": "integer", "minimum": 1 },
+    "t": { "type": "string", "format": "date-time" },
+    "ev": { "type": "string", "minLength": 1 },
+    "schema_version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$" },
+    "node": { "type": "string", "pattern": "^/" }
+  },
+  "required": ["seq", "t", "ev"],
+  "allOf": [
+    {
+      "if": { "properties": { "ev": { "const": "run_start" } } },
+      "then": {
+        "properties": {
+          "run_id": { "type": "string" },
+          "plan_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "inputs": { "type": "object" },
+          "inputs_sha256": { "type": "string" }
+        },
+        "required": ["schema_version", "run_id", "plan_sha256"]
+      }
+    },
+    {
+      "if": { "properties": { "ev": { "const": "run_end" } } },
+      "then": {
+        "properties": {
+          "status": { "enum": ["succeeded", "failed", "budget_exceeded", "interrupted"] }
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "if": { "properties": { "ev": { "enum": ["node_start", "node_end", "attempt_start", "attempt_end", "iteration_start", "iteration_end", "leaf_start", "leaf_end", "finally_start", "finally_end", "capture", "condition"] } } },
+      "then": { "required": ["node"] }
+    },
+    {
+      "if": { "properties": { "ev": { "enum": ["attempt_start", "attempt_end", "iteration_start", "iteration_end"] } } },
+      "then": {
+        "properties": { "iteration": { "type": "integer", "minimum": 0 } }
+      }
+    },
+    {
+      "if": { "properties": { "ev": { "const": "leaf_start" } } },
+      "then": {
+        "properties": {
+          "program": { "type": "string" },
+          "pid": { "type": "integer" }
+        },
+        "required": ["program"]
+      }
+    },
+    {
+      "if": { "properties": { "ev": { "const": "leaf_end" } } },
+      "then": {
+        "properties": {
+          "exit_code": { "type": ["integer", "null"] },
+          "signal": { "type": "string" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "ev": { "const": "kill" } } },
+      "then": {
+        "properties": {
+          "target": { "type": "string" },
+          "method": { "enum": ["term", "ctrl_break", "kill", "job"] },
+          "reason": { "enum": ["timeout", "attempt_timeout", "cancel", "shutdown", "budget", "completion"] }
+        },
+        "required": ["method", "reason"]
+      }
+    },
+    {
+      "if": { "properties": { "ev": { "const": "log" } } },
+      "then": {
+        "properties": {
+          "level": { "enum": ["debug", "info", "warn"] },
+          "message": { "type": "string" }
+        },
+        "required": ["level", "message"]
+      }
+    },
+    {
+      "if": { "properties": { "ev": { "const": "mode" } } },
+      "then": {
+        "properties": { "mode": { "enum": ["budget", "shutdown", "force"] } },
+        "required": ["mode"]
+      }
+    }
+  ]
+}
