@@ -8,9 +8,10 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0027 [cli] Spike plan (brief §8.4)
-2. T-0028 [cli] Maintainer approves the spike plan
-3. T-0031–T-0035 Fan-out docs (can start now that the draft is merged; propose first)
+1. T-0043 [both] Move the JSON contracts and CLI-only error codes to blokky-cli
+2. T-0044 [specs] Remove runtime mechanics from the spec text
+3. T-0045 [specs] Abstract run-result model
+4. T-0046 [specs] Drop milestone tags; `blokky: 1.0`
 
 ## Phase 0 — Bootstrap
 
@@ -60,32 +61,47 @@ Done 2026-11-05: glossary, syntax, reference, execution model, variables, condit
 - [x] T-0025 [specs] All schemas: `blokky`, `report`, `events`, `leaves`, `validator` — 2026-11-05, specs PR #20 (draft), cli PR #23
 - [x] T-0026 [cli] Exit-code table in `docs/cli.md` — 2026-11-05, cli PR #24 ([cli ADR 0005](../adr/0005-exit-code-details.md)), specs PR #21
 
-## Phase 2 — Spike plan and spikes (brief §8.4)
+### M1.3 Scope cleanup and versioning (brief §8 step 4)
 
+blokky-specs becomes language-only; the spec moves to `1.0.0-draft.N` without milestone tags ([cli ADR 0006](../adr/0006-phase-order-and-incremental-cli.md), [specs ADR 0013](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0013-scope-and-versioning.md)).
+
+- [ ] T-0043 [both] Move `output-contract.md`, `leaves-and-validation.md`, the report/events/leaves/validator schemas and the CLI-only error codes to blokky-cli (`docs/contracts/`, `schema/`)
+- [ ] T-0044 [specs] Remove runtime mechanics from the spec text (budget and config keys, hook, approval, lint rules, run dir, OS process control), keeping the observable rules and pointing to blokky-cli; update the glossary
+- [ ] T-0045 [specs] Abstract run-result model (`spec/results.md`) for conformance cases
+- [ ] T-0046 [specs] Drop the `v0.1`/`later` tags; plans write `blokky: 1.0`; README, ROADMAP, CHANGELOG and schema `$id`s for `1.0.0-draft.N`
+
+### M1.4 Remaining language features (brief §8 step 5)
+
+- [ ] T-0047 [specs] Ask the open questions for the features still sketched (batch 7)
+- [ ] T-0048 [specs] Specify `race`, `lock`, `services`, `items`/`lines`/`matrix`, `collect`, `consent`, `zsh`/`fish` to full depth
+- [ ] T-0049 [specs] Maintainer tags `1.0.0-draft.1`
+
+## Phase 2 — Example suite (brief §8 step 6)
+
+- [ ] T-0031 [specs] `examples/` (small per-feature and comprehensive examples covering every feature), `conformance/README.md`, `conformance/testkit-interface.md`, `spec/overview.md`, `spec/prior-art.md`
+
+## Phase 3 — Review (brief §8 step 7)
+
+- [ ] T-0050 [both] Agent council review: propose the council (lenses, prompts, output format), run it, verify and consolidate findings
+- [ ] T-0051 [both] Maintainer review; accepted findings as ADRs; next draft (`1.0.0-draft.N`), including features cut or kept
+- [-] T-0036 [both] Consistency pass — dropped 2026-11-05: replaced by the review phase (cli ADR 0006)
+
+## Phase 4 — Conformance suite (brief §8 step 8)
+
+- [ ] T-0052 [specs] Conformance cases for the features that survive the review, each citing its rule IDs (see F-0007 for schema checks)
+
+## Phase 5 — Runtime planning, spikes and incremental CLI (brief §8 steps 9–11)
+
+- [ ] T-0053 [cli] Runtime planning session: MVP feature set, feature order, CLI versioning, when each CLI doc is needed
 - [ ] T-0027 [cli] `docs/design/spike-plan.md`: every "Provisional — verify in spike" item (brief §8.4 list 1–12)
 - [ ] T-0028 [cli] Maintainer approves the spike plan
 - [ ] T-0029 [cli] Spikes on unmerged `spikes/*` branches; one task per spike is added once the plan is approved
 - [ ] T-0030 [both] Fold spike findings back into the draft
-
-## Phase 3 — Fan-out docs (brief §8.5)
-
-Only after the language spec draft is merged. One subagent, worktree, branch and PR each.
-
-- [ ] T-0031 [specs] (a) `examples/`, `conformance/README.md`, `conformance/testkit-interface.md`, `spec/overview.md`, `spec/prior-art.md`
 - [ ] T-0032 [cli] (b) `configuration.md`, config schema (main agent owns; subagent proposes), `validation-and-permissions.md`, `security/threat-model.md`
 - [ ] T-0033 [cli] (c) agent docs: `agent-guide.md`, `skill/SKILL.md`, `mcp-tool-description.md`
 - [ ] T-0034 [both] (d) user/project docs: README, install, contributing, SECURITY (after (b)), roadmaps, CHANGELOG, NOTICE, CODEOWNERS, dev-setup, `mcp.md` (bootstrap versions exist; this pass completes them)
 - [ ] T-0035 [cli] (e) design docs: architecture, tech-stack, process-control, validation-strategy, testkit, ci-cd, `design/notes/`
-
-## Phase 4 — Consistency pass and finalized spec (brief §8.6–8.7)
-
-- [ ] T-0036 [both] Consistency pass: reference entry and example per kind/modifier; examples use canonical forms; schemas match reference; error codes; glossary; every "later" feature in the specs ROADMAP; cross-repo links
-- [ ] T-0037 [both] Finalize the spec: resolve or re-scope every provisional item
-
-## Phase 5 — v0.1 implementation (planned after spec approval)
-
-Placeholder; broken down after the spec is approved.
-
+- [ ] T-0037 [both] Spec `1.0.0` once the runtime has validated the draft (was: finalize the spec after the spikes)
 - [ ] T-0038 [cli] Enable CodeQL (C#) once C# code lands
 - [ ] T-0039 [cli] Enable the Dependabot `nuget` block once the solution exists
 - [ ] T-0040 [cli] Release workflow verifies the release tag's signature (`git verify-tag`): GitHub tag rulesets can't check tag-object signatures
@@ -176,3 +192,4 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - 2026-11-05 [specs] PowerShell prologue placement (T-0020): `$ErrorActionPreference = 'Stop';` (followed by a space) prefixes the first statement line (after blanks, comments and `using`), `param(` there is a plan error: [specs ADR 0011](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0011-pwsh-prologue.md)
 - 2026-11-05 [specs] Container details (T-0021): on Windows hosts the cwd mounts at its drive-letter path (`/c/src/app`); containers run as the image's default user, with a `container-root-write` lint warning: [specs ADR 0012](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0012-container-details.md)
 - 2026-11-05 [cli] Exit-code details (T-0026): pre-run errors exit with the first failing step in check order (args, sha, config, plan, inputs, approval); Windows session events exit 129: [cli ADR 0005](../adr/0005-exit-code-details.md)
+- 2026-11-05 [both] Direction revised: blokky-specs is language-only; the spec is completed as `1.0.0-draft.N` with all features and no milestone tags; phase order spec → examples → review (maintainer + agent council) → conformance suite → runtime planning, spikes, incremental CLI: [cli ADR 0006](../adr/0006-phase-order-and-incremental-cli.md), [specs ADR 0013](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0013-scope-and-versioning.md)
