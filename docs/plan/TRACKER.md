@@ -8,8 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0026 [cli] Exit-code table in `docs/cli.md`
-2. T-0027 [cli] Spike plan (brief §8.4)
+1. T-0027 [cli] Spike plan (brief §8.4)
+2. T-0028 [cli] Maintainer approves the spike plan
+3. T-0031–T-0035 Fan-out docs (can start now that the draft is merged; propose first)
 
 ## Phase 0 — Bootstrap
 
@@ -43,6 +44,8 @@ Proposed batches; IDs are the brief's. Each batch ends in one grouped ADR in the
 
 Main agent, sequential, PRs marked **Draft spec** (brief §8.3).
 
+Done 2026-11-05: glossary, syntax, reference, execution model, variables, conditions, shells, containers and privilege, errors, output contract, leaves and validation, all schemas (specs PRs #9–#21) and the `cli.md` exit codes (cli PR #24); drafting decisions in specs ADRs 0007–0012 and cli ADR 0005.
+
 - [x] T-0014 [specs] `spec/glossary.md` — 2026-11-04, specs PR #9 (draft), cli PR #12
 - [x] T-0015 [specs] `spec/syntax.md` (surface rules, root document, inputs syntax, per-field table, pitfalls, targeted errors) — 2026-11-04, specs PR #10 (draft; [specs ADR 0007](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0007-syntax-details.md)), cli PR #13
 - [x] T-0016 [specs] `spec/reference.md` (all planned features, milestone-tagged, validity matrix) — 2026-11-04, specs PR #11 (draft; [specs ADR 0008](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0008-repetition-details.md)), cli PR #14
@@ -55,7 +58,7 @@ Main agent, sequential, PRs marked **Draft spec** (brief §8.3).
 - [x] T-0023 [specs] `spec/output-contract.md` — 2026-11-05, specs PR #18 (draft), cli PR #21
 - [x] T-0024 [specs] `spec/leaves-and-validation.md` — 2026-11-05, specs PR #19 (draft), cli PR #22
 - [x] T-0025 [specs] All schemas: `blokky`, `report`, `events`, `leaves`, `validator` — 2026-11-05, specs PR #20 (draft), cli PR #23
-- [ ] T-0026 [cli] Exit-code table in `docs/cli.md`
+- [x] T-0026 [cli] Exit-code table in `docs/cli.md` — 2026-11-05, cli PR #24 ([cli ADR 0005](../adr/0005-exit-code-details.md)), specs PR #21
 
 ## Phase 2 — Spike plan and spikes (brief §8.4)
 
@@ -172,3 +175,4 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - 2026-11-05 [specs] Short budgets and variable details (F-0006, T-0018): budgets at or below `cleanup_reserve` run without a reserve, JSON `null` binds `''`, masking from 6 characters, undecodable captures are errors: [specs ADR 0010](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0010-variables-details.md)
 - 2026-11-05 [specs] PowerShell prologue placement (T-0020): `$ErrorActionPreference = 'Stop';` (followed by a space) prefixes the first statement line (after blanks, comments and `using`), `param(` there is a plan error: [specs ADR 0011](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0011-pwsh-prologue.md)
 - 2026-11-05 [specs] Container details (T-0021): on Windows hosts the cwd mounts at its drive-letter path (`/c/src/app`); containers run as the image's default user, with a `container-root-write` lint warning: [specs ADR 0012](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0012-container-details.md)
+- 2026-11-05 [cli] Exit-code details (T-0026): pre-run errors exit with the first failing step in check order (args, sha, config, plan, inputs, approval); Windows session events exit 129: [cli ADR 0005](../adr/0005-exit-code-details.md)
