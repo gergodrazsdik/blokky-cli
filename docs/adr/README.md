@@ -13,6 +13,7 @@ ADRs are **grouped**: a baseline ADR, then one ADR per batch of answered open qu
 | [0003](0003-validation-config-lint.md) | Validation, hook, configuration and lint (open-question batch 4) | accepted | Q10, Q11, Q-a, Q-b, Q-c, Q-d, Q-g, Q-in2, Q-in6 |
 | [0004](0004-platform-invocation-conformance.md) | Process launcher, Windows invocation and conformance checkout (open-question batch 6) | accepted | Q-e, Q-h, Q-o, Q-q (checkout) |
 | [0005](0005-exit-code-details.md) | Exit-code precedence and Windows events | accepted | — (open items of 0002, raised in T-0026) |
+| [0006](0006-phase-order-and-incremental-cli.md) | Phase order, spec scope and an incremental CLI | accepted | — (direction revision; supersedes parts of 0001) |
 
 ## Format
 

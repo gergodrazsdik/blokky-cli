@@ -2,9 +2,11 @@
 
 You are starting the **specification phase** of Blokky, a new open-source project on GitHub. It uses two repositories (§0.1).
 
+> **Revised 2026-11-05** (blokky-cli ADR 0006, blokky-specs ADR 0013): blokky-specs covers only the language; the spec is completed as `1.0.0-draft.N` with all planned features and no milestone tags; the phase order is spec → examples → review → conformance suite → runtime planning, spikes and an incremental CLI (§1.5, §1.6, §8). Sections §2–§4 still use `v0.1`/`later` tags; in the spec they are historical, and they now feed the CLI planning session.
+
 This phase produces **documentation and specification**:
 - The only code allowed is throwaway spike code on unmerged `spikes/*` branches, after I approve the spike plan (§8).
-- Implementation starts only after I approve the finalized spec.
+- Implementation starts after the spec draft has been reviewed and the runtime planning session has set the MVP scope (§8). The spec stays a draft during implementation and is refined by it.
 
 ---
 
@@ -16,8 +18,8 @@ The **language specification** is versioned separately from the **implementation
 
 | Repo | Contents | Versioning |
 |---|---|---|
-| `gergodrazsdik/blokky-specs` | Language spec, normative JSON contracts and schemas, examples, conformance suite (cases + format + testkit *interface*). | Own semver; the **spec version** is what a plan's `blokky:` field refers to (§3.0, Q13). |
-| `gergodrazsdik/blokky-cli` | .NET implementation (CLI host, later the MCP host), testkit implementation, configuration, validation/hook integration, threat model, agent docs, install, design docs, CI/CD. | Own semver; each release declares the spec versions it supports. |
+| `gergodrazsdik/blokky-specs` | **The language only:** what a plan means and what it can observe (syntax, semantics, the plan-visible error codes, an abstract run-result model), the plan schema, the user-facing example suite, the conformance suite (cases + format + testkit *interface*). | Own semver: pre-releases `1.0.0-draft.N` until `1.0.0`. A plan's `blokky:` field names `MAJOR.MINOR` (`blokky: 1.0`). |
+| `gergodrazsdik/blokky-cli` | .NET implementation (CLI host, later the MCP host) and everything runtime-specific: the JSON contracts (report, events, `leaves`, validator protocol) and their schemas, exit codes and CLI-only error codes, run dir and cleanup, configuration, run budget, validation/hook integration, approval, lint rules, OS process control, testkit implementation, threat model, agent docs, install, design docs, CI/CD. | Own semver, incremental: a release may support only part of the language; it declares the spec version and a feature matrix, and rejects unsupported features with "not supported by this blokky version". |
 
 **Working with both repos:**
 - Claude Code works in `blokky-cli` with `blokky-specs` loaded as an additional directory, or the other way round, depending on where the current step's files live.
@@ -38,8 +40,8 @@ The **language specification** is versioned separately from the **implementation
   - When the work can be parallelized, use subagents, each in its own **git worktree** on its own branch, opening its own PR.
   - Give each subagent explicit file ownership so branches don't conflict.
   - Shared files are owned by the main agent only; subagents propose changes to them in their PR description:
-    - **`blokky-specs`:** `spec/glossary.md`, `schema/*.json`, `spec/errors.md`, `spec/output-contract.md`, `adr/README.md`.
-    - **`blokky-cli`:** `docs/cli.md` (exit codes, command list), `schema/blokky-config.schema.json`, `docs/adr/README.md`.
+    - **`blokky-specs`:** `spec/glossary.md`, `schema/blokky.schema.json`, `spec/errors.md`, `adr/README.md`.
+    - **`blokky-cli`:** `docs/cli.md` (exit codes, command list), `docs/contracts/*`, `schema/*.json`, `docs/adr/README.md`.
   - Do not fan out before the language spec draft is merged (§8).
 - **Rebasing.** After a PR merges, rebase the remaining branches onto `main` before continuing.
 
@@ -102,18 +104,19 @@ Blokky is a small, declarative YAML block language and runner that wraps shell c
 
 ### 1.5 Evolution until v1.0.0
 
-- **Everything can change until v1.0.0.** Syntax, semantics and every decision in this brief may be revisited during 0.x.
+- **The spec is a draft until 1.0.0.** It is released as `1.0.0-draft.1`, `-draft.2`, …; many decisions can only be confirmed once the runtime exists, so the draft is refined during the runtime implementation and validation. Syntax, semantics and every decision in this brief may be revisited until then.
+- **The CLI is versioned on its own** (0.x, incremental) and implements the language step by step.
 - Decisions marked "baseline" below are the current direction. Ask me before changing them, but they are not frozen.
 - **Accepted review findings are not final** either. When one turns out to fit poorly, raise it as an open question instead of forcing it in.
 
 ### 1.6 How the spec is built
 
-1. **Complete language spec first, as a draft** (in `blokky-specs`). It contains **all planned features**, including later ones (containers, `become`, services, locks, `race`, `matrix`). Each carries a **milestone tag** (`v0.1` or `later`).
-   - **Why:** the language stays coherent and idiomatic, and future additions slot in without disturbing existing features.
-   - **Value shapes are fixed now even for later features,** so no scalar → mapping breaking change is needed later.
-   - The parser and schema **reserve** the keywords of later features, with a clear "not supported in this version" error.
-2. **Then a spike plan** (in `blokky-cli`) for everything that depends on unverified runtime behaviour.
-3. **Then the spikes, then the spec is finalized.**
+1. **Complete language spec first, as a draft** (in `blokky-specs`), with **all planned features** (containers, `become`, services, locks, `race`, `matrix`, …), each specified to the same depth.
+   - **Why:** the language stays coherent and idiomatic, and features are judged together.
+   - **No milestone tags in the spec:** every feature belongs to 1.0. Which features a CLI release supports is the CLI's business (its feature matrix and roadmap).
+   - The `v0.1`/`later` tags used elsewhere in this brief are historical; they are input for the CLI planning session.
+2. **Then a user-facing example suite** covering every feature, then a **review** (by me and an agent council) that also asks whether each feature earns its place.
+3. **Then the conformance suite, the runtime planning session, the spikes and an incremental CLI;** the spec is refined along the way and becomes 1.0.0 once the runtime has validated it.
 
 Some questions are better left open than decided early; record them in §4 instead of inventing an answer.
 
@@ -1298,32 +1301,30 @@ Ask in small batches using multiple-choice questions where possible, with a reco
 ```
 README.md                 # what the language is, spec status, how versions work
 LICENSE  NOTICE  CONTRIBUTING.md  CODE_OF_CONDUCT.md  SECURITY.md (reporting)
-CHANGELOG.md              # spec versions
-ROADMAP.md                # language milestones; every "later" feature is scheduled here
+CHANGELOG.md              # spec versions (1.0.0-draft.N, …)
+ROADMAP.md                # language evolution
 .github/CODEOWNERS        # human review for .github/workflows/**
 spec/
   overview.md             # concepts, mental model, when (not) to use Blokky
   prior-art.md            # Ansible, duckflux, execline, exec-json, agent-safe-runner, CI step timeouts
   glossary.md
   syntax.md               # YAML surface rules, root document, plan inputs syntax, per-field reference/interpolation table, pitfalls, targeted errors
-  reference.md            # every node kind and modifier, milestone-tagged; validity matrix; security considerations section
-  execution-model.md      # modifier order, start order, cancellation timeline, status propagation, process semantics (normative, OS-independent)
+  reference.md            # every node kind and modifier; validity matrix; security considerations section
+  execution-model.md      # modifier order, start order, timeouts, cancellation, status propagation (normative, OS-independent)
   variables.md            # names, reserved names, plan inputs and plan scope, capture forms, binding/scope, outputs, secrets
   conditions.md           # subjects, operators, composites, probes, condition errors
   shells.md               # exec splitting rules, script-file invocation table per shell, OS matrix, resolution, injection properties
-  containers-and-privilege.md  # language-level spec (later milestone)
-  errors.md               # BK_ error catalogue
-  output-contract.md      # report, events, stderr rules, truncation, examples
-  leaves-and-validation.md  # leaves/validator protocol contracts, rendered form (incl. concrete inputs), effects, flags, inputs_sha256
+  containers-and-privilege.md  # language-level spec
+  errors.md               # the BK_ codes a plan can observe (node errors)
+  results.md              # abstract run-result model (statuses, errors, outputs) that conformance cases assert on
 adr/                      # grouped ADRs + README index
 schema/
   blokky.schema.json      # plans; normative for structure
-  report.schema.json  events.schema.json  leaves.schema.json  validator.schema.json
-examples/                 # runnable *.blokky.yaml (canonical forms only) + README table with an invocation column; at least one parameterized file plan with inputs; "later" examples are schema-validated but not smoke-run
+examples/                 # user-facing suite: small per-feature examples and larger comprehensive ones; canonical forms only; README index
 conformance/
   README.md               # case format, layout, per-platform overrides, pairwise policy, timing tolerance
   testkit-interface.md    # required fake-executable behaviours (implementation-independent)
-  cases/                  # written in the implementation phase
+  cases/                  # written after the review, before the CLI MVP
 ```
 
 ### `blokky-cli`
@@ -1331,10 +1332,14 @@ conformance/
 ```
 README.md  LICENSE  NOTICE  CONTRIBUTING.md  CODE_OF_CONDUCT.md  SECURITY.md
 CHANGELOG.md
-ROADMAP.md                # implementation status per spec feature, distribution, packaging
+ROADMAP.md                # feature matrix (which language features each release supports), distribution, packaging
 .github/CODEOWNERS
 docs/
   cli.md                  # run (stdin/file, --input, --cleanup, --max-duration, --expect-sha256), plan, leaves, validate, lint, report, clean, gc, config, schema (--agent), hook check, version; flag classes; parser rules (no response files); exit codes
+  contracts/
+    output-contract.md    # stdout/stderr rules, run dir, report, pre-run envelope, events, truncation
+    leaves-and-validation.md  # leaves document, rendered form, effects, flags, validator protocol
+    errors.md             # CLI-only error codes (usage, config, approval, run, cleanup)
   configuration.md        # files, precedence, trust classes, protection guidance
   validation-and-permissions.md  # hook check, canonical forms incl. --input value grammar, flag classes, runner-rules mode, validator plugin, approval binding
   security/threat-model.md  # baseline-vs-bash posture, attack paths (incl. reviewed plan + agent-chosen inputs, argv visibility), hygiene vs controls, best-effort kill/cleanup, masking limits
@@ -1358,6 +1363,7 @@ docs/
   adr/                    # grouped ADRs + README index
 schema/
   blokky-config.schema.json   # incl. x-blokky-trust per key
+  report.schema.json  events.schema.json  leaves.schema.json  validator.schema.json
 ```
 
 **Generated agent cheat sheet:** `blokky schema --agent` emits a compact grammar card generated from the plan schema and the validity matrix. SKILL.md and the MCP tool description embed it, so they never drift from the parser.
@@ -1460,66 +1466,47 @@ schema/
 
 ## 8. Process
 
-1. **Skeletons.** Create both local repos with empty files and headings, commit on `main`, and ask me before creating the GitHub repos.
-2. **Open questions.** Ask me the "needed for the draft" questions (§4) in batches and record them in grouped ADRs (a baseline ADR per repo, then one per question batch).
-3. **Language spec draft** (main agent, sequential, in `blokky-specs`).
-   - Write:
-     - `glossary.md`
-     - `syntax.md`
-     - `reference.md` (all planned features, milestone-tagged, with the validity matrix)
-     - `execution-model.md`
-     - `variables.md`
-     - `conditions.md`
-     - `shells.md`
-     - `containers-and-privilege.md`
-     - `errors.md`
-     - `output-contract.md`
-     - `leaves-and-validation.md`
-     - all schemas
-   - In `blokky-cli`, write the exit-code table in `cli.md`.
-   - Open PRs marked **Draft spec**.
-4. **Spike plan** (`blokky-cli/docs/design/spike-plan.md`). List every item marked **"Provisional — verify in spike"**. Expected items:
-   1. the process launcher (`posix_spawn` + `setsid` vs trampoline vs .NET 11 APIs), the **lifeline**, and tree kill per OS. Acceptance: no leaf survives a SIGKILL of blokky;
-   2. Windows: graceful termination, hidden console per leaf, race-free job assignment;
-   3. YamlDotNet under AOT: duplicate-key and alias behaviour, position tracking, same-line comment detection, event-parser fallback;
-   4. schema shape and editor behaviour (yaml-language-server typing of unquoted scalars, incl. `default: 1.10` in `inputs`);
-   5. .NET 11 `KillOnParentExit` at GA; `PDEATHSIG` from a dedicated thread;
-   6. confirm that absolute executable paths bypass platform search;
-   7. fd-relative safe deletion (`openat`/`unlinkat` via LibraryImport; Windows reparse-point-safe delete);
-   8. pipe drain / `descendants_held_output` per OS;
-   9. `RegexOptions.NonBacktracking` under AOT/trim;
-   10. whether a hook `ask` overrides the runner's allow rules (Claude Code);
-   11. the **`blokky __exec` trampoline as the universal launcher** inside boundaries:
-       - transporting argv, env and script via an fd/pipe instead of the command line;
-       - sudo closing extra fds by default;
-       - making the AOT binary available inside containers (read-only mount; glibc vs musl images);
-       - script-file readability across `become`;
-   12. later-milestone items: container termination via the engine CLI, privilege-boundary kill, variable and tempdir transport across `become`, Sudo for Windows modes.
+Steps 1–3 are done (2026-11-05). The order from step 4 on was revised on 2026-11-05 (blokky-cli ADR 0006).
 
-   After I approve the plan, spikes run on unmerged `spikes/*` branches. Their findings go back into the draft.
-5. **Fan out** after the draft is merged: subagents in separate worktrees and branches.
-   - (a) `blokky-specs`: `examples/` + `conformance/README.md` + `testkit-interface.md` + `overview.md` + `prior-art.md`
-   - (b) `blokky-cli`: `configuration.md` + config schema (owned by the main agent; the subagent proposes) + `validation-and-permissions.md` + `security/threat-model.md`
-   - (c) `blokky-cli`: agent docs
-   - (d) both repos: user/project docs — README, install, contributing, SECURITY (after (b)), code of conduct, roadmaps, CHANGELOG stubs, NOTICE, CODEOWNERS, dev-setup, `mcp.md`
-   - (e) `blokky-cli`: design docs — architecture, tech-stack, process-control, validation-strategy, testkit, ci-cd, `design/notes/`
+1. **Skeletons.** Create both local repos with empty files and headings, commit on `main`, and ask me before creating the GitHub repos. *(Done.)*
+2. **Open questions.** Ask me the "needed for the draft" questions (§4) in batches and record them in grouped ADRs. *(Done.)*
+3. **Language spec draft** (main agent, sequential, in `blokky-specs`): glossary, syntax, reference, execution model, variables, conditions, shells, containers and privilege, errors, output contract, leaves and validation, schemas; the exit-code table in `blokky-cli/docs/cli.md`. *(Done; PRs marked **Draft spec**.)*
+4. **Scope cleanup and versioning.**
+   - Move everything CLI- or runtime-specific from `blokky-specs` to `blokky-cli` (§0.1): the JSON contracts and their schemas, CLI-only error codes, run budget, config, hook, approval, lint rules, OS process-control mechanisms. Keep the language-level semantics, and add an abstract run-result model (`spec/results.md`) that conformance cases can assert on.
+   - Drop the `v0.1`/`later` milestone tags; plans write `blokky: 1.0`.
+5. **Remaining language features.** Specify every feature still sketched to the same depth as the rest (`race`, `lock`, `services`, `items`/`lines`/`matrix`, `collect`, `consent`, `zsh`/`fish`, …), asking open questions in batches. Then I tag **`1.0.0-draft.1`**.
+6. **Example suite** (`blokky-specs/examples/`), for users: small examples per feature and larger comprehensive ones, together covering every feature, in canonical forms; plus the conformance case format and testkit interface (`conformance/README.md`, `testkit-interface.md`), `overview.md` and `prior-art.md`. Subagents in separate worktrees may write parts in parallel.
+7. **Review**, by me and an **agent council**: independent reviewer agents with distinct lenses, for example
+   - principles and minimalism: does each feature earn its place against §1.1 (small, declarative, not a scripting language)?
+   - the agent as user: can an agent write correct plans first time from the docs and errors?
+   - security posture: same as bash, nothing hidden, hygiene not presented as control;
+   - implementability: runtime cost, portability, what can't be verified before the runtime exists;
+   - spec quality: consistency, ambiguity, examples vs reference.
 
-   Each opens its own PR.
-6. **Consistency pass** across both repos:
-   - Every node kind and modifier has a reference entry and an example.
-   - Every keyword in the examples is defined.
-   - **Examples and sketches use canonical forms only.**
-   - The schemas match the reference.
-   - Error codes are consistent.
-   - Glossary terms are used consistently.
-   - Every "later" feature appears in the specs `ROADMAP.md`.
-   - Cross-repo links resolve.
-   - Report the result in the PRs.
-7. **Finalize** the spec after the spikes: resolve or re-scope every provisional item.
+   Findings are verified, consolidated and decided by me; accepted ones become ADRs and a new draft (`1.0.0-draft.N`). This step replaces the former consistency pass.
+8. **Conformance suite** (`blokky-specs/conformance/cases/`), each case citing the rule IDs it tests (`EM-n`, `VA-n`, …), for the features that survive the review. Its pass rate guides the CLI implementation.
+9. **Runtime planning session:** the CLI's MVP feature set, the order in which features follow, CLI versioning, and which CLI docs (configuration, validation and permissions, threat model, agent docs, design docs) are needed when.
+10. **Spike plan and spikes** (`blokky-cli/docs/design/spike-plan.md`): every item marked **"Provisional — verify in spike"**. Expected items:
+    1. the process launcher (`posix_spawn` + `setsid` vs trampoline vs .NET 11 APIs), the **lifeline**, and tree kill per OS. Acceptance: no leaf survives a SIGKILL of blokky;
+    2. Windows: graceful termination, hidden console per leaf, race-free job assignment;
+    3. YamlDotNet under AOT: duplicate-key and alias behaviour, position tracking, same-line comment detection, event-parser fallback;
+    4. schema shape and editor behaviour (yaml-language-server typing of unquoted scalars, incl. `default: 1.10` in `inputs`);
+    5. .NET 11 `KillOnParentExit` at GA; `PDEATHSIG` from a dedicated thread;
+    6. confirm that absolute executable paths bypass platform search;
+    7. fd-relative safe deletion (`openat`/`unlinkat` via LibraryImport; Windows reparse-point-safe delete);
+    8. pipe drain / `descendants_held_output` per OS;
+    9. `RegexOptions.NonBacktracking` under AOT/trim;
+    10. whether a hook `ask` overrides the runner's allow rules, and whether a rewritten tool input is shown on `ask` (Claude Code);
+    11. the **`blokky __exec` trampoline as the universal launcher** inside boundaries (argv/env/script transport over a pipe, sudo/doas closing fds, the binary inside containers, script-file readability across `become`);
+    12. the `pwsh -File` exit code after a failing native command;
+    13. container termination via the engine CLI, privilege-boundary kill, Sudo for Windows modes.
+
+    After I approve the plan, spikes run on unmerged `spikes/*` branches. Their findings go back into the spec draft.
+11. **Incremental CLI implementation:** the MVP first, then feature by feature in the planned order, with the conformance pass rate as the guide. The spec is refined through ADRs as the runtime validates it, and becomes `1.0.0` when the runtime has validated it.
 
 **Style:**
 - Precise and concise.
 - Normative language (MUST/SHOULD/MAY) in the spec and in the configuration and validation docs.
 - Plain, friendly language in user docs.
 - No marketing fluff.
-- Every v0.1 example must be something a user could actually run.
+- Every example must be something a user could actually run once the CLI supports its features; examples use canonical forms only.
