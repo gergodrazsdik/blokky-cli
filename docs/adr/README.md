@@ -12,6 +12,7 @@ ADRs are **grouped**: a baseline ADR, then one ADR per batch of answered open qu
 | [0002](0002-cli-run-lifecycle.md) | CLI and run lifecycle (open-question batch 3) | accepted | Q6, Q15, Q-f, Q-t, Q-u |
 | [0003](0003-validation-config-lint.md) | Validation, hook, configuration and lint (open-question batch 4) | accepted | Q10, Q11, Q-a, Q-b, Q-c, Q-d, Q-g, Q-in2, Q-in6 |
 | [0004](0004-platform-invocation-conformance.md) | Process launcher, Windows invocation and conformance checkout (open-question batch 6) | accepted | Q-e, Q-h, Q-o, Q-q (checkout) |
+| [0005](0005-exit-code-details.md) | Exit-code precedence and Windows events | accepted | — (open items of 0002, raised in T-0026) |
 
 ## Format
 
