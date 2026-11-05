@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0024 [specs] Draft `spec/leaves-and-validation.md`
-2. T-0025 [specs] Draft all schemas
-3. T-0026 [cli] Exit-code table in `docs/cli.md`
+1. T-0025 [specs] Draft all schemas
+2. T-0026 [cli] Exit-code table in `docs/cli.md`
+3. T-0027 [cli] Spike plan (brief §8.4)
 
 ## Phase 0 — Bootstrap
 
@@ -54,7 +54,7 @@ Main agent, sequential, PRs marked **Draft spec** (brief §8.3).
 - [x] T-0021 [specs] `spec/containers-and-privilege.md` — 2026-11-05, specs PR #16 (draft; [specs ADR 0012](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0012-container-details.md)), cli PR #19
 - [x] T-0022 [specs] `spec/errors.md` — 2026-11-05, specs PR #17 (draft), cli PR #20
 - [x] T-0023 [specs] `spec/output-contract.md` — 2026-11-05, specs PR #18 (draft), cli PR #21
-- [ ] T-0024 [specs] `spec/leaves-and-validation.md`
+- [x] T-0024 [specs] `spec/leaves-and-validation.md` — 2026-11-05, specs PR #19 (draft), cli PR #22
 - [ ] T-0025 [specs] All schemas: `blokky`, `report`, `events`, `leaves`, `validator`
 - [ ] T-0026 [cli] Exit-code table in `docs/cli.md`
 
