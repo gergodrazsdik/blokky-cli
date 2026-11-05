@@ -8,9 +8,8 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0025 [specs] Draft all schemas
-2. T-0026 [cli] Exit-code table in `docs/cli.md`
-3. T-0027 [cli] Spike plan (brief §8.4)
+1. T-0026 [cli] Exit-code table in `docs/cli.md`
+2. T-0027 [cli] Spike plan (brief §8.4)
 
 ## Phase 0 — Bootstrap
 
@@ -55,7 +54,7 @@ Main agent, sequential, PRs marked **Draft spec** (brief §8.3).
 - [x] T-0022 [specs] `spec/errors.md` — 2026-11-05, specs PR #17 (draft), cli PR #20
 - [x] T-0023 [specs] `spec/output-contract.md` — 2026-11-05, specs PR #18 (draft), cli PR #21
 - [x] T-0024 [specs] `spec/leaves-and-validation.md` — 2026-11-05, specs PR #19 (draft), cli PR #22
-- [ ] T-0025 [specs] All schemas: `blokky`, `report`, `events`, `leaves`, `validator`
+- [x] T-0025 [specs] All schemas: `blokky`, `report`, `events`, `leaves`, `validator` — 2026-11-05, specs PR #20 (draft), cli PR #23
 - [ ] T-0026 [cli] Exit-code table in `docs/cli.md`
 
 ## Phase 2 — Spike plan and spikes (brief §8.4)
@@ -151,6 +150,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - F-0004 [both] The `main` rulesets' pull-request rule came back with GitHub's default `require_extra_approval_for_unattributed_changes: true`. Harmless for signed, attributed commits; revisit if it ever blocks a merge.
 - F-0005 [both] `just lint-md` failed inside Claude Code's Bash sandbox (`EACCES` on placeholder files such as `.claude/loop.md`): `.markdownlint-cli2.yaml` globbed the whole work tree, and markdownlint-cli2 adds config `globs` to command-line files, so the pre-commit hook also linted every file instead of the staged ones. Fixed 2026-11-04 (branch `chore/lint-md-tracked-files` in both repos): no `globs` in the config; `lint-md` passes `git ls-files '*.md'`. Untracked Markdown is linted once staged.
 - F-0006 [both] A run budget at or below `cleanup_reserve` (default 30s), e.g. `--max-duration 20s`, would enter budget mode at once. Open: reject it as a usage error, shrink the reserve proportionally, or run without a reserve. Raised in cli ADR 0002's open items and `spec/execution-model.md` §9; decide before `cli.md`. Resolved 2026-11-05: run with no reserve (EM-54, [specs ADR 0010](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0010-variables-details.md)).
+- F-0007 [specs] Nothing checks the JSON Schemas in CI yet. While drafting T-0025 they were checked by hand (meta-schema plus good and bad sample plans), which caught an inconsistent `phase` in the output-contract example. Add a schema check (meta-validation, `examples/` validated against the plan schema, fixture reports/leaves) to `just lint` and CI, with the conformance setup.
 
 ## Decisions
 
