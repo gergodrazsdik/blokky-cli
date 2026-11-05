@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0019 [specs] Draft `spec/conditions.md`
-2. T-0020 [specs] Draft `spec/shells.md`
-3. T-0021 [specs] Draft `spec/containers-and-privilege.md`
+1. T-0020 [specs] Draft `spec/shells.md`
+2. T-0021 [specs] Draft `spec/containers-and-privilege.md`
+3. T-0022 [specs] Draft `spec/errors.md`
 
 ## Phase 0 — Bootstrap
 
@@ -49,7 +49,7 @@ Main agent, sequential, PRs marked **Draft spec** (brief §8.3).
 - [x] T-0016 [specs] `spec/reference.md` (all planned features, milestone-tagged, validity matrix) — 2026-11-04, specs PR #11 (draft; [specs ADR 0008](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0008-repetition-details.md)), cli PR #14
 - [x] T-0017 [specs] `spec/execution-model.md` — 2026-11-05, specs PR #12 (draft; [specs ADR 0009](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0009-status-propagation.md)), cli PR #15
 - [x] T-0018 [specs] `spec/variables.md` — 2026-11-05, specs PR #13 (draft; [specs ADR 0010](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0010-variables-details.md)), cli PR #16
-- [ ] T-0019 [specs] `spec/conditions.md`
+- [x] T-0019 [specs] `spec/conditions.md` — 2026-11-05, specs PR #14 (draft), cli PR #17
 - [ ] T-0020 [specs] `spec/shells.md`
 - [ ] T-0021 [specs] `spec/containers-and-privilege.md`
 - [ ] T-0022 [specs] `spec/errors.md`
