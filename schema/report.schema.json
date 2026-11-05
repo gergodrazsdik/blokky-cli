@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:blokky:cli:schema:0.1:report",
+  "title": "Blokky run report",
+  "description": "What blokky run prints on stdout: the run report, or the pre-run envelope when the run fails before it starts (blokky-cli contract, schema_version 0.1, draft). Semantics: docs/contracts/output-contract.md. Consumers ignore unknown fields.",
+  "oneOf": [
+    { "$ref": "#/$defs/report" },
+    { "$ref": "#/$defs/envelope" }
+  ],
+  "$defs": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "pos": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*:[1-9][0-9]*$"
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "message": { "type": "string" },
+        "node": { "type": "string" },
+        "pos": { "$ref": "#/$defs/pos" },
+        "fix": { "type": "string" },
+        "detail": { "type": "object" },
+        "causes": { "type": "array", "items": { "$ref": "#/$defs/error" } },
+        "context": { "type": ["object", "null"] }
+      },
+      "required": ["code", "message"]
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string" },
+          "source": { "enum": ["cli", "mcp", "default"] }
+        },
+        "required": ["value", "source"]
+      }
+    },
+    "envelope": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/schemaVersion" },
+        "status": { "const": "invalid" },
+        "phase": { "enum": ["usage", "plan", "config", "approval"] },
+        "errors": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/error" } }
+      },
+      "required": ["schema_version", "status", "phase", "errors"]
+    },
+    "status": {
+      "enum": ["succeeded", "failed", "skipped", "timed_out", "cancelled"]
+    },
+    "iterationSummary": {
+      "type": "object",
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "ended_by": { "enum": ["condition", "max", "timeout", "failure", "success"] },
+        "last_condition": { "enum": ["true", "false", "error", null] },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "index": { "type": "integer", "minimum": 0 },
+              "name": { "type": "string" },
+              "item": {},
+              "status": { "$ref": "#/$defs/status" },
+              "duration_ms": { "type": "integer", "minimum": 0 },
+              "error": { "$ref": "#/$defs/error" }
+            },
+            "required": ["index", "status"]
+          }
+        },
+        "omitted": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["count"]
+    },
+    "node": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^/" },
+        "name": { "type": "string" },
+        "kind": { "enum": ["exec", "script", "do", "all", "any", "race", "if", "sleep", "log", "fail", "assert"] },
+        "pos": { "$ref": "#/$defs/pos" },
+        "status": { "$ref": "#/$defs/status" },
+        "ignored": { "type": "boolean" },
+        "skip_reason": { "enum": ["condition", "not_reached"] },
+        "error": { "$ref": "#/$defs/error" },
+        "duration_ms": { "type": "integer", "minimum": 0 },
+        "attempts": { "$ref": "#/$defs/iterationSummary" },
+        "iterations": { "$ref": "#/$defs/iterationSummary" },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+        "collapsed": { "type": "integer", "minimum": 0 },
+        "finally": {
+          "type": "object",
+          "properties": {
+            "status": { "$ref": "#/$defs/status" },
+            "children": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+          },
+          "required": ["status"]
+        },
+        "message": { "type": "string" },
+        "level": { "enum": ["debug", "info", "warn"] },
+        "logs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "t": { "$ref": "#/$defs/timestamp" },
+              "level": { "enum": ["debug", "info", "warn"] },
+              "message": { "type": "string" }
+            },
+            "required": ["level", "message"]
+          }
+        },
+        "probes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "command": { "type": "string" },
+              "exit_code": { "type": ["integer", "null"] },
+              "duration_ms": { "type": "integer", "minimum": 0 },
+              "result": { "enum": ["true", "false", "error"] }
+            },
+            "required": ["command", "result"]
+          }
+        },
+        "program": { "type": "string" },
+        "argv": { "type": "array", "items": { "type": "string" } },
+        "shell": { "type": "string" },
+        "exit_code": { "type": ["integer", "null"], "minimum": -2147483648, "maximum": 4294967295 },
+        "signal": { "type": "string" },
+        "killed_by": { "enum": ["timeout", "attempt_timeout", "cancel", "shutdown", "budget"] },
+        "termination": {
+          "type": "object",
+          "properties": {
+            "graceful": { "enum": ["term", "ctrl_break", "none"] },
+            "forced": { "enum": ["kill", "job", "none"] }
+          }
+        },
+        "stdout_tail": { "type": "string" },
+        "stderr_tail": { "type": "string" },
+        "tails_truncated": { "type": "boolean" },
+        "log_truncated": { "type": "boolean" },
+        "descendants_held_output": { "type": "boolean" },
+        "survivors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pid": { "type": "integer" },
+              "command": { "type": "string" }
+            },
+            "required": ["pid"]
+          }
+        },
+        "captures": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "kind", "pos", "status"]
+    },
+    "report": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/schemaVersion" },
+        "run_id": { "type": "string", "minLength": 1 },
+        "plan": {
+          "type": "object",
+          "properties": {
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "spec_version": { "type": "string" },
+            "source": { "type": "string" }
+          },
+          "required": ["sha256", "spec_version", "source"]
+        },
+        "inputs": { "$ref": "#/$defs/inputs" },
+        "inputs_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "status": { "enum": ["succeeded", "failed", "budget_exceeded", "interrupted"] },
+        "error": {
+          "anyOf": [
+            { "$ref": "#/$defs/error" },
+            { "type": "null" }
+          ]
+        },
+        "started_at": { "$ref": "#/$defs/timestamp" },
+        "duration_ms": { "type": "integer", "minimum": 0 },
+        "budget": {
+          "type": "object",
+          "properties": {
+            "limit_ms": { "type": "integer", "minimum": 0 },
+            "source": { "enum": ["default", "config", "env", "flag", "inherited"] }
+          },
+          "required": ["limit_ms", "source"]
+        },
+        "outputs": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "null" },
+              {
+                "type": "object",
+                "properties": { "secret": { "const": true } },
+                "required": ["secret"]
+              }
+            ]
+          }
+        },
+        "artifacts": {
+          "type": "object",
+          "properties": {
+            "run_dir": { "type": "string" },
+            "tempdirs": { "type": "array", "items": { "type": "string" } },
+            "containers": { "type": "array", "items": { "type": "string" } },
+            "cleaned": { "enum": [false, true, "partial"] }
+          },
+          "required": ["run_dir", "cleaned"]
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "$ref": "#/$defs/node" }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" }
+            },
+            "required": ["message"]
+          }
+        },
+        "truncation": {
+          "anyOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "properties": {
+                "steps": { "type": "array", "items": { "type": "string" } },
+                "full": { "type": "string" }
+              },
+              "required": ["steps", "full"]
+            }
+          ]
+        }
+      },
+      "required": ["schema_version", "run_id", "plan", "inputs", "inputs_sha256", "status", "error", "started_at", "duration_ms", "outputs", "artifacts", "nodes", "truncation"]
+    }
+  }
+}

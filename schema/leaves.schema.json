@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:blokky:cli:schema:0.1:leaves",
+  "title": "Blokky leaves output",
+  "description": "The leaves document: everything a plan can execute and its plan-dependent effects (blokky-cli contract, schema_version 0.1, draft). Semantics: docs/contracts/leaves-and-validation.md. Consumers ignore unknown fields.",
+  "$ref": "#/$defs/document",
+  "$defs": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "dynamic": {
+      "type": "object",
+      "properties": {
+        "var": { "type": "string" },
+        "dynamic": { "const": true }
+      },
+      "required": ["var", "dynamic"]
+    },
+    "missingInput": {
+      "type": "object",
+      "properties": {
+        "input": { "type": "string" },
+        "missing": { "const": true }
+      },
+      "required": ["input", "missing"]
+    },
+    "value": {
+      "anyOf": [
+        { "type": "string" },
+        { "$ref": "#/$defs/dynamic" },
+        { "$ref": "#/$defs/missingInput" }
+      ]
+    },
+    "envEntry": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "string" },
+        "var": { "type": "string" },
+        "dynamic": { "type": "boolean" },
+        "from_env": { "type": "string" },
+        "input": { "type": "string" },
+        "missing": { "type": "boolean" },
+        "secret": { "type": "boolean" }
+      },
+      "required": ["name"]
+    },
+    "unit": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^/" },
+        "type": { "enum": ["exec", "script", "probe", "service", "derived"] },
+        "node": { "type": "string", "pattern": "^/" },
+        "name": { "type": "string" },
+        "program": {
+          "anyOf": [
+            { "type": "string" },
+            {
+              "type": "object",
+              "properties": { "unresolved": { "type": "string" } },
+              "required": ["unresolved"]
+            }
+          ]
+        },
+        "argv": { "type": "array", "items": { "$ref": "#/$defs/value" } },
+        "script": {
+          "type": "object",
+          "properties": {
+            "shell": { "type": "string" },
+            "text": { "type": "string" },
+            "file": { "type": "string" }
+          },
+          "required": ["shell", "text"]
+        },
+        "invocation": { "type": "array", "items": { "$ref": "#/$defs/value" } },
+        "rendered": { "type": "string" },
+        "cwd": { "$ref": "#/$defs/value" },
+        "stdin": {
+          "type": "object",
+          "properties": {
+            "kind": { "enum": ["none", "literal", "var", "file"] },
+            "text": { "type": "string" },
+            "var": { "type": "string" },
+            "dynamic": { "type": "boolean" },
+            "path": { "$ref": "#/$defs/value" }
+          },
+          "required": ["kind"]
+        },
+        "env_overrides": { "type": "array", "items": { "$ref": "#/$defs/envEntry" } },
+        "export": { "type": "array", "items": { "$ref": "#/$defs/envEntry" } },
+        "context": {
+          "type": "object",
+          "properties": {
+            "in_finally": { "type": "boolean" },
+            "conditional": { "type": "boolean" },
+            "loop": {
+              "anyOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "node": { "type": "string" },
+                    "source": { "enum": ["each", "count", "glob", "items", "lines", "matrix", "while", "until", "retry"] },
+                    "items": { "type": ["array", "null"] },
+                    "bound": { "type": ["integer", "null"] }
+                  },
+                  "required": ["node", "source"]
+                }
+              ]
+            },
+            "repetition": {
+              "anyOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": { "enum": ["retry", "while", "until", "for"] },
+                    "max": { "type": ["integer", "null"] },
+                    "timeout": { "type": ["string", "null"] }
+                  },
+                  "required": ["kind"]
+                }
+              ]
+            },
+            "container": { "type": ["object", "null"] },
+            "become": { "type": ["object", "null"] }
+          }
+        },
+        "flags": {
+          "type": "object",
+          "properties": {
+            "dynamic_exec": { "type": "boolean" },
+            "exec_env_risk": { "type": "boolean" },
+            "keep_descendants": { "type": "boolean" }
+          },
+          "required": ["dynamic_exec", "exec_env_risk"]
+        },
+        "nested_plan": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": { "dynamic": { "const": true } },
+              "required": ["dynamic"]
+            },
+            { "$ref": "#/$defs/document" }
+          ]
+        }
+      },
+      "required": ["id", "type", "node", "program", "invocation", "rendered", "cwd", "flags"]
+    },
+    "effect": {
+      "type": "object",
+      "properties": {
+        "kind": { "enum": ["path_check", "glob", "cwd", "stdin_file", "tempdir", "capture_file", "mount", "readiness"] },
+        "node": { "type": "string", "pattern": "^/" },
+        "path": { "$ref": "#/$defs/value" },
+        "access": { "enum": ["read", "write", "network"] },
+        "snapshot": { "type": "boolean" },
+        "matches": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["kind", "node", "access"]
+    },
+    "document": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/schemaVersion" },
+        "plan": {
+          "type": "object",
+          "properties": {
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "spec_version": { "type": "string" },
+            "source": { "type": "string" }
+          },
+          "required": ["sha256", "spec_version", "source"]
+        },
+        "cwd": { "type": "string" },
+        "host": {
+          "type": "object",
+          "properties": {
+            "os": { "enum": ["linux", "macos", "windows"] },
+            "arch": { "enum": ["x64", "arm64"] }
+          },
+          "required": ["os", "arch"]
+        },
+        "inputs": { "type": "object" },
+        "inputs_complete": { "type": "boolean" },
+        "inputs_sha256": { "type": "string" },
+        "units": { "type": "array", "items": { "$ref": "#/$defs/unit" } },
+        "effects": { "type": "array", "items": { "$ref": "#/$defs/effect" } },
+        "pruned": { "type": "array", "items": { "type": "string" } },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "rule": { "type": "string" },
+              "node": { "type": "string" },
+              "message": { "type": "string" }
+            },
+            "required": ["message"]
+          }
+        }
+      },
+      "required": ["schema_version", "plan", "cwd", "host", "inputs", "inputs_complete", "inputs_sha256", "units", "effects"]
+    }
+  }
+}

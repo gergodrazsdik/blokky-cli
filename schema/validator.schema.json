@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:blokky:cli:schema:0.1:validator",
+  "title": "Blokky validator protocol",
+  "description": "Validator plugin request (written to the validator's stdin) and response (read from its stdout) (blokky-cli contract, schema_version 0.1, draft). Semantics: docs/contracts/leaves-and-validation.md section 7. Both sides ignore unknown fields.",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/response" }
+  ],
+  "$defs": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "decision": {
+      "enum": ["allow", "deny", "ask"]
+    },
+    "request": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/schemaVersion" },
+        "command": { "enum": ["hook check", "validate"] },
+        "runner": { "type": "string" },
+        "cwd": { "type": "string" },
+        "flags": {
+          "type": "object",
+          "properties": {
+            "max_duration": { "type": ["string", "null"] },
+            "expect_sha256": { "type": ["string", "null"] },
+            "cleanup": { "enum": ["on-success", "always", null] },
+            "verbose": { "type": "boolean" }
+          }
+        },
+        "leaves": { "$ref": "urn:blokky:cli:schema:0.1:leaves" }
+      },
+      "required": ["schema_version", "command", "cwd", "flags", "leaves"]
+    },
+    "response": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/schemaVersion" },
+        "decision": { "$ref": "#/$defs/decision" },
+        "reason": { "type": "string" },
+        "units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "pattern": "^/" },
+              "decision": { "$ref": "#/$defs/decision" },
+              "reason": { "type": "string" }
+            },
+            "required": ["id", "decision"],
+            "if": { "properties": { "decision": { "enum": ["deny", "ask"] } } },
+            "then": { "required": ["reason"] }
+          }
+        }
+      },
+      "required": ["schema_version", "decision"],
+      "if": { "properties": { "decision": { "enum": ["deny", "ask"] } } },
+      "then": { "required": ["reason"] }
+    }
+  }
+}
