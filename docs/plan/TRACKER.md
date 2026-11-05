@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0046 [specs] Drop milestone tags; `blokky: 1.0`
-2. T-0047 [specs] Open questions for the remaining features (batch 7)
-3. T-0048 [specs] Specify the remaining features
+1. T-0047 [specs] Open questions for the remaining features (batch 7)
+2. T-0048 [specs] Specify the remaining features
+3. T-0049 [specs] Maintainer tags `1.0.0-draft.1`
 
 ## Phase 0 — Bootstrap
 
@@ -62,12 +62,14 @@ Done 2026-11-05: glossary, syntax, reference, execution model, variables, condit
 
 ### M1.3 Scope cleanup and versioning (brief §8 step 4)
 
+Done 2026-11-05: contracts moved (T-0043), runtime prose removed and `results.md` added (T-0044, T-0045), milestone tags dropped (T-0046).
+
 blokky-specs becomes language-only; the spec moves to `1.0.0-draft.N` without milestone tags ([cli ADR 0006](../adr/0006-phase-order-and-incremental-cli.md), [specs ADR 0013](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0013-scope-and-versioning.md)).
 
 - [x] T-0043 [both] Move `output-contract.md`, `leaves-and-validation.md`, the report/events/leaves/validator schemas and the CLI-only error codes to blokky-cli (`docs/contracts/`, `schema/`) — 2026-11-05, specs PR #23, cli PR #26
 - [x] T-0044 [specs] Remove runtime mechanics from the spec text (budget and config keys, hook, approval, lint rules, run dir, OS process control), keeping the observable rules and pointing to blokky-cli; update the glossary — 2026-11-05, specs PR #24, cli PR #27
 - [x] T-0045 [specs] Abstract run-result model (`spec/results.md`) for conformance cases — 2026-11-05, specs PR #24, cli PR #27
-- [ ] T-0046 [specs] Drop the `v0.1`/`later` tags; plans write `blokky: 1.0`; README, ROADMAP, CHANGELOG and schema `$id`s for `1.0.0-draft.N`
+- [x] T-0046 [specs] Drop the `v0.1`/`later` tags; plans write `blokky: 1.0`; README, ROADMAP, CHANGELOG and schema `$id`s for `1.0.0-draft.N` — 2026-11-05, specs PR #25, cli PR #28
 
 ### M1.4 Remaining language features (brief §8 step 5)
 
