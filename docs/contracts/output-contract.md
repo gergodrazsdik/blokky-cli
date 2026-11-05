@@ -134,7 +134,7 @@ Node entries form a tree mirroring the plan; children appear in **plan order** u
 
 ## 4. The pre-run envelope
 
-When a run fails before it starts (EM-1), stdout carries:
+When a run fails before it starts ([run-control.md](run-control.md), RC-1), stdout carries:
 
 ```json
 {
