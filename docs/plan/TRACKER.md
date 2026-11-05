@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0018 [specs] Draft `spec/variables.md`
-2. T-0019 [specs] Draft `spec/conditions.md`
-3. T-0020 [specs] Draft `spec/shells.md`
+1. T-0019 [specs] Draft `spec/conditions.md`
+2. T-0020 [specs] Draft `spec/shells.md`
+3. T-0021 [specs] Draft `spec/containers-and-privilege.md`
 
 ## Phase 0 — Bootstrap
 
@@ -48,7 +48,7 @@ Main agent, sequential, PRs marked **Draft spec** (brief §8.3).
 - [x] T-0015 [specs] `spec/syntax.md` (surface rules, root document, inputs syntax, per-field table, pitfalls, targeted errors) — 2026-11-04, specs PR #10 (draft; [specs ADR 0007](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0007-syntax-details.md)), cli PR #13
 - [x] T-0016 [specs] `spec/reference.md` (all planned features, milestone-tagged, validity matrix) — 2026-11-04, specs PR #11 (draft; [specs ADR 0008](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0008-repetition-details.md)), cli PR #14
 - [x] T-0017 [specs] `spec/execution-model.md` — 2026-11-05, specs PR #12 (draft; [specs ADR 0009](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0009-status-propagation.md)), cli PR #15
-- [ ] T-0018 [specs] `spec/variables.md`
+- [x] T-0018 [specs] `spec/variables.md` — 2026-11-05, specs PR #13 (draft; [specs ADR 0010](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0010-variables-details.md)), cli PR #16
 - [ ] T-0019 [specs] `spec/conditions.md`
 - [ ] T-0020 [specs] `spec/shells.md`
 - [ ] T-0021 [specs] `spec/containers-and-privilege.md`
@@ -150,7 +150,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - F-0003 [both] With `just claude`, the added repo's `CLAUDE.md` loads but its `@AGENTS.md` import isn't expanded: Claude Code treats it as an external import that needs a per-project approval. Each `CLAUDE.md` tells Claude to read the sibling's `AGENTS.md` with the Read tool instead.
 - F-0004 [both] The `main` rulesets' pull-request rule came back with GitHub's default `require_extra_approval_for_unattributed_changes: true`. Harmless for signed, attributed commits; revisit if it ever blocks a merge.
 - F-0005 [both] `just lint-md` failed inside Claude Code's Bash sandbox (`EACCES` on placeholder files such as `.claude/loop.md`): `.markdownlint-cli2.yaml` globbed the whole work tree, and markdownlint-cli2 adds config `globs` to command-line files, so the pre-commit hook also linted every file instead of the staged ones. Fixed 2026-11-04 (branch `chore/lint-md-tracked-files` in both repos): no `globs` in the config; `lint-md` passes `git ls-files '*.md'`. Untracked Markdown is linted once staged.
-- F-0006 [both] A run budget at or below `cleanup_reserve` (default 30s), e.g. `--max-duration 20s`, would enter budget mode at once. Open: reject it as a usage error, shrink the reserve proportionally, or run without a reserve. Raised in cli ADR 0002's open items and `spec/execution-model.md` §9; decide before `cli.md`.
+- F-0006 [both] A run budget at or below `cleanup_reserve` (default 30s), e.g. `--max-duration 20s`, would enter budget mode at once. Open: reject it as a usage error, shrink the reserve proportionally, or run without a reserve. Raised in cli ADR 0002's open items and `spec/execution-model.md` §9; decide before `cli.md`. Resolved 2026-11-05: run with no reserve (EM-54, [specs ADR 0010](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0010-variables-details.md)).
 
 ## Decisions
 
@@ -169,3 +169,4 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - 2026-11-04 [specs] Syntax details raised while drafting (T-0015): plan caps 4 MiB / depth 128, input caps 4 KiB / 32 KiB, strict integer-unit durations, empty lists only where a field allows them (`mounts`): [specs ADR 0007](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0007-syntax-details.md)
 - 2026-11-04 [specs] Repetition details raised while drafting (T-0016): `every` is a delay after the end (default 1s), mapping backoff `{ factor, max }` and fractional jitter, `retry: true` retries process failures only (default `max` 3), zero-iteration `while` succeeds, 0-based `count` items: [specs ADR 0008](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0008-repetition-details.md)
 - 2026-11-05 [specs] Status propagation raised while drafting (T-0017): all-skipped groups succeed, ignored failures don't win `any`, `timed_out`/`cancelled` only for the node's own cause, root `when` false exits 0, `ignore_errors` covers `when` condition errors, reap timeout 5s: [specs ADR 0009](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0009-status-propagation.md)
+- 2026-11-05 [specs] Short budgets and variable details (F-0006, T-0018): budgets at or below `cleanup_reserve` run without a reserve, JSON `null` binds `''`, masking from 6 characters, undecodable captures are errors: [specs ADR 0010](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0010-variables-details.md)
