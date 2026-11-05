@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0020 [specs] Draft `spec/shells.md`
-2. T-0021 [specs] Draft `spec/containers-and-privilege.md`
-3. T-0022 [specs] Draft `spec/errors.md`
+1. T-0021 [specs] Draft `spec/containers-and-privilege.md`
+2. T-0022 [specs] Draft `spec/errors.md`
+3. T-0023 [specs] Draft `spec/output-contract.md`
 
 ## Phase 0 — Bootstrap
 
@@ -50,7 +50,7 @@ Main agent, sequential, PRs marked **Draft spec** (brief §8.3).
 - [x] T-0017 [specs] `spec/execution-model.md` — 2026-11-05, specs PR #12 (draft; [specs ADR 0009](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0009-status-propagation.md)), cli PR #15
 - [x] T-0018 [specs] `spec/variables.md` — 2026-11-05, specs PR #13 (draft; [specs ADR 0010](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0010-variables-details.md)), cli PR #16
 - [x] T-0019 [specs] `spec/conditions.md` — 2026-11-05, specs PR #14 (draft), cli PR #17
-- [ ] T-0020 [specs] `spec/shells.md`
+- [x] T-0020 [specs] `spec/shells.md` — 2026-11-05, specs PR #15 (draft; [specs ADR 0011](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0011-pwsh-prologue.md)), cli PR #18
 - [ ] T-0021 [specs] `spec/containers-and-privilege.md`
 - [ ] T-0022 [specs] `spec/errors.md`
 - [ ] T-0023 [specs] `spec/output-contract.md`
@@ -170,3 +170,4 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - 2026-11-04 [specs] Repetition details raised while drafting (T-0016): `every` is a delay after the end (default 1s), mapping backoff `{ factor, max }` and fractional jitter, `retry: true` retries process failures only (default `max` 3), zero-iteration `while` succeeds, 0-based `count` items: [specs ADR 0008](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0008-repetition-details.md)
 - 2026-11-05 [specs] Status propagation raised while drafting (T-0017): all-skipped groups succeed, ignored failures don't win `any`, `timed_out`/`cancelled` only for the node's own cause, root `when` false exits 0, `ignore_errors` covers `when` condition errors, reap timeout 5s: [specs ADR 0009](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0009-status-propagation.md)
 - 2026-11-05 [specs] Short budgets and variable details (F-0006, T-0018): budgets at or below `cleanup_reserve` run without a reserve, JSON `null` binds `''`, masking from 6 characters, undecodable captures are errors: [specs ADR 0010](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0010-variables-details.md)
+- 2026-11-05 [specs] PowerShell prologue placement (T-0020): `$ErrorActionPreference = 'Stop';` (followed by a space) prefixes the first statement line (after blanks, comments and `using`), `param(` there is a plan error: [specs ADR 0011](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0011-pwsh-prologue.md)
