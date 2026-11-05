@@ -131,7 +131,13 @@ An **effect** is a plan-dependent read or write that isn't a process. Every effe
 
 ### 6.1 Flags
 
-- **LV-16.** `dynamic_exec` is set on a unit that runs a variable as code: a `{ var }` element of an `exec` array that is an interpreter's code argument (`sh -c`, `bash -c`, `pwsh -Command`, `python -c`, `node -e`, …), or a `script` whose text matches the triggers of [shells.md §7](https://github.com/gergodrazsdik/blokky-specs/blob/main/spec/shells.md#7-script-analysis), or dynamic stdin into a known interpreter.
+- **LV-16.** `dynamic_exec` is set on a unit that runs a variable as code: a `{ var }` element of an `exec` array that is an interpreter's code argument (`sh -c`, `bash -c`, `pwsh -Command`, `python -c`, `node -e`, …), or a `script` whose text matches one of the triggers below, or dynamic stdin into a known interpreter. In v0.x, `script` text is analysed with **token-level heuristics** for POSIX shells and PowerShell (formerly blokky-specs SH-30/SH-31), which also drive the script-hygiene lint rules. The triggers are:
+  - a variable expansion in command position;
+  - `eval`, `source`, `.` (as a command), or `sh`/`bash -c` with an expansion;
+  - `iex` or `Invoke-Expression`;
+  - an expansion piped into a known interpreter (`sh`, `bash`, `python`, `node`, `pwsh`, …).
+
+  The heuristics may miss constructs; a missed case is a lint false negative, not a security failure, because `script` units are never auto-allowed by rules mode and validators see the full text. A hand-written POSIX lexer is planned later.
 - **LV-17.** `exec_env_risk` is set on a unit whose `env_overrides` set an execution-influencing variable ([variables.md §7.3](https://github.com/gergodrazsdik/blokky-specs/blob/main/spec/variables.md#73-execution-influencing-variables)).
 - **LV-18.** Concrete input values never clear a flag: caller-supplied data run as code is still dynamic code.
 
