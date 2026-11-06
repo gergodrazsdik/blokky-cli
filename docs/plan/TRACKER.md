@@ -8,7 +8,7 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0049 [specs] Maintainer tags `1.0.0-draft.1`
+1. T-0056 [specs] Maintainer tags `v1.0.0-draft.2`
 2. T-0031 [specs] Example suite, conformance format, overview, prior art (propose the plan first)
 3. T-0050 [both] Propose the agent council
 
@@ -75,7 +75,9 @@ blokky-specs becomes language-only; the spec moves to `1.0.0-draft.N` without mi
 
 - [x] T-0047 [specs] Ask the open questions for the features still sketched (batch 7) — 2026-11-05, specs PR #26 ([specs ADR 0014](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0014-remaining-features.md)), cli PR #29
 - [x] T-0048 [specs] Specify `race`, `lock`, `services`, `items`/`lines`/`matrix`, `collect`, `consent`, `zsh`/`fish` to full depth — 2026-11-05, specs PR #26 ([specs ADR 0014](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0014-remaining-features.md)), cli PR #29
-- [ ] T-0049 [specs] Maintainer tags `1.0.0-draft.1`
+- [x] T-0049 [specs] Maintainer tags `1.0.0-draft.1` — 2026-11-05, tag `v1.0.0-draft.1`
+- [x] T-0055 [specs] `set` node kind and root `vars:` (plan constants), with `${}` templates and single assignment — 2026-11-06, specs PR #28 ([specs ADR 0015](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0015-set-and-vars.md)), cli PR #31
+- [ ] T-0056 [specs] Maintainer tags `v1.0.0-draft.2`
 
 ## Phase 2 — Example suite (brief §8 step 6)
 
@@ -196,3 +198,4 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - 2026-11-05 [cli] Exit-code details (T-0026): pre-run errors exit with the first failing step in check order (args, sha, config, plan, inputs, approval); Windows session events exit 129: [cli ADR 0005](../adr/0005-exit-code-details.md)
 - 2026-11-05 [both] Direction revised: blokky-specs is language-only; the spec is completed as `1.0.0-draft.N` with all features and no milestone tags; phase order spec → examples → review (maintainer + agent council) → conformance suite → runtime planning, spikes, incremental CLI: [cli ADR 0006](../adr/0006-phase-order-and-incremental-cli.md), [specs ADR 0013](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0013-scope-and-versioning.md)
 - 2026-11-05 [specs] Remaining features, batch 7 (T-0047): `race` like `do`/`any`; `lines` drops blank lines (`keep_blank`); plain `matrix`; `items` with `fields`; `collect` as a JSON array; per-user exclusive locks waiting within `timeout`; `services` in parallel with `depends_on`, required `ready:` (30s/250ms), per-service `on_exit`, status only; `consent` dropped; `zsh`/`fish` rows: [specs ADR 0014](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0014-remaining-features.md)
+- 2026-11-06 [specs] Setting variables: a `set` node kind, root `vars:` constants, `${}` templates allowed only in `set`/`vars` values (no functions), single assignment with definite assignment through branches: [specs ADR 0015](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0015-set-and-vars.md)
