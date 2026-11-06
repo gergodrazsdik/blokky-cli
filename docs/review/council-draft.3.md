@@ -354,6 +354,7 @@ Findings: SEC-2, SEC-4, SEC-5, SEC-6, SEC-7, SEC-8, SEC-9, SQ-7.
 - **Control characters (SEC-8):** rendered `name`/`log` text and recorded items are display-sanitized like error messages. This is labelled as hygiene, not a control.
 - **Environment variable list (SEC-9):** the list of variables that influence execution is illustrative, not complete. Add `npm_config_*`, `PSModulePath`, `PAGER` and similar.
 - **Routes into a process (SQ-7):** list `stdin` as the fourth route by which a variable reaches a process.
+- **Option-like values in `exec` (maintainer, 2026-11-06):** a `{ var: X }` element is one argument, but a value that starts with `-` still reaches the program as an option. Add guidance: constrain inputs with `matches` (no leading `-`) and pass `--` where the program supports it. This is hygiene, not a control.
 - **Which user runs what (SEC-2):** state the user for every process the plan starts. This depends on D-1.
 
 ### C-4 Execution model and results clarifications
@@ -444,8 +445,37 @@ The reviewer wrote plans for 10 tasks after reading only `overview.md`, `syntax.
 
 The reviewer also fed the schema 12 typical mistakes. Three of them that the reference forbids were accepted, and every error message blamed the wrong key (C-1).
 
+## 6. Maintainer additions
+
+Raised by the maintainer while reading the spec next to this report (tracker F-0011, F-0012). Both are decided; they join the ADRs for `1.0.0-draft.4`.
+
+### D-6 `return`: end a sequence early (F-0011, decided 2026-11-06)
+
+A "nothing to do" check today wraps the rest of the plan in an `else` ([changed-files-lint](https://github.com/gergodrazsdik/blokky-specs/blob/main/examples/scenarios/changed-files-lint.blokky.yaml) lines 24–26). Decision: add a `return` kind.
+
+```yaml
+do:
+  - exec: [git, diff, --name-only, --diff-filter=ACMR, { var: RANGE }, --]
+    capture: CHANGED
+  - when: { var: CHANGED, empty: true }
+    return: "No files changed since ${BASE}; nothing to lint"
+  - name: choose how to run ruff
+    # ...
+```
+
+- `return` ends the nearest enclosing `do` sequence successfully: the plan's top-level `do`, a `do` group, or a `for` body (where it ends the iteration, so it acts as `continue`). Siblings after it are `skipped` (a new `skip_reason`). Its value is a display string, logged like `log`.
+- `if` branches are transparent: a `return` in `then` or `else` ends the `do` that contains the `if`, so `if`/`then: [return]` works without `when`.
+- No `break` for loops.
+- A `return` whose nearest sequence would be reached through `all`, `any` or `race` is a plan error.
+- A `return` without `when` that isn't inside an `if` branch is a warning (the nodes after it never run). This is a static check on the plan tree.
+- To settle in the ADR: `return` inside `finally`, and in `while`/`until` bodies (ends the iteration, then the condition is checked again); declared `outputs` still unbound at a plan-level `return` are an error, as at the normal end; the effect on the undefined-variable check (S-7) is the same as a `set` in one `if` branch.
+
+### C-8 `command:` checks that the program is executable (F-0012, decided 2026-11-06)
+
+`{ command: NAME, exists: true }` is true only if `NAME` resolves to a file that exists **and** is executable for the current user (on Windows: the `.com`/`.exe` rule), matching the spawn-error rule in reference.md §5. A path (`/bin/sh`, `./tools/gen`) is already valid under CO-45; `NAME` stays a literal (CO-46).
+
 ## Next steps
 
-1. **Maintainer review (T-0051):** read this report next to the spec. The decisions are asked in batches (D-1 to D-5, then S-1 to S-14, then the corrections as a batch).
+1. **Maintainer review (T-0051):** read this report next to the spec. The decisions are asked in batches (D-1 to D-5, then S-1 to S-14, then the corrections as a batch). D-6 and C-8 are already decided (§6).
 2. Accepted items become specs ADRs and `1.0.0-draft.4`. Changes to the spike plan go into blokky-cli.
 3. Items that turn out to fit poorly are raised again as open questions (brief §1.5).
