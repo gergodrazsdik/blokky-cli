@@ -1,0 +1,426 @@
+---
+- id: IMP-1
+  verdict: confirmed
+  severity: major
+  notes: |
+    Quotes of EM-31 and EM-32 are exact (execution-model.md §6). EM-32 defines confirmation as
+    "each direct child reaped and its tree killed", which only means something for a leaf child.
+    ADR 0009 ("After KILL, a join waits at most grace + 5s for cancelled children to be reaped")
+    and ADR 0003 (grace row: "Also bounds the confirmation of cancelled siblings in joins") both
+    assume leaf children too. No rule says how a cancelled group child, or a cancelled leaf child
+    with its own `finally` (valid: reference.md §7 validity matrix, `finally` allowed on every kind but
+    sleep/log/fail/set), is confirmed. The reviewer's plan is valid. The §9 timeline has only leaf
+    children. Note: examples/basics/race-watchdog.blokky.yaml already has a group child (`do`) as
+    a possible loser, so the question applies to an existing example, though that child has no
+    `finally`. reference.md §2.4 `all` ("fails the `all` once the cancelled children are
+    confirmed dead") has the same leaf-only wording.
+    No platform fact involved.
+  proposal_impact: |
+    EM-32 (rewrite), EM-58 and reference.md §2.4/§2.6 wording ("confirmed dead"), ADR 0009's
+    reap-timeout paragraph, results.md `survivors` (meaning per process, not per child),
+    execution-model.md §9 (new timeline row). The proposal lets a join wait up to the cancelled
+    child's `finally_timeout` (5m by default), which contradicts ADR 0003's stated consequence
+    "limits overrun by up to grace plus the reap timeout"; that ADR consequence needs revising.
+
+- id: IMP-2
+  verdict: partly
+  severity: major
+  notes: |
+    Core holds: EM-20, EM-21, EM-24 are quoted exactly, and none orders "drain", "tree stop" and
+    "capture/start next sibling". EM-21 says the tree is stopped "at completion", and EM-20 says
+    descendant output after completion is read for a bounded time, so whether the drain happens
+    before or during the stop is undecidable from the text. TK-15's example has no defined
+    outcome for a following sibling or the leaf's duration. EM-32 confirms only for joins, so
+    nothing says a following sibling waits for the previous leaf's tree to die.
+    Wrong sub-claim: "a child whose process exited first but is still draining can lose to one
+    that exited later" in a `race`. EM-20 defines completion as the direct child's exit, and EM-58
+    says "the first race child to complete decides", so under the current text the drain cannot
+    change the winner. The race problem only appears if the proposal moves the completion instant
+    to after drain and stop (step 4), which the finding proposes.
+    The brief (blokky-cli brief.md "Leaf completion and descendants": "Pipes then drain for a
+    bounded drain_timeout and are closed") suggests drain-then-close, and brief spike 8 already
+    covers pipe drain per OS.
+    No platform fact needs confirming beyond the existing spike 8.
+  proposal_impact: |
+    EM-20, EM-21, EM-24, EM-58 (the proposal changes what "complete" means for race), the
+    duration definition in results.md §6, TK-15's example, and the conformance §3.8 example's
+    duration bounds (7s-12s) if the stop wait is added to the leaf's duration. Moving the
+    completion instant also changes `race`/`any` winner semantics and every timing case.
+
+- id: IMP-3
+  verdict: confirmed
+  severity: major
+  notes: |
+    EM-22 and EM-3 quotes are exact. EM-22 already says escapes are best effort and marks the
+    "implementation itself is killed" case provisional (spike #1), so part (c) of the proposal
+    restates the current text; the new content is the per-OS strength split and the watchdog.
+    Platform facts:
+    - Linux PR_SET_PDEATHSIG: CONFIRMED from the local man page (PR_SET_PDEATHSIG(2const)): "sent
+      upon subsequent termination of the parent thread"; "cleared for the child of a fork(2)", so
+      it reaches only the process that set it, not grandchildren. Also cleared when executing a
+      set-user-ID binary, so it never covers sudo-launched `become` leaves (adds weight to IMP-5).
+    - PR_SET_CHILD_SUBREAPER only helps while the subreaper lives: follows from its definition;
+      confirmed in principle.
+    - Windows Job Object KILL_ON_JOB_CLOSE: documented Win32 behaviour, not checkable here; the
+      brief already relies on it ("a kill-on-close Job Object"). Verify in spike.
+    - macOS (no PDEATHSIG/subreaper/cgroups, setsid'd processes lost to launchd): not checkable
+      on this machine. Verify in spike.
+    - `docker run --rm` container processes are not descendants of the leaf: correct for both
+      engines (dockerd/containerd-shim; podman's conmon double-forks away). Consistent with
+      CP-3's note that a plan calling the engine itself is outside `container`.
+    The brief's lifeline design (per-run watchdog holding a pipe) already plans the watchdog, so
+    (b) matches existing intent.
+  proposal_impact: |
+    EM-22 (split into MUST/SHOULD/out-of-scope), EM-15's "process tree" (define as the OS
+    grouping), reference.md §3 `keep_descendants` ("Every descendant still dies no later than run
+    end" would need the same qualifier), TK-15 `--escape` cases (already best effort), spike #1
+    acceptance in the brief.
+
+- id: IMP-4
+  verdict: partly
+  severity: major
+  notes: |
+    EM-26 and EM-15 quotes are exact; the conformance §3.8 example does assert
+    `duration: { $min: 7s, $max: 12s }` with no Windows override for duration.
+    Wrong or unconfirmed claims:
+    - "the no-console case leaves the grace period undefined": EM-26 defines it (no request,
+      kill after the grace period). The reviewer's own evidence says so ("a 5s idle wait with no
+      request sent"). It is wasteful, not undefined, and it keeps the §3.8 bound valid on Windows.
+    - "with the BCL the answer is always 'otherwise none'; full CreateProcessW via P/Invoke is
+      required": REFUTED in part. The local .NET 10.0.14 and 11.0 RC reference packs
+      (System.Diagnostics.Process.xml) have `ProcessStartInfo.CreateNewProcessGroup`, so the
+      BCL can start a leaf in its own process group on the shared console; only sending the event
+      (GenerateConsoleCtrlEvent) needs P/Invoke. Job Objects need P/Invoke anyway (brief:
+      "Race-free job assignment needs CREATE_SUSPENDED or PROC_THREAD_ATTRIBUTE_JOB_LIST").
+    - "CreateNoWindow ... i.e. no console": CREATE_NO_WINDOW runs a console app with a hidden
+      console rather than none, as far as documented behaviour goes; not checkable on Linux.
+      Verify in spike.
+    - GenerateConsoleCtrlEvent reaching only groups on the caller's console, AttachConsole being
+      one-console-per-process: documented Win32 behaviour, not checkable here. Verify in spike.
+    - `docker run --rm` leaving its container after TerminateProcess: plausible, verify in spike.
+    Already planned: brief §"Windows graceful termination" has "Spike: give each leaf a hidden
+    console (CREATE_NEW_CONSOLE + hidden window, or ConPTY) so CTRL_BREAK always works" and
+    "The report records which method was used" (spike 2). The finding is a fair call to put that
+    into the spec, not a new gap.
+  proposal_impact: |
+    EM-26 (immediate kill when no graceful channel: changes the §3.8 example's Windows duration
+    bound, which then needs a `windows:` override), EM-15 wording, results.md (new
+    `graceful` field), conformance CF-35 overrides for `--ignore-term`/`--record-signals` cases.
+
+- id: IMP-5
+  verdict: confirmed
+  severity: major
+  notes: |
+    CP-28 and ADR 0005's transport paragraph are quoted exactly. A sudoers rule naming a command
+    can't match `sudo -n -u USER <abs blokky> __exec`, so `become` only works with blokky itself
+    allowed, which is root for any caller of blokky. The finding answers ADR 0005's argument
+    ("it works whatever env policy sudoers or doas.conf set") by pointing out that bypassing that
+    policy is the cost; reference.md §9's baseline ("bypasses no permission system") makes this a
+    possible security-posture question, which could justify blocker; kept at major because the
+    plan still fails closed (BK_BECOME_FAILED) with narrow rules.
+    Platform facts:
+    - sudo closes fds above 2: CONFIRMED from the local sudo(8) man page (-C/--close-from: "By
+      default, sudo will close all open file descriptors other than standard input, standard
+      output, and standard error"; -C only with closefrom_override). So the pipe must be stdin
+      (or a closefrom_override sudoers setting).
+    - doas closing fds: doas isn't installed here; verify in spike.
+    - PR_SET_PDEATHSIG is cleared on exec of a set-user-ID binary (local man page), consistent
+      with CP-30's best effort.
+    - posix_spawn has no setuid attribute, and managed code can't run between fork and exec in
+      .NET: consistent with the brief ("System.Diagnostics.Process can't create a new
+      session/process group"); confirmed in principle.
+    Already known: brief spike 11 lists "sudo/doas closing fds"; the sudoers-rule-shape point is
+    new.
+  proposal_impact: |
+    Option (a): CP-28 (transport and "none of it appears on a command line"), ADR 0005's
+    transport paragraph and "no secrets on argv" consequence, CP-29 (tempdir created by the
+    target user relies on the trampoline), CP-34 (shows tool and argv; still static),
+    examples/basics/become-root.blokky.yaml unaffected. Env passed through sudo becomes subject
+    to env_reset, so `env:` on a become node may not reach the leaf; that changes EM-16 for
+    become leaves. Option (b): docs only.
+
+- id: IMP-6
+  verdict: partly
+  severity: major
+  notes: |
+    CP-4 and CP-8 quotes are exact. The core holds: EM-15/EM-26 apply to container leaves, and
+    killing the `<engine> exec` client is not the same as stopping the in-container process.
+    Partly because the spec deliberately defers the mechanism: containers-and-privilege.md's
+    intro says "Engine detection, termination inside containers and killing across a privilege
+    boundary depend on spikes and are specified in the blokky-cli design notes", CP-8 is marked
+    provisional "including images without a shell or `kill`", and brief spike 11 already lists
+    "the binary inside containers" (the trampoline as helper). So "isn't in the spec" is by
+    design; the finding's real point is that EM-15/EM-26 may need a container qualifier.
+    Platform facts:
+    - Killing `docker exec`/`podman exec` doesn't stop the process inside: widely reported for
+      Docker; not testable here without running containers. Verify in spike (both engines).
+    - Chiseled/distroless images have no shell, `sleep` or `kill`: confirmed in principle (that
+      is their purpose); verify the idle-process approach in spike.
+    - The mounted-init pattern exists: local `podman run --help` lists `--init` ("Run an init
+      binary inside the container that forwards signals and reaps processes") and `--init-path`.
+      CONFIRMED for podman.
+    - Windows containers having no signals: from memory; CP-10 does mention Windows containers.
+      Verify in spike or drop.
+  proposal_impact: |
+    CP-4, CP-8 (helper), or EM-15/EM-26 (container exception). Dropping Windows containers
+    touches CP-10's "with a Windows container it stays as it is" and ROADMAP.md.
+    examples/basics/container-build.blokky.yaml is unaffected by either option.
+
+- id: IMP-7
+  verdict: partly
+  severity: major
+  notes: |
+    CP-7, CP-9, CP-16 and the conformance `container-engine: true` requirement are quoted
+    correctly. Checked each bullet:
+    - Secrets: the dichotomy "argv or contradicts CP-7" is incomplete. Local `podman exec --help`
+      (podman 5.8.9) lists `--env-file` and `--preserve-fd`, so values can reach the container
+      without argv exposure and without changing the CLI's own environment. CONFIRMED for podman.
+      Docker's `docker exec --env-file`: docker here is podman, so not confirmable; verify in
+      spike. The finding's proposal (1) itself suggests an env file, so the gap is only that the
+      spec doesn't require it.
+    - SELinux relabelling: CONFIRMED from local podman-run(1): ":z or :Z ... tell Podman to
+      relabel file objects on the shared volumes ... Relabeling walks the file system under the
+      volume". The mount shape (CP-13) has no option for it.
+    - Rootless Podman uid mapping vs `user: '1000:1000'`: consistent with podman's documented
+      --userns=keep-id; verify in spike.
+    - Podman machine shared paths: REFUTED for macOS. Local containers.conf(5) says "On Mac, the
+      default volumes are: [ "/Users:/Users", "/private:/private", "/var/folders:/var/folders" ]",
+      so `/var/folders/...` tempdirs are mountable by default. The generic default is
+      `$HOME:$HOME`; on Windows (WSL backend) drive access is via the WSL mount, so `%TEMP%` is
+      reachable too; verify in spike. Non-default machine configs can still differ.
+    - Exit codes 126/127: CONFIRMED for podman (podman-exec(1) "Exit Status": 126 "cannot be
+      invoked", 127 "cannot be found"; plus 125 for engine errors). Collision with program codes
+      holds.
+  proposal_impact: |
+    CP-16 (transport), CP-9/CP-13 (labelling note; adding mount options would extend the
+    `mounts` shape), CF-13's `container-engine` requirement (boolean to list: every container
+    case changes), results.md (record disabled labelling). Distinguishing BK_SPAWN_NOT_FOUND
+    inside containers needs the helper of IMP-6 or a pre-check.
+
+- id: IMP-8
+  verdict: confirmed
+  severity: major
+  notes: |
+    CO-13, RF-22 and the conformance `$regex` row are quoted exactly. Platform facts CONFIRMED
+    locally via pwsh 7.6 on .NET 10.0.14:
+    - `[regex]::new('^\d+$', 'NonBacktracking,CultureInvariant').IsMatch('٣٤')` is True
+      (Arabic-Indic digits).
+    - NonBacktracking | ECMAScript throws ArgumentOutOfRangeException ("Specified argument was out
+      of the range of valid values. (Parameter 'options')").
+    - `^a$` matches "a\n" (CO-14 already documents this and points to `\z`).
+    - `(?i)k` matches U+212A KELVIN SIGN under invariant culture (supports the case-folding
+      point).
+    The pattern '^\d+$' appears in reference.md §2.11 `assert` (line 172), overview.md and
+    examples/scenarios/wait-for-ci.blokky.yaml (on `gh` output, where the Unicode case is
+    harmless). Nuance: NonBacktracking already rejects lookaround and backreferences (confirmed:
+    both throw), so the feature subset is already RE2-like; the gap is the semantics of `\d`,
+    `\w`, `\s`, `$` and case folding, and the normative reference to one library.
+  proposal_impact: |
+    CO-12, CO-13, CO-14 (`$` semantics change would alter documented behaviour), RF-22, the
+    conformance `$regex` row (could reuse the new dialect), every `matches` in examples (all
+    '^\d+$' uses stay valid; their meaning narrows to ASCII). Brief spike 9 extended.
+
+- id: IMP-9
+  verdict: confirmed
+  severity: major
+  notes: |
+    syntax.md per-field table has only "`for.glob` | glob pattern | L"; reference.md §5.7 "Glob
+    rules" is quoted exactly; no grammar exists anywhere in spec/ or the ADRs (grep for "glob").
+    FileSystemGlobbing fact CONFIRMED from the local reference doc
+    (Microsoft.Extensions.FileSystemGlobbing.xml, Matcher.AddInclude): "Use '*' to represent
+    wildcards ... Use '**' to represent arbitrary directory depth. Use '..' to represent a parent
+    directory." No `?` or character classes are documented, so it can't be used as is.
+    Note: the reviewer's proposal makes `..` a plan error, while reference.md says only "no `..`
+    escaping the cwd subtree", which reads as allowing `..` that stays inside; that's a semantic
+    change, not just a clarification.
+  proposal_impact: |
+    syntax.md (new section with rule IDs, ties into F-0010), reference.md §5.7, CP-1 unaffected.
+    examples/basics/for-glob.blokky.yaml and reference.md's `src/**/*.csproj` stay valid under the
+    proposed grammar. Case-sensitive matching on Windows/macOS changes results for plans written
+    with the wrong case.
+
+- id: IMP-10
+  verdict: confirmed
+  severity: major
+  notes: |
+    VA-38 and RF-23 are quoted exactly; VA-31 covers only `if` branches and `any`/`race`
+    children. No rule classifies captures on nodes that may be skipped (`when`), ignored
+    (VA-18: "A node whose failure is ignored binds nothing") or follow a failure under
+    `do` with `fail_fast: false` (reference.md §2.3 confirms that companion exists on `do`).
+    The reviewer's plan is valid. Conformance §3.6's result-document table has no `warnings`
+    key (results.md has one), so warnings are indeed not assertable.
+  proposal_impact: |
+    VA-31, VA-38, RF-23, and ADR 0015 (which introduced the "possibly undefined" warning for
+    branches). The proposal's scope-only check would turn some currently-certain plan errors
+    (e.g. a name bound only after the reference in the same list) into run-time errors unless
+    the "path from root" check is defined to respect order. results.md `warnings` unaffected.
+
+- id: IMP-11
+  verdict: confirmed
+  severity: major
+  notes: |
+    reference.md §3 `encoding` list and VA-21 are quoted correctly; the spec says nothing about
+    console or output code pages (grep for "code page", "OutputEncoding", "65001": no hits), and
+    SH-12 handles only the input side. So the gap is real as a `clarify`.
+    Platform facts (PowerShell 5.1 and pwsh 7 on Windows writing redirected output in
+    [Console]::OutputEncoding / OEM code page; native tools using ANSI/OEM): Windows-only
+    behaviour, not checkable on this Linux machine (pwsh on Linux uses UTF-8). Verify in spike;
+    also what a leaf with no console at all gets. Medium confidence is right.
+  proposal_impact: |
+    reference.md §3 `encoding`, SH-17 (prologue text grows; SH-19 requires it to be static,
+    which a fixed extra statement satisfies; ADR 0011's "line numbers stay exact" holds if it
+    shares the line). Ties to IMP-4's per-leaf console decision.
+
+- id: IMP-12
+  verdict: partly
+  severity: minor
+  notes: |
+    CF-57 and CP-7 are quoted correctly, and CF-13 can't express engine environment needs.
+    Checked claims:
+    - "Rootless Podman needs XDG_RUNTIME_DIR": REFUTED on this machine. Run outside the sandbox
+      with `env -i HOME=$HOME PATH=/usr/bin:/bin TMPDIR=/tmp`, both `podman ps -a` and
+      `podman info` work (socket /run/user/1000/podman/podman.sock found without
+      XDG_RUNTIME_DIR or DBUS_SESSION_BUS_ADDRESS).
+    - DOCKER_HOST/DOCKER_CONFIG matter only for remote engines and podman-docker setups; Docker
+      Desktop contexts live under HOME, which CF-57 keeps.
+    - pwsh/Windows PowerShell needing LOCALAPPDATA, ProgramFiles, PSModulePath: Windows-only, not
+      checkable here; PowerShell computes PSModulePath when absent. Verify in spike.
+    - New supporting evidence: on this machine pwsh is a .NET global tool, and with a stripped
+      environment it fails ("You must install .NET to run this application ... .NET location:
+      Not found") because DOTNET_ROOT is missing. So CF-57 does break some pwsh installs, but
+      for a different variable than the finding names.
+    - sudo/doas needing USER/LOGNAME: not tested (sudo is blocked by the session's guard); sudo
+      derives the user from the uid. Verify in spike.
+    Severity lowered to minor: the strongest claim (podman) doesn't hold, and the rest is a
+    runner-configuration detail that doesn't make a plan's meaning wrong.
+  proposal_impact: |
+    CF-57 (passthrough list per requirement), CF-13 requirement keys, CF-19. Cases on VA-39 to
+    VA-44 remain deterministic only if they never assert on absent variables that a passthrough
+    could add.
+
+- id: IMP-13
+  verdict: partly
+  severity: major
+  notes: |
+    Confirmed: CF-22 allows only `{ after, stop: true }`; no case key can kill the implementation
+    or run checks after the run (TK-16: "runners MAY use it after the run" without a case key);
+    EM-60 / reference.md §4.4 "a crashed run never leaves a lock behind" and EM-22's
+    killed-implementation part can't be expressed. The `virtual` mode table says it advances like
+    `real` while any process runs, and CF-40 itself says "process start-up and pipe latency don't
+    scale".
+    Partly wrong:
+    - "Relax §10 to CF-51's wording": CF-51 already reconciles them ("execution-model.md §10
+      requires it for every EM-n. A rule that can't be tested through the run result ... is
+      listed below with the reason, and counts as covered"). The missing piece is only a sentence
+      in §10 pointing at that list, and the list is still empty.
+    - EM-11 does have an observable outcome ("never changes start order, statuses or results"),
+      though only as an invariant; EM-56 (MAY shorten) is the real untestable one.
+    - Windows timings (Defender scanning copied alias executables, 100ms+ process creation):
+      from memory, not checkable here. pwsh ~1s start is the spec's own CO-32. Verify in spike.
+  proposal_impact: |
+    CF-22 (new `kill` action; CF-54/CF-55 adapter capabilities), a new `after_run` case key in
+    §3.5, CF-39/CF-40 (per-OS k, default clock for `script` cases), CF-51's list, execution-model
+    §10.
+
+- id: IMP-14
+  verdict: confirmed
+  severity: minor
+  notes: |
+    reference.md §3 ("On Windows, exit codes are unsigned 32-bit values"), EM-23 and TK-9
+    (0-4294967295 on Windows) are quoted correctly. Schema: `$defs.exitCodes.items` refs
+    `$defs.int`, whose integer branch has `"maximum": 2147483647`; syntax.md §6.4 says "at most
+    2 147 483 647". `true_exit`/`false_exit` (probe schema) use the same `exitCodes` type. So
+    `ok_exit: [3221225786]` is a plan error. .NET Process.ExitCode is `int` (signed).
+    Extra inconsistency the reviewer missed: `$defs.int`'s string branch is
+    `^(0|[1-9][0-9]{0,9})$`, which accepts quoted values up to 9 999 999 999, so the schema
+    accepts `ok_exit: ['3221225786']` while syntax.md §6.4 rejects it. The schema and the prose
+    disagree for quoted integers in general, not only exit codes.
+  proposal_impact: |
+    schema `$defs` (new exitCode type), reference.md §3 `ok_exit`, conditions.md CO-26/CO-33
+    (`true_exit`/`false_exit`), syntax.md §6.4 (range
+    per field), lint for >255 on Unix.
+
+- id: IMP-15
+  verdict: partly
+  severity: minor
+  notes: |
+    SH-17 and the §2.2 invocation table are quoted correctly; ADR 0011 does say "Blokky needs a
+    small line scanner (blank, comment, `using`) ... block comments (`<# … #>`) at the top count as
+    comments".
+    CONFIRMED locally with pwsh 7.6: a script whose first statement line is
+    `$ErrorActionPreference = 'Stop'; [CmdletBinding()]` (with or without `param()` on the next
+    line) fails with ParserError at the attribute. So SH-17's plan error must cover attributes.
+    Also confirmed: a leading `<# ... #>` block followed by the prologue line runs fine.
+    Wrong or weak claims:
+    - here-strings: a here-string is itself a statement, so it can't appear before the first
+      statement line; the scanner never has to recognise one. Only block comments (already in
+      ADR 0011) matter.
+    - "pwsh has no `-ExecutionPolicy` at all in the table": true of the table, but local
+      `pwsh -Help` lists `-ExecutionPolicy | -ex | -ep`, so it could be added.
+    - Group Policy overriding `-ExecutionPolicy Bypass`, AppLocker/WDAC on %TEMP%: documented
+      Windows behaviour from memory, not checkable here. Verify in spike.
+    - `zsh -o pipefail` needing zsh >= 5.3: local zsh is 5.9 (works); its NEWS file doesn't
+      mention PIPE_FAIL, so the minimum version can't be confirmed here. `fish --no-config`
+      introduction version: fish isn't installed. Both: verify in spike.
+  proposal_impact: |
+    SH-17 (plan error extended to `[...]` attributes), ADR 0011 consequences, shells.md §5
+    (minimum versions), errors.md (BK_SHELL_UNAVAILABLE / BK_SPAWN_FAILED reasons).
+
+- id: IMP-16
+  verdict: confirmed
+  severity: minor
+  notes: |
+    EM-62 ("Readiness is polled every 250ms"), EM-32 ("fixed reap timeout of 5s"), reference.md
+    §5.3 jitter ("drawn from a seedable RNG so tests are reproducible") and CF-41 ("assert bounds
+    only, never the drawn values"), reference.md §4.4 ("so runs that use the same lock take
+    turns") are quoted exactly. The conformance §5.1 test-clock list omits drain and lock
+    polling; note drain_timeout is implementation-defined (EM-20), so omitting it is defensible,
+    but lock polling is a language behaviour. OS advisory locks giving no FIFO order and .NET
+    having no blocking file-lock API are accurate in principle (flock(2) can block, but only via
+    P/Invoke). The reap timeout was a deliberate maintainer choice (ADR 0009: "the maintainer
+    chose 5s over 2s"); the finding doesn't answer that choice, it only argues for flexibility.
+  proposal_impact: |
+    EM-62, EM-32 and ADR 0009 (reap timeout no longer fixed; the §9 timeline's "up to 33s"),
+    reference.md §5.3 and CF-41/CF-54 (seed becomes optional), reference.md §4.4 wording,
+    conformance §5.1 list.
+
+- id: IMP-17
+  verdict: confirmed
+  severity: minor
+  notes: |
+    reference.md §4.4 "Scope" is quoted exactly; CP-23 and ADR 0005 ("one plan file works with
+    and without sudo") confirm the motivation. Under the current text `sudo blokky run` and
+    `blokky run` of the same plan use different namespaces and don't exclude each other. The lock
+    store location is unspecified in the spec (it says only "implementations use OS advisory
+    locks"). NFS flock reliability is general knowledge, not checkable here; verify in spike.
+  proposal_impact: |
+    reference.md §4.4 Scope and Release, EM-60, ADR 0005 locks paragraph. Defining the owner as
+    the invoking user means a root-owned run writes a lock file in the invoker's namespace
+    (ownership and file modes need a rule; CP-29 says modes are never relaxed).
+    examples/basics/lock-one-at-a-time.blokky.yaml unaffected.
+
+- id: extra-section
+  verdict: partly
+  severity: minor
+  notes: |
+    Spot-checked all 11 `spikes:` entries for rule IDs (all exist: EM-18/20/21/24/30/31/32/58,
+    CP-4/7/8/9/10/11/15/16/17/26-30, CO-13/14, RF-22, VA-20/21, SH-12/13/17/20, CF-22/40/57,
+    EM-60) and checked 6 in detail against the brief's existing spike list (brief.md §8 step 10).
+    - Most overlap existing brief spikes and should be merged, not added: IMP-3's = spikes 1 and
+      5; IMP-4's = spike 2 (the hidden per-leaf console is already the brief's planned option);
+      IMP-2's = spike 8; IMP-5's = spike 11 (which already names "sudo/doas closing fds"); IMP-6's
+      = spikes 11 and 13 ("the binary inside containers", "container termination via the engine
+      CLI"); IMP-8's = spike 9. New topics: IMP-1 (group children in joins), IMP-7 (engine
+      matrix), IMP-11 (code pages), IMP-15 (scanner/execution policy), IMP-13 (runner
+      feasibility).
+    - IMP-2 spike acceptance ("the next sibling starts only after the descendant is dead", "no
+      `late` in the capture") presupposes the proposal's spec decision; a spike can measure
+      feasibility but can't verify a rule that doesn't exist yet. Same for IMP-1's acceptance
+      ("completes only after that `finally` ends"), which is the proposal, not current EM-32.
+    - IMP-7 spike lists "Podman machine ... shared paths" as a risk; on macOS the default machine
+      volumes include /var/folders and /private (containers.conf(5)), so that part of the matrix
+      is lower priority.
+    - IMP-12's base-environment item (inside the IMP-13 spike) should drop rootless podman's
+      XDG_RUNTIME_DIR (works without it here) and add DOTNET_ROOT for tool-installed pwsh.
+    - IMP-6 spike's "from Linux, macOS and Windows hosts, with Docker and Podman" is a 6-way
+      matrix; reasonable but large.

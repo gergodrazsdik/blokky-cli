@@ -1,0 +1,202 @@
+---
+- id: SQ-1
+  verdict: confirmed
+  severity: major
+  notes: |
+    Quotes accurate: reference.md:415 ("BK_TIMEOUT_TOTAL, cancellation, external stops | never | never"), errors.md:54 ("can retry any node error except those marked 'never'"), EM-66 (execution-model.md:162), reference.md:417 ("the group's error code is what the table and condition see"). ADR 0016 (lines 15, 25) adopts "no wrapper" without mentioning the never-row. The table is keyed by code, so a group retried on a child's leaf timeout can never retry, even with an explicit condition. errors.md:73 defines BK_TIMEOUT_TOTAL as "The node's own `timeout` ... fired", which makes the conflict sharper: after EM-66 the group carries a code whose meaning says "own" when it isn't. EM-43 already distinguishes own-limit status (timed_out) from a parent's `failed`, so an origin-based rule has a hook to hang on.
+  proposal_impact: |
+    reference.md §5.5 table and the line after it; errors.md §5 intro and §5.2 rows (BK_TIMEOUT_TOTAL meaning, "never"); CO-40 unaffected. EM-33 (cancelled nodes never retry) stays. Needs a conformance case; ADR 0016 consequence note.
+
+- id: SQ-2
+  verdict: confirmed
+  severity: major
+  notes: |
+    reference.md:505 "Rules carry IDs (RF-n) for conformance cases and for detail.rule"; errors.md:37 "detail.rule names the rule (for example one-kind, bounded-loop, shadowing)"; conformance/README.md:243/253 uses rules: [RF-5] with detail: { rule: bounded-loop }. CF-24 and CF-50 assert detail.rule for every BK_PLAN_INVALID, so the value is a tested contract (ER-3). No slug table exists anywhere in spec/ or conformance/. Rules outside §8 (VA-36, CO-*, CP-20, syntax.md) have no slug and syntax.md has no IDs (F-0010).
+  proposal_impact: |
+    errors.md §4; reference.md §8 intro; conformance/README.md example case and CF-24/CF-50. Option (a) depends on F-0010 (syntax.md IDs). Option (b) adds a table every new static rule must extend.
+
+- id: SQ-3
+  verdict: partly
+  severity: major
+  notes: |
+    Core holds. syntax.md:149 "A `timeout` for every exec/script leaf and probe that has none" vs CO-29 (min of probe_timeout 30s and leaf_timeout) conflict for probes. EM table row (execution-model.md:94) says leaf_timeout applies to "each leaf and probe" with outcome BK_TIMEOUT_TOTAL, while the next row and CO-35 make a probe timeout a condition error. reference.md:255 "sets one [timeout] for leaves" plus EM-6 (timeout covers every attempt) makes it a total limit on a repeating leaf.
+    Wrong in the example evidence:
+    - cross-platform-setup: the `retry: true, max: 100, every: 3s` leaf is a child of a race whose other child fails after `sleep: 3m` (lines 68-79), so the race ends at ~3m, before the 5m leaf_timeout. That example doesn't hit the limit.
+    - deploy-health-check (lines 68-76): 23 waits of 5s = 115s, so the 2m total only ends the loop first when attempts are slow (curl hanging toward the 10s attempt_timeout). With fast connection-refused failures, max: 24 is reached at ~2m. The point (leaf_timeout silently caps a poll whose max/every suggests a longer budget) holds, but "run past 2m" is the worst case, not the typical one.
+  proposal_impact: |
+    syntax.md §4.3 table; execution-model.md §5 table (leaf_timeout row); reference.md §4.3; glossary "leaf_timeout"; errors.md:73 meaning text. If leaf_timeout becomes per-attempt for repeating leaves, EM-4/EM-6 need an exception and deploy-health-check's poll (no own timeout) changes meaning; if it stays total, deploy-health-check should set its own timeout or a larger budget.
+
+- id: SQ-4
+  verdict: partly
+  severity: minor
+  notes: |
+    VA-22 and CO-20 link bare syntax.md, which has no JSON-path grammar (only the type in the per-field table, lines 325/380/401); schema jsonPath is just pattern "^\.". But the grammar the finding calls undecided is in ADR 0002 Q2 (lines 47-54): `.name` keys match ^[A-Za-z_][A-Za-z0-9_]*$; `.["..."]` uses double quotes with JSON string escapes; composition (`.head.ref`, `.[0].databaseId`, `.labels[1].name`); after the first segment the leading `.` is optional for brackets; negative indices, wildcards, slices are rejected at parse time. That answers .a[0].b, .[0], ."key" (no), escapes, name chars and negatives. The schema "^\." is consistent with ADR 0002: the examples always start with `.`, and `[N]` follows a first segment, so "the schema rejects a listed form" is not shown. Remaining defect: the normative grammar lives only in an ADR, the spec's link points at nothing, and `.a.` / number keys on arrays aren't spelled out. Downgraded to minor: copying an existing decision into syntax.md.
+  proposal_impact: |
+    syntax.md (new subsection), VA-22, CO-20, glossary "JSON path", reference.md §5.7 `fields`; schema jsonPath pattern could be tightened to the ADR grammar. No example uses a form outside ADR 0002.
+
+- id: SQ-5
+  verdict: confirmed
+  severity: major
+  notes: |
+    reference.md:472 is the only glob text; syntax.md:372 types for.glob as "glob pattern" with no grammar; no ADR defines wildcard syntax (grep of adr/ for glob finds only ADR 0016's allow_empty note). Examples use `**` (reference.md:439 `src/**/*.csproj`, for-glob, dotnet-build-test). All listed open points (`**` zero dirs, ?, [..], braces, escapes, dirs vs files, case, Windows separators, absolute patterns, symlinked files) are unaddressed.
+  proposal_impact: |
+    reference.md §5.7 glob rules, syntax.md per-field table, conformance cases. Choosing `**` = zero or more directories keeps all current examples valid.
+
+- id: SQ-6
+  verdict: confirmed
+  severity: major
+  notes: |
+    VA-31 (variables.md:137), VA-38 (:146), VA-36 (:144), VA-29 (:135), RF-8 (reference.md:514) quoted correctly. reference.md:133-134 (race all skipped succeeds; ignored failure decides as success) and reference.md:359 / VA-18 (ignored failure binds nothing) together give a successful race with nothing bound, which VA-31 calls "definitely bound". VA-28 says nothing about fail_fast: false. changed-files-lint lines 96-102: if grep exits 2 (unreadable file; ok_exit only covers 1), TODOS is unbound and the next sibling's `when: { var: TODOS, gt: 0 }` is a condition error (CO-38, CO-41) that fails that node; an edge case, but the plan is valid under the current rules. The all/grandchild `set` collision is not covered by VA-29/RF-8 (direct-child captures) or VA-36 (sequential siblings / enclosing scope).
+  proposal_impact: |
+    variables.md §6 (VA-28, VA-29, VA-31, VA-36, VA-38), reference.md RF-8, RF-23, RF-26. Under the proposed analysis changed-files-lint line 100 would get a static warning (TODOS possibly unbound) unless guarded with `defined`; deploy-health-check line 78 already guards HEALTH. set-in-branches and any-fallback examples should be rechecked against the "skips/ignored" clause.
+
+- id: SQ-7
+  verdict: partly
+  severity: minor
+  notes: |
+    Facts hold: VA-1 (variables.md:9), syntax.md:262 ("there is no other way"), glossary.md:49, overview.md:62-65 all list three routes; reference.md:215 and syntax.md:254/256 define stdin: { var: X } as a fourth; deploy-health-check lines 64-65 and 86-87 use it. Severity overstated: the stdin route is fully specified in reference.md §3 and syntax.md §7.2's own table, is visible in the plan, and reference.md §9 already names "dynamic stdin into an interpreter" for review. No user writes a wrong plan because of the lists; it's a doc inconsistency (minor).
+  proposal_impact: |
+    VA-1, syntax.md §7.2 last bullet, glossary "Explicit mapping", overview.md §2.4. No examples change.
+
+- id: SQ-8
+  verdict: partly
+  severity: minor
+  notes: |
+    Quotes accurate (EM-25 :100, EM-7 :42, EM-31 :118, reference.md:253). But the "zero time vs 5m" reading is mostly resolved by the more specific rule: the child in the plan is cancelled by an ancestor's timeout (§6 lists "an ancestor's timeout" as cancellation), and EM-31 says a cancelled node's finally "still runs, under finally_timeout (shortened during an external stop, §7)": only external stops shorten it (EM-56), so the child's finally gets its own finally_timeout. ADR 0003:66 clamps finally_timeout by the cleanup deadline only in cancel/budget/shutdown (run-level) modes. What remains: EM-25 doesn't state the exception, and the consequence that nested finally lists can extend a run well past an outer timeout (up to finally_timeout per level) isn't spelled out. That is a clarification, not an undecidable rule.
+  proposal_impact: |
+    EM-25 (add "except finally lists, EM-7/EM-31"), reference.md §4.3/§4.11; optionally a timeline line in execution-model.md §9. No example changes.
+
+- id: SQ-9
+  verdict: confirmed
+  severity: major
+  notes: |
+    errors.md §5.5 "Later features" (line 106) has no Retried column for 7 codes; "—" for BK_RETRIES_EXHAUSTED and BK_LOOP_MAX_REACHED (§5.4) is undefined; "as its causes" for BK_ANY_ALL_FAILED is undefined for mixed causes. reference.md §5.5 is category-based and has no row covering BK_ITEMS_INVALID (errors.md: yes), BK_GLOB_EMPTY, BK_ITEMS_TOO_MANY, BK_CWD_INVALID, BK_TEMPDIR_FAILED, BK_ENV_TOO_LARGE, BK_UNDEFINED_VARIABLE, BK_FROM_ENV_UNSET, BK_FINALLY_FAILED. errors.md:5 claims to be normative for "how retry: true treats them" while :54 defers to reference.md §5.5. The "Later features" heading conflicts with reference.md:16 ("Every feature described here belongs to the language 1.0").
+  proposal_impact: |
+    errors.md §5 (all tables, merge §5.5 into topical sections), reference.md §5.5 (replace table with a pointer or keep in sync). Interacts with SQ-1 (BK_TIMEOUT_TOTAL row).
+
+- id: SQ-10
+  verdict: confirmed
+  severity: major
+  notes: |
+    examples/basics/when-guard.blokky.yaml:11-13 uses `when: { env: CI, equals: 'true' }` with no defined guard. CO-38 (conditions.md:168-169): unset environment variable is a condition error except with defined/not_defined; CO-41: in when, a condition error fails the node. No ignore_errors on the node. So outside CI the plan fails with BK_CONDITION_ERROR, contrary to the node name and header ("Use it for optional steps"). conditions-tour.blokky.yaml:10-13 shows the guarded pattern, and CO-23 confirms `all` short-circuits so the guarded form is safe.
+  proposal_impact: |
+    examples/basics/when-guard.blokky.yaml only. A lint/warning would be a new SHOULD (conditions.md §7 or reference.md §8 as a warning rule).
+
+- id: SQ-11
+  verdict: confirmed
+  severity: major
+  notes: |
+    VA-55 (variables.md:142) "bound after the loop ... like a capture of the node"; VA-18 (:86) captures bound only if the node succeeds; VA-34 (:140), reference.md:476 and ADR 0014:44 / ADR 0016:37 promise null for failed iterations. EM-45 makes a failed child fail a do (and for iterations likewise), and fail_fast only changes whether others keep running, so a list with a null-for-failed entry exists only if collect binds on a failed for. changed-files-lint lines 49-105: the outer do has fail_fast: false "so the summary runs even when a file fails", and the summary is guarded by `defined`, so under the VA-55/VA-18 reading it prints nothing in exactly the failure case it was written for.
+  proposal_impact: |
+    VA-34, VA-55, VA-18 (exception), reference.md §5.7 collect, ADR 0014/0016 note; changed-files-lint lines 104-105. Option (a) also touches RF-15/VA-48 (outputs from collect after a failed loop) and results.md bindings.
+
+- id: SQ-12
+  verdict: partly
+  severity: minor
+  notes: |
+    The own-timeout question is answered by implication: reference.md:359 and EM-36 list exactly what ignore_errors never hides ("an outer cancellation, an ancestor's timeout or an external stop"); the node's own timeout isn't on that list, and EM-43/§8.2 treat timed_out as a failure outcome for the parent. So wait-for-ci (lines 35-39) and deploy-health-check behave as their comments say. What is genuinely undefined: the result shape, since reference.md:359 says "shows status failed with ignored: true", EM §8.1 puts `ignored` only on the `failed` row, and results.md:35 scopes `ignored` to "failed nodes" (does a self-timed-out ignored node show timed_out + ignored, or failed?). And the root case: EM-50 derives run status from the root; ignore_errors on the root has no parent to hide from. Severity minor: the run outcome of the examples is decided; only reporting and a corner case are open.
+  proposal_impact: |
+    reference.md §4.12, execution-model.md §8.1 and EM-50, results.md §3 `ignored` row; possibly a new RF rule for the root. Conformance cases asserting status/ignored.
+
+- id: SQ-13
+  verdict: confirmed
+  severity: minor
+  notes: |
+    EM-24 (execution-model.md:84), VA-18, VA-32 (variables.md:138, "even if the attempt failed") and conditions.md:158 (retry row: "plus the attempt's captures") quoted accurately. No rule says whether a failed attempt's capture is evaluated, whether a capture error replaces the attempt's error, or whether an unevaluable capture leaves the name undefined (making the retry condition a condition error that ends the retry per CO-40).
+  proposal_impact: |
+    VA-18, VA-32, EM-24, conditions.md §6 retry row; retry-on-code example should be checked if it relies on a failed attempt's capture.
+
+- id: SQ-14
+  verdict: confirmed
+  severity: major
+  notes: |
+    - reference.md:109 "fail_fast and on_body_failure are not valid on any" vs §7 matrix (any ✓ for while/until) and §5.2 (on_body_failure with while/until): contradiction holds.
+    - Race row: concurrency "—" vs fail_fast "for only". §2.6 (line 112) says "concurrency and fail_fast are not valid on race", which reads as the race companion; the matrix then forbids for.concurrency too with no reason given, while for.fail_fast is allowed. Holds as an unexplained asymmetry.
+    - §5.2 has no `for` column; schema accepts the siblings anywhere: holds.
+    - No RF rule for finally_timeout without finally, repetition siblings without repetition (RF-4 covers only attempt_timeout), collect without for (collect is in neither reference §4 table nor §7 matrix), if without then (reference.md:147 says required; schema kindChoice requires only `if`, no dependentRequired anywhere in the schema). All hold.
+  proposal_impact: |
+    reference.md §2.5, §5.2, §7, §8 (new RF rules; RF-3 wording); schema (dependentRequired). No example uses a combination that the proposed rules would reject (checked: collect only on for in for-collect and changed-files-lint; finally_timeout not used without finally).
+
+- id: SQ-15
+  verdict: confirmed
+  severity: minor
+  notes: |
+    RS-6 (results.md:66) "no other result fields"; CO-31 (conditions.md:140) "Every executed probe is recorded"; results.md:44 probes row. A when-probe that evaluates false leaves a skipped node, so RS-6 forbids the probe record CO-31 requires. CO-7 (conditions.md:46) prunes host: branches; results.md has no pruning text and no skip_reason for it (EM §8.1 lists only condition and not_reached); RS-3 requires a tree mirroring the plan.
+  proposal_impact: |
+    RS-6, results.md §3, EM §8.1 skip_reason values, CO-7; conformance assertions on skip_reason (host-branches example).
+
+- id: SQ-16
+  verdict: confirmed
+  severity: minor
+  notes: |
+    reference.md:216, EM-23, results.md:53 state unsigned 32-bit Windows exit codes; syntax.md:221 caps integers at 2 147 483 647; schema int (lines 30-35) has integer maximum 2147483647. Additional inconsistency: the schema's string alternative "^(0|[1-9][0-9]{0,9})$" accepts '3221225786' as a quoted string, so the schema and syntax.md §6.4 already disagree on quoted values.
+  proposal_impact: |
+    syntax.md §6.4 (new exit-code type), schema exitCodes/int, reference.md §3 ok_exit, conditions.md probe true_exit/false_exit.
+
+- id: SQ-17
+  verdict: confirmed
+  severity: major
+  notes: |
+    CP-20 (containers-and-privilege.md:67), CP-21 (:88), CP-2 (:12), reference.md §4.9 (:308 "leaves and probes") quoted correctly. CP-32 (:107) SHOULD-warns when running as root without defaults.become, so the combination with a container node is encouraged. No text says whether defaults.become creates a "become scope" or gives container leaves an implicit become, and services' user under become is unstated.
+  proposal_impact: |
+    CP-20, CP-21, reference.md §4.9, possibly CP-34 (static effective user). container-build and become-root examples unaffected unless combined.
+
+- id: SQ-18
+  verdict: confirmed
+  severity: minor
+  notes: |
+    CP-1 (:11) lists cwd as a host path; CP-14 (:55) and reference.md:285 make an absolute cwd not under a mount a container path. The §2.1 example (line 27) comments "see CP-10"; with mount host `.` (invocation cwd), /src isn't under it, so CP-14 is the rule that applies; CP-10 is the Windows drive mapping. The Windows-host/Linux-container case is unstated.
+  proposal_impact: |
+    CP-1, CP-14, the §2.1 example comment.
+
+- id: SQ-19
+  verdict: confirmed
+  severity: minor
+  notes: |
+    reference.md:63 marks the array form "(canonical)"; glossary.md:18 and :27 make other spellings shorthands and say examples use canonical forms only; examples/README.md:3 "All of them use the canonical form". grep finds 9 string-form exec lines in 5 files exactly as listed (exec-vs-script:9, do-sequence:8, cross-platform-setup:66/112/117, dotnet-build-test:22/29, release-matrix:30/32). Mitigation the finding mentions: syntax.md:420 SHOULD endorses "plain scalars only for simple exec strings", and exec-vs-script exists to demonstrate the string form. So the inconsistency is in the canonical-form claim, and option (a) (declare the string form canonical for static argv) matches existing practice.
+  proposal_impact: |
+    Option (a): reference.md §2.1, glossary "Canonical form"/"exec leaf". Option (b): 9 lines in 5 example files, and exec-vs-script would lose its demonstration unless exempted.
+
+- id: SQ-20
+  verdict: confirmed
+  severity: minor
+  notes: |
+    dotnet-build-test.blokky.yaml lines 2-4 header; the root `do` (line 23) has no fail_fast (the only fail_fast, line 41, is inside the for:), so default true; the assert at lines 62-68 precedes the vulnerability nodes at 70-83, which are skipped (not_reached) when tests fail. VULNERABILITY_REPORT is in outputs (line 14) and would be null.
+  proposal_impact: |
+    examples/scenarios/dotnet-build-test.blokky.yaml only (comment, or ordering/fail_fast).
+
+- id: SQ-21
+  verdict: partly
+  severity: minor
+  notes: |
+    Checked each item:
+    1. holds: syntax.md:107 lists `vars` (a valid root key) as a synonym for `inputs`.
+    2. holds: VA-56 (variables.md:125) links #73-interpolation-in-display-strings; heading (syntax.md:264) is "7.3 Interpolation in display strings and templates".
+    3. partly: adr/0010 lines 24 and 38 cite EM-54, which no longer exists; the EM intro (execution-model.md:5) covers the gaps 34, 35, 37-42, 54. But ADRs are dated records of a decision, so a stale ID there is history, not a spec defect; fix with a superseded note, not by editing the decision. SH-31, CP-31, CP-33 gaps are confirmed and shells.md / containers-and-privilege.md have no "not reused" note.
+    4. holds: glossary.md:11 omits vars:.
+    5. holds: glossary.md:30 lists capture as a modifier; reference.md §3 and overview.md §2.2 call it a leaf option.
+    6. holds: glossary.md:29 (do/all/any/race), overview.md:30 (adds if), EM-66 (adds for iteration).
+    7. holds: results.md:38 has 5 values, reference.md §5.1 has 3; conformance/README.md:155 asserts ended_by.
+    8. holds: results.md:45 lists exec, script, set only.
+    9. holds: EM-8 (:43) lists if/while/until/retry; conditions.md:155 evaluates assert in the node's own scope.
+    10. holds: errors.md BK_CONDITION_ERROR reasons have no encoding value; reference.md:218 gives U+FFFD "wherever output is shown as text" and errors for captures, nothing for condition subjects.
+    11. holds: overview.md:48 subject list omits command (CO-45).
+    12. partly: CP-7 (:45) "is a later question (Q16b)" is an open TODO and conflicts with reference.md:16. SH-20 (:63) is a "provisional, verify in spike" statement, a convention the spec declares (execution-model.md:5, EM-22), so it isn't the same defect.
+  proposal_impact: |
+    syntax.md §3.4, VA-56 link, shells.md/containers-and-privilege.md intros (gap note), glossary (Plan, Modifier, Group), overview.md §2.1/§2.3, results.md §3 (repetition, bindings), reference.md §5.1, EM-8, errors.md §5.3, CP-7. ADR 0010 only via a note.
+
+- id: SQ-22
+  verdict: confirmed
+  severity: minor
+  notes: |
+    syntax.md:9 limits keywords to all capitals. results.md:5 "every implementation must be able to produce"; results.md has one MUST, none in RS-1..RS-6. VA-51 (variables.md:189) lower-case "must be masked" after a MUST sentence. reference.md:255 "An implementation may also stop a whole run". shells.md:99 and :106 "implementations may flag" while SH-30 uses MAY. reference.md:474 "should be preceded by --". All quotes accurate.
+  proposal_impact: |
+    results.md intro, VA-51, reference.md §4.3 and §5.7, shells.md §6. Wording only.
+
+- id: SQ-23
+  verdict: confirmed
+  severity: minor
+  notes: |
+    VA-61 (variables.md:130) binds vars "before anything runs"; VA-58 (:127) makes an undefined variable in vars a plan error but gives BK_FROM_ENV_UNSET with no phase; errors.md:83 lists BK_FROM_ENV_UNSET only as a node error; the plan-error table (errors.md:38-50) has no entry for it; EM-1 ends in validation only on "plan or input error". ADR 0015:48 doesn't decide it either. Whether there is a run result (EM-3) is undecided.
+  proposal_impact: |
+    VA-58, VA-61, EM-1/EM-2, errors.md §3/§5.3 (phase of BK_FROM_ENV_UNSET).

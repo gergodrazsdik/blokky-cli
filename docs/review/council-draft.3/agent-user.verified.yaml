@@ -1,0 +1,258 @@
+---
+- id: AGT-1
+  verdict: confirmed
+  severity: major
+  notes: |
+    Re-ran every plan in agent-user/ and agent-user/wrong/ against schema/blokky.schema.json
+    (jsonschema, Draft202012Validator, best_match; script in council/agent-user-verify/check.py).
+    All 10 task plans are VALID. w1 -> "('exec', 'retry' were unexpected)", w2 -> "('exec',
+    'timeout' ...)", w4 -> "('do' was unexpected)", w5 -> "('exec' was unexpected)", w8 -> "valid
+    under each of {'required': ['if']}, {'required': ['exec']}", all reported at path [] (root),
+    exactly as quoted. w11 (every inside until) also blames `exec`. w6 (RF-3), w7 (RF-28, RF-12)
+    and w10 (RF-9/RF-27) are VALID. Mechanism is correct: node/root = allOf[nodeProps, kindChoice]
+    + unevaluatedProperties:false, so a failing nodeProps branch drops its annotations.
+    The point about expressible rules is reinforced by ADR 0001 ("reference.md ... lists every rule
+    the schema can't express") and syntax §10 ("Rules the schema can't express are listed in
+    reference.md"): RF-4, RF-5, RF-12, RF-18, RF-25, RF-28 and the §5.2 sibling table are
+    plain if/then / dependentSchemas / not-required constraints, so §8 currently lists rules the
+    schema could express, contradicting ADR 0001's own split.
+    Small nuance: a "no `${` in exec elements" pattern is coherent with syntax §7.1 ("A `${` in a
+    literal field other than script text is a plan error"), so it doesn't conflict with `$${`.
+  proposal_impact: |
+    Restructuring node/root removes the allOf + unevaluatedProperties pattern; root needs its own
+    full property list (duplicating nodeProps or a shared $defs list). Moving RF rules into the
+    schema touches reference §8 (title and list), syntax §10 wording, ADR 0001's "can't express"
+    sentence (now true again), errors.md §4 (`detail.rule` for rules now reported as schema errors:
+    which code/rule do they carry?), and conformance cases asserting `detail.rule` for those RF-n
+    (CF-24). Examples are unaffected (all validate).
+
+- id: AGT-2
+  verdict: partly
+  severity: minor
+  notes: |
+    Fix-it quote is accurate (syntax §9): it offers `{ var: X }`, a nested relative `cwd`, or
+    `"$X"` in shell text, and never `set`. ADR 0015's "Applied in" lists syntax §4 and §7 but not
+    §9, consistent with the table predating templates. The schema does accept w10.
+    Overstated: "§7.2 ... today reads as if there were none at all". §7.3, directly after, says
+    "Templates are how a plan builds a string from variables", reference §2.12 says the same, and
+    examples/basics/set-templates shows exactly the pattern (and is listed in examples/README).
+    So only the fix-it omits the route; the spec does not. The consequence (agent writes a script)
+    is a worse plan, not a wrong one, so minor rather than major.
+  proposal_impact: |
+    syntax §9 fix-it row (text only); optionally one sentence in §7.2. No rule, example or
+    scenario changes.
+
+- id: AGT-3
+  verdict: confirmed
+  severity: major
+  notes: |
+    CO-22, CO-38 ("invalid JSON or an unresolvable path with json: (except defined/not_defined)")
+    and CO-40 quoted correctly. The operator table (conditions §3) restricts `defined` to `var`,
+    `env`, so no guard exists for `result:`; CO-24 makes a condition error in an evaluated operand
+    poison the composite, and CO-23 short-circuits only on false (all) / true (any).
+    on_body_failure (reference §5.6) only covers body failures; with `curl -fsS` a 200 with
+    non-JSON or `{}` body is a body success followed by a condition error. The deploy-health-check
+    scenario has the same shape; there `ignore_errors: true` turns the condition error into an
+    unbound HEALTH, so a single transient non-JSON 200 triggers an immediate rollback rather than
+    a further poll. Note CO-22's own exception wording ("a missing path counts as undefined") only
+    covers missing paths, not invalid JSON, which also matters for option (b).
+  proposal_impact: |
+    (a) changes CO-40 (and reference §5.6 body-failure text) for `until`/`while`; the results
+    repetition entry (results.md §3) needs a way to record a condition error as "not done yet";
+    interacts with `retry:` conditions, which (a) would not cover. (b) changes the conditions §3
+    operator table, CO-16, CO-22 and CO-38's defined exceptions (invalid JSON as undefined).
+    (c) touches only reference §5.6 and the deploy-health-check scenario. Under (a) or (b) the
+    deploy scenario's comment/behaviour should be revisited.
+
+- id: AGT-4
+  verdict: confirmed
+  severity: major
+  notes: |
+    reference §5.7 "Glob rules" covers sort, dotfiles, symlinks, separators, `..`, empty matches
+    and relative-to-cwd only; syntax §7.4 types `for.glob` as "glob pattern" and §6 defines no
+    glob type; schema has `"glob": {"type":"string","minLength":1}`. grep of spec/, adr/,
+    conformance/ and ROADMAP finds no grammar. Examples rely on `**` (for-glob 'scripts/**/*.sh',
+    dotnet-build-test 'src/**/*.csproj', 'tests/**/*Tests.csproj'); release-matrix uses '*'.
+    Whether `**` matches zero segments, case sensitivity, `?`/`[...]`/`{}` are all unstated.
+  proposal_impact: |
+    New grammar text in syntax §6 (and a type row), reference §5.7 pointer, conformance cases
+    under `for-glob`. Existing examples stay valid as long as `**` is defined as zero-or-more
+    segments (dotnet-build-test would otherwise miss top-level projects under src/).
+
+- id: AGT-5
+  verdict: confirmed
+  severity: major
+  notes: |
+    Quotes accurate: overview line 20 "The runtime owns the temp directories ... so cleaning up
+    never needs a hand-written `rm -rf`"; overview line 14 lists "a temporary directory, and the
+    `rm -rf` that cleans it up" as scaffolding Blokky replaces; reference §4.5 "The directory is
+    not deleted when the node or the run ends"; execution-model.md EM table "Keep the directory
+    (it isn't deleted)"; glossary "outlive the run, and are removed by the implementation when
+    asked". Only overview line 138 ("keeps no state between runs except what the implementation
+    keeps for cleanup and review") hints at retention. No ADR gives a reason that answers the
+    overview's implication. A `finally: [ { exec: [rm, -rf, { var: WORK }] } ]` works (EM-7: finally
+    runs inside the tempdir) but contradicts the overview's promise.
+  proposal_impact: |
+    (a) overview §1 and §4 wording only. (b) adds a field to `tempdir` (schema $defs, syntax §7.4
+    per-field table, reference §4.5, execution-model EM table row for tempdir, glossary
+    "Run-owned files"), and must define ordering with `finally` and with `become` tempdirs
+    created by the target user (ADR 0005), plus a conformance case.
+
+- id: AGT-6
+  verdict: confirmed
+  severity: major
+  notes: |
+    Validity matrix (reference §7): `do` row has `fail_fast` ✓ and `concurrency` "for only";
+    `all` row has both ✓; exec/script have both "for only". So `for: {...}` + node-level
+    `fail_fast: false` on a `do` is valid and applies to the do (§2.3), while the loop keeps
+    for.fail_fast default true (§5.7). Same for `concurrency` on `all` with `for`. w6 (node-level
+    concurrency + max on exec with for) passes the schema (re-run), though RF-3 makes it a plan
+    error. The two spellings appear side by side in examples (all-parallel vs for-glob).
+  proposal_impact: |
+    Forbidding: reference §7 matrix (do/all/any rows get a "not with `for`" note), RF-3, schema;
+    check examples for any `for` + node-level fail_fast/concurrency on a group (none found in the
+    basics/scenarios I grepped, so likely no example breaks). A warning instead touches only
+    implementation lint guidance. Schema enforcement depends on AGT-1.
+
+- id: AGT-7
+  verdict: partly
+  severity: minor
+  notes: |
+    VA-55 ("a compact JSON array of strings with null entries") and VA-21 (1 MiB) are quoted
+    correctly, and `collect` is silent about `capture_file` variables. A one-step
+    `for: { items: { var: PAGES }, fields: { NUM: .number } }` does fail as described.
+    But "can't look into" is wrong: VA-23 converts a JSON string element to "its content
+    (unescaped)", so `for: { items: { var: PAGES }, as: PAGE }` yields each page's raw JSON text,
+    and a nested `for: { items: { var: PAGE }, fields: { NUM: .number } }` iterates the issues.
+    So the reference's "The list can feed another for: { items }" holds, through two loop levels.
+    The real costs are the extra nesting level and that a `json:` condition can't reach inside an
+    element in one path. Downgraded to minor; the pagination impossibility stems from F-0008/AGT-8,
+    not collect.
+  proposal_impact: |
+    (a) changes VA-55 and the for-collect example's description (its scalar captures stay
+    strings, so the example output is unchanged), and makes collect's output type depend on
+    capture content (a capture that happens to be "1" or "true" becomes a JSON number/bool
+    unless (a) is limited to objects/arrays). (b) is text-only in reference §5.7. (c) extends
+    the `items` source shape (schema forSpec, syntax per-field table, reference §5.7).
+
+- id: AGT-8
+  verdict: confirmed
+  severity: minor
+  notes: |
+    variables.md §3 binding table lists "Loop index | <AS>_INDEX, MATRIX_INDEX" bound by `for`
+    only; reference §5.6 binds nothing per iteration for while/until; overview §5 / VA-57 rule
+    out arithmetic. `count: N` items are 0-based (reference §5.7). Correctly framed as evidence for
+    F-0008 rather than a new finding. The GitHub page=0 behaviour is external and not checked.
+  proposal_impact: |
+    An index on while/until adds a binding (variables.md §3 table, reference §5.6, schema if a
+    key like `as:` is added, RF-7/RF-26 collision checks, results.md repetition entries already
+    carry an index).
+
+- id: AGT-9
+  verdict: confirmed
+  severity: minor
+  notes: |
+    reference §5.2 "max (total attempts or iterations, integer ≥ 1)", default 3; syntax §9
+    "`retry: 3` | `retry: true` plus `max: 3`"; syntax §3.4 line 96 "`retries` | `retry: true`
+    plus `max: N`"; retry-backoff comment "retries failed attempts up to `max` times in total";
+    overview lines 20 and 44 say "retry this three times" / "retry up to three times". All quoted
+    correctly. With max: 3 (the default) there are 2 retries, so the overview prose and the fix-its
+    both read as N retries while the rule is N attempts.
+  proposal_impact: |
+    syntax §9 row and §3.4 synonym row (text), retry-backoff comment, overview prose. `retry: 3`
+    is itself ambiguous (attempts vs retries), so either mapping should state which it chose.
+    No rule or example plan changes.
+
+- id: AGT-10
+  verdict: partly
+  severity: minor
+  notes: |
+    Overview §2.3 subject list is quoted correctly and omits `command`, `port`, `output`; its
+    "a check that needs more than a subject and an operator is a probe" does steer to probes;
+    CO-38 makes an unstartable probe a condition error.
+    Wrong claim: "I found `command` only in the syntax.md §7.4 per-field table". It is also in
+    examples/README.md ("command-check | `command:`: is a tool installed?",
+    examples/basics/command-check.blokky.yaml), defined in conditions.md CO-45, and CO-38 itself
+    says "a probe that can't be started (program not found; test for an installed program with
+    the `command` subject instead)". Reference §2.7 (`if`) indeed has no subject list or pointer
+    beyond "conditions.md". The overview omission is the real issue.
+  proposal_impact: |
+    overview §2.3 text (and its claim that every subject except probe runs no process stays true
+    for command/port/output). Optional pointer in reference §2.7. None else.
+
+- id: AGT-11
+  verdict: confirmed
+  severity: minor
+  notes: |
+    errors.md line 37: "`detail.rule` names the rule (for example `one-kind`, `bounded-loop`,
+    `shadowing`)"; reference §8: "Rules carry IDs (`RF-n`) for conformance cases and for
+    `detail.rule`"; ADR 0016: "RF-1 to RF-28 (used by conformance cases and detail.rule)";
+    conformance/README.md line 253 `detail: { rule: bounded-loop }`, and CF-24 asserts
+    `detail.rule` for every BK_PLAN_INVALID. Contradiction is real. Related to but distinct from
+    F-0010 (syntax.md rules have no IDs, so their `detail.rule` value is also unpinned; CF-50).
+  proposal_impact: |
+    errors.md §4, reference §8 (slug column if slugs are kept), conformance/README example and
+    every plan-error case's `detail.rule` value; ADR 0016's sentence if slugs win. syntax.md
+    rules (F-0010) need values too.
+
+- id: AGT-12
+  verdict: confirmed
+  severity: minor
+  notes: |
+    reference §1: "Nodes inside loop bodies keep their plan path id; the run result tells
+    iterations apart by their index". results.md §5 error fields: code, message, node, detail,
+    causes, context; no iteration/item. results.md §3 `repetition` does carry per-iteration
+    index, rendered name, item, status and error, so the information exists but only on the
+    node's repetition entries, as the finding says. EM-66 (group carries child's error, same
+    `node`) confirms causes from different iterations are indistinguishable by `node`.
+  proposal_impact: |
+    results.md §5 (new optional fields), and the report schema (out of this repo's scope per
+    ADR 0013, but the contract changes); masking rules for `item` (VA secret handling). No plan
+    or example changes.
+
+- id: AGT-13
+  verdict: partly
+  severity: minor
+  notes: |
+    CO-42 quoted correctly; reference §4.10 example uses `port` on native postgres;
+    services-depends-on uses a pg_isready probe, integration-tests uses `all: [port, probe]`,
+    neither comment says why. The published-port behaviour of docker-proxy/rootless forwarders is
+    an accurate external fact.
+    Misattribution: "EM-64 covers a service exiting 'on its own' while the body runs". EM-64 has
+    no "while the body runs" limit ("If a ready service with on_exit: fail exits on its own, the
+    body is cancelled ... and the node fails with BK_SERVICE_EXITED; finally still runs"); that
+    limit is only in reference §4.10 ("While the body runs:"). Read literally, EM-64 fails the node
+    for an exit during `finally`, while reference §4.10 is silent. So it is an inconsistency
+    between the two texts, not just an unstated case. Core holds.
+  proposal_impact: |
+    Note in CO-42 (text). Deciding the finally case touches EM-64 and reference §4.10 together,
+    and the integration-tests scenario if its finally stops a service container (it reads logs,
+    doesn't stop db, so likely unaffected); finally-cleanup's `docker rm -f` is not a service.
+
+- id: AGT-14
+  verdict: confirmed
+  severity: minor
+  notes: |
+    finally-cleanup: pg_isready with `retry: true`, `max: 30` (→ BK_RETRIES_EXHAUSTED);
+    race-watchdog: `ok_exit: [1, 2]` + `until: { result: exit, equals: '0' }`; until's default
+    on_body_failure is continue (reference §5.2), so a plain command + until also works.
+    host-branches uses `shell: pwsh`; SH-23 fails a shell that can't be resolved. Nuance: omitting
+    `shell` gives pwsh-else-powershell only if no defaults.shell or implementation configuration
+    sets one (SH-21), not unconditionally. Reference §5.6 says "Polling is `until` with a
+    `result:` condition", the only canonical hint; no idioms table exists.
+  proposal_impact: |
+    New docs table (overview or examples/README); possibly retarget finally-cleanup to `until`
+    for consistency. A lint warning is implementation guidance only.
+
+- id: extra-section
+  verdict: confirmed
+  notes: |
+    Spot-checked exercise entries 1, 2, 3, 4, 5, 6, 8, 9, 10 (9 of 10) against the plans in
+    agent-user/. All task plans validate against the schema (re-run). Task 1: retry condition on
+    `result: error` = BK_TIMEOUT_ATTEMPT matches reference §5.4 step 3; max: 4 for 3 retries is
+    right. Task 2/6/9 semantic issues reproduce as described (CO-22/CO-40; CO-42; VA-55).
+    Task 3 "impossible" is slightly strong: a `finally` rm -rf works, only "automatically" can't be
+    expressed. Task 5 repeats AGT-10's wrong "only in the syntax.md table" claim (command-check
+    example and CO-38 point to it). Task 8: omitting shell gives pwsh-else-powershell only absent
+    defaults.shell/configuration (SH-21). Task 9's "collect double-encodes ... can't look in"
+    is mitigated by a nested `for: items` (see AGT-7).

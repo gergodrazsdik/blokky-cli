@@ -1,0 +1,248 @@
+---
+- id: SEC-1
+  verdict: partly
+  severity: blocker
+  notes: |
+    Quotes checked and accurate: CP-28 ("exactly the argv, environment and script text it
+    would get without `become`, whatever environment policy sudoers or doas.conf set, and none
+    of it appears on a command line visible to other users"); ADR 0005 Q17e ("A `become` leaf
+    runs as `<tool> -n -u USER <abs blokky> __exec`" ... "it works whatever env policy sudoers
+    or doas.conf set"); EM-14 / SH-25 (resolution against PATH "from the environment the run
+    started with", "Blokky's own PATH, never a node's env"); EM-16 (leaf env = run env + env/
+    export); VA-41 (env MUST NOT set PATH). No rule makes become an exception to EM-14/EM-16,
+    so the core reading holds: a non-root run's `become: root` leaf gets the invoking user's
+    HOME, LD_*/ *_OPTIONS and PATH (for the child too), and argv[0] is resolved on the
+    invoker's PATH. ADR 0005 weighs only argv/ps visibility and "works whatever env policy";
+    it does not discuss secure_path, env_reset, sudoers command rules or sudo logging, so the
+    finding answers an argument the ADR doesn't make. results.md §3.1 does record program
+    (resolved absolute path), invocation and user, so the plan's own result shows what ran;
+    the finding's "hides" claim is correctly limited to the host's sudo log.
+
+    What I rely on for sudo/doas (from sudoers(5)/doas(1) as I know them, not tested here):
+    env_reset is on by default; with it, HOME/USER/LOGNAME/SHELL/MAIL are set for the target
+    user; sudo strips LD_*/other "bad" variables even without env_reset; sudo's syslog line
+    records COMMAND= with full argv; a sudoers rule naming a command does not let the user run
+    a different one. A process exec'd by the root trampoline is not AT_SECURE, so the
+    dynamic linker honours LD_PRELOAD passed through the pipe. doas also resets the
+    environment by default; its PATH/lookup rules differ between OpenBSD doas and OpenDoas
+    versions, so I don't rely on them.
+
+    Claims that are wrong or overstated:
+    - "resolves `make` through sudo's `secure_path`": secure_path is not sudo's compiled-in
+      default; it comes from the distro's default sudoers (Fedora/RHEL/Debian/Ubuntu set it).
+      Without it, sudo looks up the command on the caller's PATH. The comparison holds on
+      common distros, not universally.
+    - "an author can't give a root leaf a safe PATH": true for the child's PATH (VA-41), but
+      SH-26 lets the author pin the program with an absolute argv[0] (`/usr/bin/make`).
+    - The escalation framing ("any pip/npm postinstall can drop one" in ~/.local/bin) is
+      weaker than stated: for CP-27 to work at all, sudoers must allow `blokky __exec`
+      (effectively ALL, as the finding itself says), and then any code running as the user
+      can call `sudo -n blokky __exec` directly. So user-level malware gains nothing new; what
+      remains is the confused-deputy/correctness hazard for honest users (wrong program from
+      the user's PATH, root writing root-owned files under the user's HOME, root reading the
+      user's ~/.gitconfig/~/.npmrc), plus the loss of sudoers' command allowlist and of the
+      real argv in sudo's log. Those still make "equivalent to running the same commands in
+      bash" (reference §9 Baseline) false for become leaves, so blocker (posture) stands.
+    - CP-26 (root run dropping privileges) is outside the problem: there Blokky's own env was
+      already filtered by sudo. The finding cites CP-27 and its example is the non-root case,
+      so this is only a scoping note.
+  proposal_impact: |
+    Option (a) (plain `sudo -n -u USER -- prog args`):
+    - CP-28 and ADR 0005 Q17e reversed (needs a new ADR); spike #1 scope changes.
+    - EM-14 / SH-25 / CP-34 / results §3.1 `program`: for become leaves argv[0] is resolved on
+      the target side, so the "resolved absolute path" is no longer known to Blokky before
+      launch unless it resolves it the same way sudo does.
+    - EM-16 / env / export on become leaves: under default sudoers without SETENV, `sudo
+      VAR=val` and `--preserve-env=` for non-env_keep names are refused, so most become nodes
+      with env fail (BK_BECOME_FAILED). Passing values as `VAR=val` on sudo's argv puts secret
+      env values on the command line, which collides with SEC-5's own advice to keep secrets
+      off argv.
+    - script leaves: SH-11 script files are run-owned and unreadable by the target user, and
+      CP-29 forbids relaxing modes, so scripts must go via stdin; that conflicts with a
+      script that reads `stdin:` (EM-17 / `stdin` on the leaf).
+    - CP-29 "tempdir created by the target user" needs another mechanism (a separate sudo
+      call per tempdir).
+    - Examples: become-root.blokky.yaml and deploy-health-check.blokky.yaml (podman pull,
+      tee with stdin var, systemctl) still work as written; conformance README `privilege`
+      requirement unchanged.
+    Option (b) (keep trampoline, sudo-like env): CP-28 rewritten; EM-14/SH-25 and EM-16 gain a
+    become exception (fixed PATH, target HOME/USER/LOGNAME/SHELL, only plan env/export and
+    BLOKKY_*); VA-41/VA-42 unaffected; reference §9 `become` bullet must state the sudoers
+    "trampoline = ALL" consequence. Coherent; no example breaks.
+
+- id: SEC-2
+  verdict: confirmed
+  severity: major
+  notes: |
+    Quotes accurate. CP-21 and ADR 0005 Q17 say defaults.become "applies to every leaf and
+    probe"; reference §4.9 "runs the node's leaves and probes"; CP-34 "every leaf and probe".
+    The glossary defines Leaf as exec/script and says "Probes and services also run processes
+    but are not leaves", so services are genuinely excluded by the wording, while CP-2 lists
+    "leaves, probes and services" for container. Partial mitigation not mentioned by the
+    finding: the modifier order (`container`/`become` → `services`, EM-61 "services start
+    after container/become") implies a node's own `become` covers its services, but nothing
+    says the same for `defaults.become`, and CP-34/results don't record a service's user.
+    CP-20 ("`container` inside a `become` scope") does not say whether defaults.become makes
+    one. CP-1 lists host-side operations and CO-36 says conditions run "after ... become
+    apply", but no rule says which user performs host-side reads (stdin.file, path:, glob).
+    The finding is fair that this matches `sudo -u dg cmd < file` from a root shell, i.e. not
+    less safe than bash; the problem is unstated semantics, so major (not blocker) is right.
+  proposal_impact: |
+    CP-21, CP-34, reference §4.9 and §7 (services table), results §3 services entry (add
+    user), CP-20 (defaults.become vs container), CP-1/CO-36 (host-side user). No example uses
+    defaults.become together with services or container, so none breaks; the CP §3.1 sample
+    plan is unaffected.
+
+- id: SEC-3
+  verdict: partly
+  severity: major
+  notes: |
+    Quotes accurate: overview §6 (line 141), reference §9 Baseline, glossary "Static view"
+    ("... except values only known at run time"), VA-11 ("never come from the environment"),
+    VA-61 (vars may use from_env), brief line 739. The three wordings do disagree (the glossary
+    qualifies, the other two don't), and reference §9 "Dynamic code" lists "a dynamic cwd" but
+    not from_env-driven argv, mounts[].host, stdin.file or a relative argv[0] under a dynamic
+    cwd. ADR 0015 indeed never discusses from_env as an input channel. The example plan is
+    valid (vars from_env, root cwd from var).
+    Wrong claim: "the run result doesn't record it". results.md §3.1 records each leaf's
+    `invocation` ("The argv as run (masked)") and `program` (resolved absolute path), so a
+    from_env value that reaches argv, or chooses the program through a relative argv[0], is
+    recorded. What is not recorded is the leaf's cwd, its env entries, and from_env values
+    that only reach cwd/mounts/stdin.file. Also, the static view still shows the source
+    (`from_env: DEPLOY_DIR`) in the plan text, so the dependence is visible, only the value
+    is not; "the calling agent sets the value in the same command line the hook sees" means a
+    command-line hook can see it too. The wording contradiction and the missing record of
+    cwd/env stand.
+  proposal_impact: |
+    Wording: overview §6, reference §9, glossary "Static view", prior-art.md lines 42 and 58
+    (same "determinable" claim, not cited by the finding). Option (a) (from_env in set/vars
+    only as secret) or (c) breaks no example: grep shows from_env only in `env` mappings
+    (env-export-secrets, release-matrix), never in `vars` or `set`. Both change ADR 0015,
+    VA-56 and VA-61. Item 4 adds fields to results
+    §3.1 (cwd, env names).
+
+- id: SEC-4
+  verdict: partly
+  severity: minor
+  notes: |
+    The ADR 0015 quote is accurate ("values never pass through a shell parser ... so a
+    template can't inject shell syntax"), and the plan shown is valid and is injection.
+    Wrong claim: "the spec and ADR 0015 say a template 'can't inject shell syntax'" and "the
+    spec currently tells readers the opposite". That sentence is only in ADR 0015; VA-56/VA-57
+    and syntax §7.3 contain no such statement (grep for "inject" in variables.md: none). The
+    spec already names the pattern: reference §9 "Dynamic code" ("A variable used as code (`sh
+    -c` with a variable, `eval`, `iex`) ... implementations can flag them") and shells.md §6
+    "Dynamic code" (`sh -c "$X"`). ADR 0015 also already concedes the bash-equivalence point
+    ("what it can do ... is what the same bash line can do"). What remains: the ADR sentence
+    is over-broad, and static views aren't required to show a variable's template and
+    placeholder sources. That is a wording/hygiene clarification, so minor, not major.
+  proposal_impact: |
+    The proposal's first bullet targets "VA-57 and shells.md §6" for a sentence that isn't
+    there; the real edit is an addendum/superseding note to ADR 0015 plus a sentence in
+    VA-57 or shells.md §6. The static-view SHOULD touches VA-53-style static view rules and
+    the blokky-cli `leaves` contract. No example or scenario affected.
+
+- id: SEC-5
+  verdict: confirmed
+  severity: major
+  notes: |
+    syntax.md line 259 ("Any `var` or `from_env` reference MAY carry `secret: true`") and
+    results §3.1 ("argv as run (masked)") checked; no spec text mentions /proc, ps or command
+    lines being visible except CP-28 for become. CP-16 and CP-7 quoted correctly; no rule
+    keeps secret env values off the engine CLI's argv. On derived values the spec is partly
+    covered, which the finding mostly acknowledges: VA-59 makes templates using a secret
+    secret, VA-55 covers collect, reference §9 / variables §9.3 say masking "doesn't follow
+    derived or transformed values". But VA-50 ("bound from a secret source") leaves open
+    whether `for` items/fields/lines over a secret variable, or a `json:` extraction, are
+    secret, and results §3 records each iteration's item. VA-52 cited correctly (secrets
+    under 6 characters aren't masked). Note the tension with SEC-1 option (a): plain sudo
+    makes env-on-argv more likely for become leaves.
+  proposal_impact: |
+    variables §9.3, VA-50 (and VA-54 fields, VA-55), CP-16/CP-7 (an explicit CP-7 exception
+    for secret names), results §3 (masked items). examples/basics/env-export-secrets and
+    capture-json-fields should be checked against a new "warn on secret in exec element"
+    SHOULD; reference §5 env example (GH_TOKEN from_env secret) is unaffected.
+
+- id: SEC-6
+  verdict: partly
+  severity: minor
+  notes: |
+    Quotes accurate: overview §1 (line 18, "A runner can allow `gh run view` ..."), reference
+    §9 Baseline, syntax §2.1 heredoc, shells.md line 51 powershell invocation with
+    `-ExecutionPolicy Bypass`. The explicit consequence "a rule allowing `blokky run` allows
+    everything" is not stated. But the substance is already in overview §6 (line 136): "A
+    hostile plan is as dangerous as a hostile script", and §6/reference §9 place deciding in
+    "the agent runner's permission system and the implementation's approval mechanisms".
+    Overview line 114 ("A reviewer, or a permission rule, can judge them one by one") does
+    lean the other way, which supports adding the sentence. Missing explicit sentence is a
+    clarification, so minor rather than major. The ExecutionPolicy point is accurate
+    (Bypass overrides LocalMachine/CurrentUser policy, not Group Policy scopes) and undocumented.
+  proposal_impact: |
+    One sentence in reference §9 and overview §6; a note under the shells.md §2.2 invocation
+    table. Possibly reword overview line 114 ("a permission rule" only via the
+    implementation's expansion). Nothing else affected.
+
+- id: SEC-7
+  verdict: partly
+  severity: minor
+  notes: |
+    Quotes accurate: reference §4.5 ("removing it is the implementation's business"), VA-26,
+    CP-5, glossary "Run-owned files" ("removed by the implementation when asked"), SH-11 and
+    VA-25 ("readable only by the run's user"), CP-11 ("the run's scripts dir"). The safe-
+    deletion rules do exist only in the blokky-cli brief (§1.3 line 95 and §3.8 lines
+    1102-1105: fd-relative, O_NOFOLLOW, no symlinks/junctions, never outside registered
+    roots). ADR 0013 line 36 says "The spec keeps the observable rule and points to blokky-cli
+    for the mechanism", which supports the finding's argument.
+    Overstated: removal happens outside any run (`blokky clean`), not as plan-observable
+    behaviour, so whether it is "language-level" is debatable; and blokky-cli already commits
+    to the safe behaviour, so no real user hits the hazard with the reference implementation.
+    "Less safe than rm -rf" is hypothetical for a non-conformant-in-spirit implementation.
+    Exclusive creation and CP-11's scripts-dir contents are genuine gaps. Severity minor.
+  proposal_impact: |
+    A new short section (execution-model or glossary-linked) plus edits to reference §4.5,
+    VA-25/26, SH-11, CP-5, CP-11. Needs testable phrasing for conformance (testkit has no
+    cleanup step today). No example affected.
+
+- id: SEC-8
+  verdict: confirmed
+  severity: minor
+  notes: |
+    ER-3 is the only rule that says "display-sanitized" (grep: errors.md line 11; glossary and
+    reference §9 only name sanitization as hygiene). syntax §7.3 says rendered display strings
+    mask secrets but nothing about control characters. VA-21 rejects only NUL and invalid
+    encoding; VA-13 (inputs) and syntax §2.4 (plan text) reject C0/C1/bidi/zero-width, as
+    the finding says. results §3 records rendered messages and iteration items. The proposal
+    correctly labels it hygiene.
+  proposal_impact: |
+    syntax §7.3, results §3 (messages, items), reference §9. Conformance would need a case
+    that a captured ESC renders escaped. No example affected.
+
+- id: SEC-9
+  verdict: confirmed
+  severity: minor
+  notes: |
+    variables §7.3 list checked: none of npm_config_*, PSModulePath, GIT_TEMPLATE_DIR,
+    GIT_PAGER/PAGER/EDITOR, RUSTC_WRAPPER, PERL5DB, GCONV_PATH, LESSOPEN are listed.
+    cross-platform-setup.blokky.yaml line 102 sets `npm_config_registry: { var: REGISTRY }`.
+    "The list is versioned with the spec; adding a name is a non-breaking change" is quoted
+    correctly. HOME is already reserved for `export` (VA-42) but not in the §7.3 list, so
+    `env: { HOME: ... }` isn't flagged. Note GCONV_PATH is a glibc variable only honoured for
+    non-setuid processes, still valid to list.
+  proposal_impact: |
+    variables §7.3 and VA-42 (VA-42 forbids `export` of every §7.3 name, so adding
+    npm_config_* as a pattern would make cross-platform-setup's `env` entry flagged, though
+    still legal because it uses `env`, not `export`). blokky-cli `exec_env_risk` list.
+
+- id: SEC-10
+  verdict: confirmed
+  severity: minor
+  notes: |
+    CO-7 quoted correctly ("pruned ... in static views of the plan"); SH-23 and VA-10 agree.
+    conditions.md defines `arch` ∈ {x64, arm64} without saying OS-native vs process
+    architecture. The scenario of a review on another machine is real for heredoc plans
+    reviewed by a validator elsewhere; for the blokky-cli hook (same machine) the pruning is
+    accurate, which is why minor is right.
+  proposal_impact: |
+    CO-7 and the static-view definition in the glossary; SH-23 unchanged (errors still
+    pruned). Conformance: host-branches.blokky.yaml and cross-platform-setup static-view
+    expectations would show pruned branches marked rather than omitted.
