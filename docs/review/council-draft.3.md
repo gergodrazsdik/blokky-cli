@@ -506,6 +506,29 @@ The maintainer's principle for this batch: a feature that no example uses is a g
 
 - **D-5:** keep `matrix`, `allow_empty`, `keep_blank` (add an example), `jitter`, all four `encoding` values, `{ var }` in `set`/`vars` and `race`. `max_items` applies to every `for` source. `max_log_bytes` moves to implementation configuration. Keep `zsh`; cut `fish`.
 
+### Decisions on S-1 to S-14 (2026-11-07)
+
+All follow the recommendation, with these specifics:
+
+- **S-1:** in `until`, a `result:` condition error (invalid JSON, a path that doesn't resolve) is treated like a failed body and follows `on_body_failure` (`continue` by default: not done yet; `stop`: fail now). Each iteration records the error; a loop that ends on its bound reports the last condition error. `retry` conditions are unchanged (an error means no retry).
+- **S-2:** "never retried" is decided by origin: the retrying node's own `timeout`, ancestor limits, cancellation and external stops. A descendant's `timeout` inside an attempt is an ordinary attempt failure, retried like `BK_TIMEOUT_ATTEMPT`; its code stays `BK_TIMEOUT_TOTAL`.
+- **S-3:** a cancelled child of a join is confirmed when it has completed, `finally` included (bounded by its `finally_timeout`); grace plus reap bounds each killed process. Add a timeline row and a spike.
+- **S-4:** the normative sequence: the direct child exits (the leaf's duration ends); output is drained until EOF or `drain_timeout`; the remaining tree is stopped unless `keep_descendants`; captures and status are fixed and the next sibling starts. Teardown time is recorded separately. Verify in brief spike 8.
+- **S-5:** split EM-22: MUST stop the leaf's own OS grouping; SHOULD do the same when the implementation is killed (documented per OS); best effort for processes that leave the grouping. Daemons are in scope: `keep_descendants: detach` lets a leaf's processes survive the run; static views show it and the run result lists what was left running.
+- **S-6:** node-level `concurrency`/`fail_fast` on a node with `for` is a plan error ("put it in `for:` or write the inner group as a child"); the schema enforces it.
+- **S-7:** a syntactic scope check: a reference is a plan error only when no binding of the name can precede it. Everything else is `BK_UNDEFINED_VARIABLE` at run time; VA-31's branch warning stays a SHOULD, other warnings MAY. The parallel-collision rule covers bindings anywhere in the children's subtrees.
+- **S-8:** `collect` always binds, with `null` for failed, skipped and cancelled iterations (an explicit exception to VA-18). Items stay strings, stated in VA-55.
+- **S-9:** CO-29 is the probe rule (hitting it is a condition error). On a leaf with `retry`/`while`/`until`, `defaults.leaf_timeout` applies per attempt, like an implicit `attempt_timeout`.
+- **S-10:** reword the overview, and add `tempdir: { remove: true | on_success }`: delete at node end after `finally`, never following links; `on_success` keeps the directory when the node failed.
+- **S-11:** rule IDs everywhere: `SY-n` IDs in syntax.md, `detail.rule` is always a rule ID, the conformance example is fixed, and the conformance feature-id vocabulary is pinned.
+- **S-12:**
+  - Regex: a portable RE2-like subset (no lookaround, backreferences or atomic groups; ASCII `\d`, `\w`, `\s`; `$` only at the end of the value); implementations validate and translate.
+  - Glob: `*` within a segment, `?`, `[...]`, `**` as a whole segment matching zero or more directories, no braces; ordinal and case-sensitive on every OS. Conformance cases.
+  - JSON path: the ADR 0002 grammar moves into syntax.md §6.
+  - Windows: implementations SHOULD give each Windows leaf UTF-8 output (code page 65001, the PowerShell prologue's `OutputEncoding`); an explicit `encoding:` wins. Verify in a spike.
+- **S-13:** `from_env` values are treated like inputs: resolved at validation (an unset name is a validation error), shown in static views (masked when secret) and part of the inputs hash (secret values excluded). One wording everywhere: programs, argv shapes, environments and the source of every dynamic value are static; captured values are known only at run time. Each leaf's cwd is recorded in the result.
+- **S-14:** static views show pruned `host:` branches, marked as pruned with their condition. `arch` is the OS's native architecture.
+
 ## Next steps
 
 1. **Maintainer review (T-0051):** read this report next to the spec. The decisions are asked in batches (D-1 to D-5, then S-1 to S-14, then the corrections as a batch). D-6 and C-8 are already decided (§6).
