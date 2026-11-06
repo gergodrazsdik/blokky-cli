@@ -1,0 +1,110 @@
+---
+# yamllint disable rule:line-length
+# Verification of council/minimalism.yaml against the review-draft3 snapshot.
+- id: MIN-1
+  verdict: partly
+  severity: major
+  notes: |
+    Quotes hold: CP-22 says "Such an opt-in is accident prevention, not a control: `sudo -n` in a leaf is equally available."; CP-28 and CP-30 are marked provisional; ADR 0005 Bad says "supporting `doas` from the start doubles the elevation paths the spike must verify"; ADR 0005 Good says "one plan file works with and without sudo (`defaults.become: invoker`)". No file in examples/ uses `defaults.become`, `invoker`, `become` on a script or probe (the only `defaults.become: invoker` is the illustrative shape in containers-and-privilege.md §3.1).
+    Wrong or incomplete:
+    - Count: "CP-21..CP-35 (15 rules)" is 13 rules; CP-31 and CP-33 don't exist.
+    - "deploy-health-check uses it on three exec leaves": it has two `become: root` nodes (lines 60, 83) covering five leaves (podman pull, tee, systemctl restart; then tee, systemctl restart).
+    - The finding doesn't answer ADR 0005's other Good, the one CP-28 normalizes: a `become` leaf gets "exactly the argv, environment and script text it would get without `become`, whatever environment policy sudoers or doas.conf set, and none of it appears on a command line". A plain `exec: [sudo, -n, ...]` leaf loses this: sudo's default env_reset strips the node's `env`/`export` values, and script text or secrets would have to go through argv or files. The proposed `sudo -n bash -- FILE` workaround also needs the file readable by the target user, which CP-29 forbids for run-owned files. That cost holds only for leaves that need env; the two examples' leaves (pull, tee with stdin, restart) don't, so the rewrite is valid for them.
+    - CP-34 (effective user determined statically and in the run result) is a reviewability gain the finding doesn't weigh; with `sudo -n` as argv[0] a reviewer still sees it, so this is arguable rather than wrong.
+    Core (large surface duplicating a leaf the spec calls equally available; root-run mode unused by examples) holds.
+  proposal_impact: |
+    Full cut: containers-and-privilege.md §3 (CP-21..CP-35) and CP-20; reference.md §4.9, §7 validity matrix (Scope column), RF-6 list, §9 `become` bullet; syntax.md defaults table (line 150), user-name grammar (213), field tables (291, 363); schema user definition ("for become also the special value invoker"); errors.md BK_BECOME_DISABLED/BK_BECOME_FAILED; results.md `user` field (CP-34); glossary `invoker`; ADR 0005 Q17 and ADR 0014 consent paragraph need a superseding ADR; examples basics/become-root and scenarios/deploy-health-check (two nodes, five leaves) rewritten; README feature tables. Fallback (drop invoker/defaults.become/root-drop) touches CP-21, CP-23, CP-24, CP-26, CP-32, syntax defaults row, glossary, schema description; no example changes.
+- id: MIN-2
+  verdict: partly
+  severity: major
+  notes: |
+    Surface claims check out: CP-1..CP-20, CP-7 "a later question (Q16b)", CP-8 provisional, §2.6 "Containers are not a sandbox by default ... Blokky never uses a container to decide what is allowed." No example uses `container.user` or `env_pass`. Uses: basics/container-build and the "tests in the .NET SDK container" node of integration-tests.
+    Wrong or incomplete:
+    - "finally-cleanup, services-depends-on ... run docker run/docker exec as leaves" are basics, not scenarios (only integration-tests is a scenario). Minor.
+    - "three spike dependencies": the container part has two open items (CP-7 engine choice, CP-8 in-container kill); CP-28/CP-30 belong to `become`.
+    - Option (b) "drop env_pass (use env: { X: { from_env: X } })" is not equivalent: CP-16 says an unset `env_pass` name "is not passed, without an error", while VA-40 makes an unset `from_env` a node error (BK_FROM_ENV_UNSET).
+    - The `docker run` rewrite loses two specified behaviours the finding doesn't mention: CP-8 (stopping the process inside the container; killing the `docker` client after the grace period can leave the container running) and CP-7 (engine CLI started with Blokky's environment, so a node `env` such as DOCKER_HOST can't redirect it). With `-v .:/src` the host path is relative; older Docker versions reject relative bind sources (Podman accepts them). These are costs of option (a), not refutations: the plain form is the same as plain bash, which the posture accepts.
+    Core (largest modifier, ergonomics only, both uses expressible as engine leaves) holds; kind `question` fits.
+  proposal_impact: |
+    (a) Cut: containers-and-privilege.md §1-§2 (CP-1..CP-20; CP-1/CP-2 path model and CO-46's container note), reference.md §4.8, §7 Scope column, RF-6 list, RF-21 (`mounts` is the only field allowing empty lists), §9 container bullet; syntax.md field rows (`mounts`, `container.user`, user grammar); schema; conditions.md CO-46 "also under `container`"; CP-11 runtime mounts; results.md engine/digest/container id; ADR 0005 Q16 and ADR 0012 superseded; examples basics/container-build and integration-tests (the test node also sets `cwd: /src` and `env: API_URL`, which must become `-w /src -e API_URL` with the env still set on the leaf); conformance feature ids. (b) env_pass semantics change (unset name becomes an error) unless kept as a silent pass.
+- id: MIN-3
+  verdict: partly
+  severity: major
+  notes: |
+    ADR 0014 quote is exact ("Bad: `services` gain two fields ... the review should look at whether services earn their size."). ADR 0014 records list order ("in list order, each ready first") as an option and says the maintainer departed from the recommendation for start order, so the finding's reading is right. Both examples are a linear db -> api chain; mail in integration-tests is independent. `on_exit: ignore` appears once (integration-tests mail). `output:` readiness is used for the api in both examples; CO-43 does define decoding, trimming and a size window; CO-44 limits port/output to `ready:`.
+    Wrong: "`{ port: 5080, open: true }` (CO-42) is the same check". It isn't quite: a port check passes for any listener on 5080 (a stale api from a crashed run, another process), while the output check ties readiness to this service's own process. In integration-tests the api binds `0.0.0.0:5080`, and CO-42 checks 127.0.0.1/::1, which still works. The difference is real but small; it weakens the "drop `output:`" sub-proposal, not the depends_on/on_exit core.
+  proposal_impact: |
+    execution-model.md EM-61..EM-65 (start and reverse-dependency stop order become list order/reverse list order); RF-24 (drop the depends_on half); reference.md §4.10; conditions.md CO-43/CO-44 if `output:` goes; errors.md BK_SERVICE_EXITED text for on_exit; schema `depends_on`, `on_exit`; ADR 0014 services section superseded; basics/services-depends-on (also its name and header comment "`depends_on` orders them") and integration-tests (drop depends_on, on_exit, change api readiness).
+- id: MIN-4
+  verdict: confirmed
+  severity: minor
+  notes: |
+    reference.md §5.2: on_body_failure defaults `while: stop`, `until: continue`; its only use is deploy-health-check line 70 `on_body_failure: continue` on an `until`, i.e. the default. Both `while` uses are waits: deploy-health-check's body is only a debug `log`, while-draining's body is a display `kubectl get pods --no-headers`. `not_in` exists for the `result` subject (conditions.md operator table), so the `until` rewrite is valid; it runs the check at least once, which is harmless for these read-only commands. §5.6 already lets later `while` checks see the previous iteration's captures; F-0008 is about the body, as the finding says. Tying the decision to F-0008 is coherent.
+  proposal_impact: |
+    reference.md §5.2 table row and §5.6; RF-5 wording; conformance feature id `while`; ADR 0008 (body-failure note); basics/while-draining and deploy-health-check rewritten; deploy-health-check line 70 drops a no-op. If on_body_failure is cut but `until` keeps `continue`, nothing else changes.
+- id: MIN-5
+  verdict: partly
+  severity: minor
+  notes: |
+    RF-18 and §5.7 quotes are accurate; VA-5 lists MATRIX_INDEX; used in basics/for-matrix and release-matrix, both a 3x2 OS/arch with a `when` exclusion. The nested-`each` order matches "first key varying slowest".
+    Wrong: "the only source binding several variables" — `items` with `fields` also binds one variable per field (§5.7 `fields`).
+    Unmentioned cost: in release-matrix the loop node is named `build ${OS}/${ARCH}`; with nesting, ARCH is bound only in the inner loop, so the outer name can't use it (rename needed). collect over a nested loop would give nested lists, but neither matrix example uses collect.
+  proposal_impact: |
+    reference.md §5.7 sources table and `as` option; RF-18; VA-5 and variables.md index table (line 30); syntax.md variable grammar note (MATRIX_INDEX); conformance feature id `for-matrix`; ROADMAP exclude/include candidate; ADR 0014 matrix section; basics/for-matrix and release-matrix (outer loop name).
+- id: MIN-6
+  verdict: partly
+  severity: minor
+  notes: |
+    RF-25 quote exact; the empty-source rule and ADR 0016 ("only `glob` needs `allow_empty`") match. `keep_blank` is a maintainer addition (ADR 0014) used by no example. `max_items: 500` appears once (changed-files-lint), no reason given.
+    Wrong: "Both glob examples that could see zero matches set allow_empty". dotnet-build-test's `src/**/*.csproj` loop can see zero matches too and relies on the failing default (failing when there are no projects is the sensible behaviour there); release-matrix's `*` also uses the default. So the default is not only "the case plans opt out of".
+    Incomplete: `max_items` is not just a resource bound. ADR 0003 Q8 replaced the brief's "mandatory `max_items`" for sources fed by captured output and notes "with an implicit `max_items`, a plan's bound isn't visible in its text"; the finding doesn't answer that reasoning. Making it apply to every source is coherent (glob also has unbounded size).
+  proposal_impact: |
+    reference.md §5.7 options and glob rules ("zero matches is an error unless allow_empty"); RF-25; schema; ADR 0016 empty-source rule and ADR 0003 Q8 superseded; basics/for-glob (its header text describes allow_empty) and dotnet-build-test (drop allow_empty; the src loop would then succeed silently on zero projects unless an assert is added); errors.md if a glob-empty code exists.
+- id: MIN-7
+  verdict: partly
+  severity: minor
+  notes: |
+    §5.3 quote exact; ADR 0008 lists "integer factor and percentage jitter" as an option; syntax.md §6.4 decimals serve only `backoff.factor` and `jitter`. Uses: basics/retry-backoff and release-matrix.
+    Overstated: release-matrix runs `gh release upload` with `concurrency: 4` and identical retry schedules against one endpoint, so a shared 5xx makes the four retries fire together; that is a (small) correlated-retry case jitter is meant for, so "Neither has a herd" is too strong. "forces conformance to specify RNG seeding": CF-41 already limits this ("cases with `jitter` assert bounds only, never the drawn values"; seed passed only when the adapter supports one), so the conformance cost is one rule. "only non-deterministic feature apart from completion order": EM-13 also lists timings, and race outcomes depend on completion order; minor.
+  proposal_impact: |
+    reference.md §5.2 row, §5.3; syntax.md §6.4 and field table (jitter row); schema; conformance README feature id `jitter` and CF-41; ADR 0008 superseded; basics/retry-backoff (header comment mentions jitter) and release-matrix line 112. Integer factor additionally removes the decimal grammar (§6.4) and changes `backoff.factor` validation.
+- id: MIN-8
+  verdict: confirmed
+  severity: minor
+  notes: |
+    reference.md §3: "It never limits what a capture or `result:` condition sees beyond their own limits" (the finding's quote drops "beyond their own limits", not misleading). ADR 0003: "All are free config keys; `max_log_bytes` is also a leaf field"; ADR 0003 also says pipes are still drained into tail buffers, so tails are unaffected. ADR 0013 scope quote and "config keys" under runtime mechanics are accurate. Uses: wait-for-ci `max_log_bytes: 1MiB`; `encoding: utf-16le` once (cross-platform-setup). No utf-16be/latin1 use.
+  proposal_impact: |
+    reference.md §3 table and bullets (max_log_bytes, encoding values); syntax.md field table rows and the size grammar example (`max_log_bytes: 100MiB` is the size example in syntax.md line 236; sizes remain for max_capture_bytes etc.); schema; scenarios/wait-for-ci line 38.
+- id: MIN-9
+  verdict: confirmed
+  severity: minor
+  notes: |
+    SH-33, SH-11 extensions, invocation rows and "/etc/zshenv, which zsh can't skip" are accurate. ADR 0014 lists "add both rows; zsh only; drop both" and gives no reason for the choice. fish appears in no example; zsh only in cross-platform-setup's macOS check, which uses `whence -p`/`print -u2`; the Linux bash loop uses only POSIX features plus `-o pipefail`, which bash 3.2 supports. `host: os` supports `in`, so the merged `when` is valid.
+  proposal_impact: |
+    shells.md §2.2 table, SH-11, SH-33, platform table (lines 91-92); schema shell enum; syntax.md shell values; ADR 0014 zsh/fish section; conformance shell x OS matrix; scenarios/cross-platform-setup (merge the macOS step; header comment "zsh on macOS") and examples/README description.
+- id: MIN-10
+  verdict: confirmed
+  severity: minor
+  notes: |
+    VA-56, VA-57, VA-59 say what the finding says; no `set` or `vars` value in examples/ uses `{ var: ... }` (all `{ var }` hits are exec/env/cwd); 9 plans use `set`; 52 plans total. reference.md §2.12 already says "There are no functions" and VA-57 "There are no functions", so the "keep no functions as an explicit non-goal" half is already done.
+    Unweighed costs: `{ var: X }` is the reference form in every other executed field (env, argv, cwd), so forbidding it only in set/vars adds an exception users will hit by analogy; and `{ var: X, secret: true }` is one of the three secret sources in VA-49 (mark a captured non-secret value secret), which the proposal removes without a replacement. Low confidence is appropriate.
+  proposal_impact: |
+    variables.md VA-49 (secret sources), VA-56, VA-58 ("template or reference"); reference.md §2.12 values bullet; ADR 0015 values decision; schema set/vars value definition; no example changes.
+- id: MIN-11
+  verdict: confirmed
+  severity: minor
+  notes: |
+    changed-files-lint lines 28-47 match the quote (assert + script probe `command -v` under `any`). ADR 0016 added `command:`; basics/command-check uses `if: { command: podman, exists: true }`, and CO-46's own sample uses `any` + `when: { command }`, so three spellings exist. The nested-if rewrite is valid: VA-31 makes PY_LINT definitely bound when set in both branches (the inner `if` binds it in both of its branches), and VA-36 allows alternatives to bind the same name. CO-45 uses the PATH the run started with; the script probe uses the scope's PATH, identical here.
+  proposal_impact: |
+    scenarios/changed-files-lint only (and examples/README feature list if it names `any` for this scenario).
+- id: MIN-12
+  verdict: confirmed
+  severity: minor
+  notes: |
+    cross-platform-setup lines 67-79 match (comment "a timeout with a clearer message than BK_TIMEOUT_TOTAL"). race-watchdog is a genuine first-completion case: `all` with fail_fast would wait for the watchdog's `until` (timeout 30m) after the tests pass. EM-12, EM-58, EM-59 exist and are the race rules. The proposal adds no feature; rewriting to `timeout: 3m` loses only the custom code and message.
+  proposal_impact: |
+    Optional: reference.md §2.6 (an idiom note) or scenarios/cross-platform-setup; nothing else.
+- id: extra-section
+  verdict: confirmed
+  notes: |
+    Spot-checked 43 of ~90 `verdicts:` entries, including every cut/merge/simplify entry (max_log_bytes, encoding, container, container.user/env_pass, become, defaults.become, services, depends_on, on_exit, output subject, jitter, while, on_body_failure, matrix, allow_empty, keep_blank, max_items, set/vars { var }, zsh/fish) plus keep entries (keep_descendants, stderr merge, secret on captures, export, lock, tempdir, attempt_timeout, ok_exit, collect, count, lines, port, stdin, capture_file, until, retry, race, if, assert, log, finally, sleep, when, inputs, vars, leaf_timeout, ignore_errors). All used_in lists match grep of examples/. Counts match (when 13, assert 9, log 17, inputs 14, vars 6, leaf_timeout 7, retry 7, ok_exit 5, ignore_errors 5, attempt_timeout 6) except "capture ... Used in 22 plans": 20 plans use `capture:`, 21 with `capture_file`. The cut/merge verdicts inherit the corrections above (become leaf count, port-vs-output equivalence, matrix "only multi-binding source", glob default use).

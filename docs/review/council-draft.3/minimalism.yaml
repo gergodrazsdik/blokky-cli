@@ -1,0 +1,768 @@
+---
+# Long lines are deliberate (review prose and quoted plans):
+# yamllint disable rule:line-length
+# Council review of Blokky 1.0.0-draft.3, lens: principles and minimalism.
+# Evidence base: spec/ and adr/ of the review-draft3 snapshot, the 45 basics and
+# 7 scenarios in examples/. "used_in" lists come from grepping the examples.
+findings:
+  - id: MIN-1
+    lens: minimalism
+    kind: cut
+    severity: major
+    where: spec/containers-and-privilege.md §3 (CP-21 to CP-35), reference.md §4.9, syntax.md §4.3 (defaults.become), ADR 0005 Q17
+    claim: >-
+      `become` re-implements `sudo -n`/`doas -n` with a large, partly provisional
+      surface (invoker, root-drop mode, defaults.become, trampoline, file rules,
+      opt-in gate), while the spec itself says the plain leaf is equally available.
+    evidence: |
+      The spec concedes the duplication: CP-22 "Such an opt-in is accident prevention,
+      not a control: `sudo -n` in a leaf is equally available."
+      Surface it brings: CP-21..CP-35 (15 rules), `defaults.become`, the `invoker`
+      value (CP-23, read from SUDO_UID / doas), a root-drop mechanism (CP-26), a
+      trampoline transport (CP-28, "provisional — verify in spike"), file ownership
+      rules (CP-29), best-effort kills across the boundary (CP-30, provisional), a
+      root-run warning (CP-32), a ban on combining with `container` (CP-20), Windows
+      failure (CP-35), `BK_BECOME_DISABLED`/`BK_BECOME_FAILED`, and doubled spike work
+      ("supporting `doas` from the start doubles the elevation paths", ADR 0005, Bad).
+      Real use: two examples. basics/become-root:
+          become: root
+          exec: [make, install, PREFIX=/usr/local]
+      scenarios/deploy-health-check uses it on three exec leaves (podman pull, tee,
+      systemctl restart). Every one is an `exec` that reads exactly as well, and is
+      matched by a runner's permission rules more directly, as:
+          exec: [sudo, -n, make, install, PREFIX=/usr/local]
+          exec: [sudo, -n, tee, --, { var: ENV_FILE }]
+          stdin: { var: NEW_ENV }
+      No example uses `defaults.become`, `invoker`, `become` on a `script`, or a
+      `become` probe. ADR 0005 argues "one plan file works with and without sudo",
+      but no example or scenario runs Blokky itself under sudo; the agent flow in
+      the brief (§1.3) is a normal-user run.
+    proposal: |
+      Cut `become` and `defaults.become`. Plans write `sudo -n`/`doas -n` as argv[0]
+      of an `exec` (visible, matched by permission rules, no transport layer). Root
+      shell text, if needed, is a script file the plan writes and passes to
+      `exec: [sudo, -n, bash, --, { var: FILE }]`.
+      Fallback if the maintainer keeps it: keep only `become: USER` via sudo/doas,
+      and drop `invoker`, `defaults.become`, the root-drop mode (CP-23, CP-24,
+      CP-26, CP-32), which exist only for "Blokky run as root", a mode no example uses.
+    confidence: medium
+
+  - id: MIN-2
+    lens: minimalism
+    kind: question
+    severity: major
+    where: spec/containers-and-privilege.md §1-§2 (CP-1 to CP-20), reference.md §4.8, ADR 0005 Q16, ADR 0012
+    claim: >-
+      `container` is the largest modifier by spec surface and the one with the most
+      provisional rules, yet both examples are expressible as `docker run` leaves,
+      and it brings no security benefit by the spec's own terms.
+    evidence: |
+      Surface: a whole spec file section with CP-1..CP-20: a host/container path model
+      (CP-1, CP-2, CP-14), default cwd mount and Windows drive-letter mapping (CP-9,
+      CP-10), runtime mounts (CP-11), replace-not-add mount semantics (CP-12),
+      container cwd resolution (CP-14), argv[0] resolution inside the image (CP-15),
+      a separate environment model (CP-16, `env_pass`), user (CP-17), nesting ban
+      (CP-19), `become` exclusion (CP-20), in-container kill (CP-8, provisional), and
+      engine choice still open (CP-7, "a later question (Q16b)"). Plus
+      `container.user` and `env_pass`, which no example uses.
+      Security payoff: none by design ("Containers are not a sandbox by default", §2.6).
+      Use: basics/container-build and one node of scenarios/integration-tests. The
+      first is two leaves in an SDK image:
+          container: { image: mcr.microsoft.com/dotnet/sdk:10.0 }
+          do:
+            - exec: [dotnet, build, -c, Release]
+            - exec: [dotnet, test, --no-build, -c, Release]
+      As plain leaves (bind mount persists the build between the two):
+          - exec: [docker, run, --rm, -v, '.:/src', -w, /src, mcr.microsoft.com/dotnet/sdk:10.0, dotnet, build, -c, Release]
+          - exec: [docker, run, --rm, -v, '.:/src', -w, /src, mcr.microsoft.com/dotnet/sdk:10.0, dotnet, test, --no-build, -c, Release]
+      The plain form shows reviewers the exact mount and engine, which CP-6 otherwise
+      has to recover as "derived commands". The scenarios already call the engine
+      directly for everything else (finally-cleanup, services-depends-on,
+      integration-tests run `docker run`/`docker exec` as leaves).
+    proposal: |
+      Options for the maintainer:
+      (a) Cut `container` from 1.0 (ROADMAP candidate). Plans call the engine as a
+          leaf; `tempdir`, `env` and `{ var }` arguments already cover mounts and
+          variables.
+      (b) Keep, but shrink: drop `env_pass` (use `env: { X: { from_env: X } }`, which
+          CP-16 already passes in), drop `user`, and keep the default cwd mount only.
+      (c) Keep as is, accepting that it is ergonomics only.
+      Recommendation from this lens: (a), because what it saves (a longer argv) is
+      small next to ~20 rules and three spike dependencies.
+    confidence: medium
+
+  - id: MIN-3
+    lens: minimalism
+    kind: simplify
+    severity: major
+    where: reference.md §4.10, execution-model.md EM-61 to EM-65, conditions.md §2.3 (CO-42 to CO-44), RF-24, ADR 0014 (services)
+    claim: >-
+      `services` earns its place (it is the brief's "background process plus a trap"
+      problem), but `depends_on`, `on_exit` and the `output:` subject add surface no
+      realistic plan needs.
+    evidence: |
+      ADR 0014 itself flags it: "Bad: `services` gain two fields (`depends_on`,
+      `on_exit`) and cycle checks; the review should look at whether services earn
+      their size." Its only reason for parallel start with `depends_on` is "cover
+      dependent services without ordering tricks"; it doesn't weigh the simpler
+      recommended option (list order, each ready first).
+      Evidence from use: both service examples have a linear chain db → api
+      (basics/services-depends-on, scenarios/integration-tests). With "start in list
+      order, each ready before the next", `depends_on: [db]` is just "list db first".
+      The only gain of parallel start is overlapping readiness of independent
+      services (mail in integration-tests), i.e. seconds.
+      `on_exit: ignore` appears once, on a mailpit service justified as "only the
+      email tests need it", which is a judgement the test results already report; a
+      service dying mid-run is otherwise exactly what should fail the node.
+      `output:` readiness (`{ output: stdout, contains: Now listening }`) is used for
+      the api in both examples, but the api listens on a known port (5080), so
+      `{ port: 5080, open: true }` (CO-42) is the same check without a streaming
+      matcher over service output (CO-43: decoding, trimming, size window).
+      Could `race` replace services entirely? A single service can be written as
+      `race: [ server, do: [ wait-until-ready, tests ] ]`, but a server that exits 0
+      would let the race succeed early, and stop order and readiness timeouts are
+      lost; so services pay for themselves, at a smaller size.
+    proposal: |
+      Keep `services`, with: start in list order, each ready before the next
+      starts; stop in reverse list order. Drop `depends_on` (and the cycle half of
+      RF-24) and `on_exit` (always fail). Consider dropping the `output:` subject in
+      favour of `port:` and probes. Rewrite of services-depends-on:
+          services:
+            - name: db
+              exec: [docker, run, --rm, --name, blokky-example-db, ...]
+              ready: { probe: { exec: [docker, exec, blokky-example-db, pg_isready, -U, postgres] } }
+            - name: api
+              exec: [dotnet, run, --project, src/Api, --urls, 'http://localhost:5080']
+              ready: { port: 5080, open: true }
+    confidence: medium
+
+  - id: MIN-4
+    lens: minimalism
+    kind: question
+    severity: minor
+    where: reference.md §5.2, §5.6; conditions.md §6; variables.md VA-33; F-0008
+    claim: >-
+      As specified, `while` adds nothing `until` with a `result:` or probe condition
+      can't already do, and `on_body_failure` is never set to a non-default value in
+      the examples.
+    evidence: |
+      Both `while` examples are pure waits whose body is filler:
+      scenarios/deploy-health-check:
+          while: { probe: { exec: [systemctl, show, --property=ActiveState, --value, --, { var: UNIT }] }, in: [activating, deactivating, reloading] }
+          do:
+            - log: "${UNIT} is busy; waiting"
+              level: debug
+      basics/while-draining polls `kubectl get pods -o name` as a probe and runs
+      `kubectl get pods --no-headers` as the body only for display.
+      Both are `until` polls on the check itself (as in basics/until-polling):
+          exec: [systemctl, show, --property=ActiveState, --value, --, { var: UNIT }]
+          until: { result: stdout, not_in: [activating, deactivating, reloading] }
+      The only distinct semantics, zero iterations and a body different from the
+      check, matter for "process while there is more" loops, which F-0008 says
+      can't be written today because the body can't see the previous iteration's
+      captures.
+      `on_body_failure` (§5.2) has different defaults per loop (`while: stop`,
+      `until: continue`); its only use (deploy-health-check `until`) sets the
+      default value `continue`.
+    proposal: |
+      Decide `while` together with F-0008: if F-0008 is fixed so `while` can
+      paginate, keep it (it then has a job `until` can't do). If not, cut `while`
+      and `on_body_failure` (fix `until` to `continue`, which is what polling
+      wants), and rewrite the two examples as `until` polls.
+    confidence: medium
+
+  - id: MIN-5
+    lens: minimalism
+    kind: cut
+    severity: minor
+    where: reference.md §5.7 (matrix), RF-18, VA-5, syntax.md §6.2 (MATRIX_INDEX), ADR 0014 (matrix)
+    claim: >-
+      `for: { matrix }` is two nested `for: { each }` loops with a special binding
+      rule (`as` forbidden, keys bound, `MATRIX_INDEX`, object items), and it already
+      needs a `when` workaround for exclusions.
+    evidence: |
+      basics/for-matrix:
+          for:
+            matrix: { GOOS: [linux, darwin, windows], GOARCH: [amd64, arm64] }
+            concurrency: 3
+          do:
+            - when: { not: { all: [ { var: GOOS, equals: windows }, { var: GOARCH, equals: arm64 } ] } }
+              do: [...]
+      As nested loops (same item order, first key slowest):
+          for: { each: [linux, darwin, windows], as: GOOS, concurrency: 3 }
+          do:
+            - for: { each: [amd64, arm64], as: GOARCH }
+              do:
+                - when: { not: { all: [ ... ] } }
+                  do: [...]
+      Cost of `matrix` in the spec: the only source where `as` is forbidden (RF-18,
+      §5.7 "required for every source except `matrix`, where it is forbidden"), the
+      only source binding several variables, a derived `MATRIX_INDEX` name (VA-5),
+      an object-valued item in the run result, and a ROADMAP candidate
+      (`exclude`/`include`) already waiting to grow it. Used in two plans
+      (for-matrix, release-matrix), both a 3×2 OS/arch build.
+      What nesting loses: one shared concurrency limit (outer 3 × inner 1 is the
+      same 3 here) and a single flat iteration list in the result.
+    proposal: |
+      Cut `matrix`; document the nested-`each` pattern in the reference and rewrite
+      for-matrix and release-matrix. If kept, at least make it take `as` like every
+      other source, binding an object with `fields`-style keys, so RF-18 goes away.
+    confidence: medium
+
+  - id: MIN-6
+    lens: minimalism
+    kind: simplify
+    severity: minor
+    where: reference.md §5.7 options, RF-25, ADR 0003 Q8, ADR 0014 (lines), ADR 0016 (empty sources)
+    claim: >-
+      The `for` options are source-specific in four different ways (`allow_empty`
+      glob-only, `keep_blank` lines-only, `max_items` items/lines-only, `fields`
+      items-only), and two of the distinctions follow no principle.
+    evidence: |
+      RF-25: "`fields` only with `items`; `keep_blank` only with `lines`;
+      `allow_empty` only with `glob`; `max_items` only with `items` and `lines`."
+      Empty handling is inconsistent: "A source with no items (... `count: 0`; an
+      `items` array or `lines` value with no entries) runs zero iterations and
+      succeeds; only `glob` fails on zero matches unless `allow_empty: true`."
+      Both glob examples that could see zero matches set `allow_empty: true`
+      (basics/for-glob, scenarios/dotnet-build-test tests/ loop); the default
+      "fail" is the case plans opt out of.
+      `keep_blank` (a maintainer addition in ADR 0014) appears in no example; when
+      blank lines matter, the data is structured and `items` fits better.
+      `max_items` appears once (changed-files-lint, 500, lowering the 1000 default
+      for no stated reason); it is a resource bound, which the brief (§1.2) says is
+      for ergonomics, not a plan concern.
+    proposal: |
+      - Make an empty `glob` succeed with zero iterations like every other source;
+        drop `allow_empty`. A plan that requires matches asserts on a `path:`.
+      - Drop `keep_blank`.
+      - Make `max_items` apply to every source (or move it to implementation
+        configuration, like `max_concurrency`), so it needs no per-source rule.
+      RF-25 then shrinks to "`fields` only with `items`".
+    confidence: medium
+
+  - id: MIN-7
+    lens: minimalism
+    kind: cut
+    severity: minor
+    where: reference.md §5.2-§5.3 (jitter), syntax.md §6.4 (decimals), ADR 0008
+    claim: >-
+      `jitter` solves a many-clients problem (thundering herd) that a single
+      agent's plan doesn't have, and costs a decimal grammar and a seedable-RNG
+      requirement.
+    evidence: |
+      §5.3: "`jitter: J` ... multiplies each delay by a random value in [1 − J, 1],
+      drawn from a seedable RNG so tests are reproducible." It is the only
+      non-deterministic language feature apart from completion order (brief §1.1
+      "Deterministic, structured output"), and it forces conformance to specify RNG
+      seeding.
+      Uses: basics/retry-backoff (one `docker push`) and release-matrix (4 concurrent
+      uploads to one release). Neither has a herd: one client, at most 4 requests.
+      `backoff` alone (also in both) already spreads retries out.
+    proposal: |
+      Cut `jitter`. Keep `backoff: { factor, max }`. The decimal grammar (§6.4) then
+      serves only `backoff.factor`; consider making `factor` an integer 1-10 (ADR 0008
+      listed "integer factor" as an option), which removes the decimal grammar.
+    confidence: medium
+
+  - id: MIN-8
+    lens: minimalism
+    kind: cut
+    severity: minor
+    where: reference.md §3 (max_log_bytes, encoding), syntax.md §7.4, ADR 0003 (output limits), ADR 0013 (scope)
+    claim: >-
+      `max_log_bytes` controls only what the implementation stores, which ADR 0013
+      puts outside the language; `encoding` carries four values where examples need
+      one non-default.
+    evidence: |
+      reference.md §3: "`max_log_bytes`. A size; past it, the implementation stops
+      keeping the leaf's output ... It never limits what a capture or `result:`
+      condition sees." So no plan behaviour depends on it. ADR 0013 scopes the spec
+      to "what a plan means and can observe" and moves "runtime mechanics ... config
+      keys" to blokky-cli; ADR 0003 already has it as a config key ("All are free
+      config keys; `max_log_bytes` is also a leaf field"). Its only use:
+      scenarios/wait-for-ci `max_log_bytes: 1MiB` on `gh run watch`.
+      `encoding`: `utf-8`, `utf-16le`, `utf-16be`, `latin1`. The one use is
+      `encoding: utf-16le` for `wsl --status` (cross-platform-setup). No plan or
+      tool in the examples needs `utf-16be` or `latin1`.
+    proposal: |
+      Remove `max_log_bytes` from the language (keep it as blokky-cli configuration,
+      or per-leaf in the implementation's own extension). Reduce `encoding` to
+      `utf-8 | utf-16le` (the Windows case); add more when a real plan needs them.
+    confidence: medium
+
+  - id: MIN-9
+    lens: minimalism
+    kind: cut
+    severity: minor
+    where: shells.md §2.2 and §5 (SH-33), reference.md §2.2, ADR 0014 (zsh and fish)
+    claim: >-
+      `zsh` and `fish` add shell × OS rows to specify and test but serve no plan
+      that bash or sh can't, on the same OSes.
+    evidence: |
+      SH-33: both are Unix-only and used only when named; every Unix host they run on
+      also has `sh`, and macOS ships bash. ADR 0014 lists "drop both" as an option
+      but records no reason for adding them.
+      fish appears in no example. zsh appears once, cross-platform-setup's macOS tool
+      check, which is the same loop as the Linux bash check one node above (using
+      `whence -p`/`print -u2` instead of `command -v`/`echo >&2`); the bash version
+      runs unchanged on macOS's bash 3.2.
+      Each shell costs an invocation row, error-handling semantics (fish: "none"),
+      a script-file extension (SH-11), startup-file caveats (`/etc/zshenv` "which zsh
+      can't skip"), and conformance cases across the shell × OS matrix.
+    proposal: |
+      Cut `zsh` and `fish` from 1.0 (ROADMAP candidates). Rewrite the macOS step in
+      cross-platform-setup to share the bash check (`when: { host: os, in: [linux, macos] }`).
+    confidence: medium
+
+  - id: MIN-10
+    lens: minimalism
+    kind: simplify
+    severity: minor
+    where: reference.md §2.12, variables.md VA-56, syntax.md §7.2 (`{ var }` allowed in `set` and `vars`), ADR 0015
+    claim: >-
+      In `set` and `vars`, a whole-value `{ var: X }` is a second spelling of the
+      template `'${X}'`; templates (VA-59) already propagate secret-ness.
+    evidence: |
+      VA-56 allows three value forms: literal, whole-value reference
+      (`{ var: X }`, `{ from_env: NAME }`), template. With templates in place,
+      `set: { A: { var: X } }` and `set: { A: '${X}' }` bind the same value, and VA-59
+      makes both secret when X is. The only extra is `{ var: X, secret: true }`
+      (mark a non-secret value secret), which no example does. No example uses
+      `{ var: … }` in `set` or `vars` (grep of examples/); all 9 plans with `set`
+      use literals or templates.
+      This is the balanced half too: ADR 0015's "templates only join strings, no
+      functions" holds up against the examples. Every template use (TAG, PKG,
+      LDFLAGS, ARTIFACT, OUT, ASSET, ROLLBACK_ENV, DB_CONNECTION, ENV_FIELD) is
+      joining, and none of the 52 plans wanted case changes, substrings or
+      arithmetic.
+    proposal: |
+      In `set`/`vars` allow literals, templates and `{ from_env: NAME[, secret] }`
+      only; drop `{ var: X }` there. Keep "no functions" as an explicit
+      non-goal in reference §2.12.
+    confidence: low
+
+  - id: MIN-11
+    lens: minimalism
+    kind: fix
+    severity: minor
+    where: examples/scenarios/changed-files-lint.blokky.yaml ("choose how to run ruff"), conditions.md CO-45/CO-46, ADR 0016 (`command:`)
+    claim: >-
+      The longest scenario chooses a tool with `any` + `assert` + `script` probe
+      (`command -v`) instead of the `command:` subject made for exactly this, so the
+      example suite shows three ways to do one thing.
+    evidence: |
+      changed-files-lint:
+          any:
+            - name: ruff on PATH
+              do:
+                - assert: { probe: { script: "command -v ruff\n", shell: sh } }
+                - set: { PY_LINT: ruff }
+            - name: ruff through uvx
+              do:
+                - assert: { probe: { script: "command -v uvx\n", shell: sh } }
+                - set: { PY_LINT: uvx }
+            - name: no Python linter
+              set: { PY_LINT: none }
+      ADR 0016 added `command:` so that "is this tool installed?" no longer needs a
+      shell; basics/command-check uses `if: { command: podman, exists: true }`.
+    proposal: |
+      Rewrite with the subject:
+          - if: { command: ruff, exists: true }
+            then: [ { set: { PY_LINT: ruff } } ]
+            else:
+              - if: { command: uvx, exists: true }
+                then: [ { set: { PY_LINT: uvx } } ]
+                else: [ { set: { PY_LINT: none } } ]
+      This also takes the `script` probe and `any` out of the plan, which the
+      reviewer otherwise has to read as shell.
+    confidence: high
+
+  - id: MIN-12
+    lens: minimalism
+    kind: question
+    severity: minor
+    where: reference.md §2.6 (race), examples/basics/race-watchdog, examples/scenarios/cross-platform-setup ("wait for Docker Desktop")
+    claim: >-
+      `race` is kept by this lens, but one of its two real uses is a workaround for
+      "fail with my own code when this times out", which suggests where agents will
+      reach for it.
+    evidence: |
+      cross-platform-setup:
+          race:     # a timeout with a clearer message than BK_TIMEOUT_TOTAL
+            - name: poll docker info
+              retry: true
+              max: 100
+              ...
+            - do:
+                - sleep: 3m
+                - fail: "Docker Desktop didn't start within 3 minutes; ..."
+                  code: DOCKER_NOT_STARTED
+      The other use (race-watchdog) is a genuine first-completion need that no other
+      kind expresses: `all` + `fail_fast` would keep waiting for the watchdog after
+      the tests pass. The deadline pattern is the plain `timeout: 3m` on the poll,
+      with the cost only in the error code.
+    proposal: |
+      Keep `race` (it is small: EM-12, EM-58, EM-59). Don't add an "on timeout,
+      fail with" feature for this; instead, show the deadline pattern in the
+      reference as the idiomatic way, or simplify the scenario to `timeout: 3m` and
+      accept `BK_TIMEOUT_TOTAL`. Noted so the maintainer can see the pattern
+      before a feature request appears.
+    confidence: low
+
+verdicts:
+  # Node kinds
+  - feature: exec
+    verdict: keep
+    why: The default leaf; argv without a shell is the core of "leaves stay simple".
+    used_in: [basics/exec-vs-script, scenarios/release-matrix, scenarios/wait-for-ci, scenarios/integration-tests]
+  - feature: script
+    verdict: keep
+    why: Pipes and shell logic are real needs (SHA256SUMS, test-summary parsing); shell text run from a file stays reviewable.
+    used_in: [basics/exec-vs-script, basics/choose-shell, scenarios/dotnet-build-test, scenarios/release-matrix, scenarios/cross-platform-setup]
+  - feature: do
+    verdict: keep
+    why: The sequence block that every scenario's root uses.
+    used_in: [basics/do-sequence, scenarios/changed-files-lint, scenarios/deploy-health-check, scenarios/release-matrix]
+  - feature: all
+    verdict: keep
+    why: Parallel checks with fail_fast replace `&` plus `wait` plus `trap`, a top pain in the brief.
+    used_in: [basics/all-parallel, scenarios/wait-for-ci]
+  - feature: any
+    verdict: keep
+    why: Ordered fallback (mirrors) and first-success fan-out (fastest registry) both appear in real plans.
+    used_in: [basics/any-fallback, scenarios/cross-platform-setup, scenarios/changed-files-lint]
+  - feature: race
+    verdict: keep
+    why: Small rule set, and the watchdog case can't be written with all/any; watch the deadline-with-message pattern.
+    used_in: [basics/race-watchdog, scenarios/cross-platform-setup]
+    finding: MIN-12
+  - feature: if (then/else)
+    verdict: keep
+    why: Two-way branches are in most scenarios and are what makes `set` in branches work.
+    used_in: [basics/if-else, basics/set-in-branches, scenarios/deploy-health-check, scenarios/release-matrix, scenarios/cross-platform-setup, scenarios/changed-files-lint]
+  - feature: sleep
+    verdict: keep
+    why: Tiny, portable (no `sleep`/`Start-Sleep` split), needs no process.
+    used_in: [basics/sleep-conditional, scenarios/cross-platform-setup]
+  - feature: log (level)
+    verdict: keep
+    why: Replaces echo leaves; used in 17 plans; three levels are enough.
+    used_in: [basics/log-levels, scenarios/wait-for-ci, scenarios/deploy-health-check, scenarios/changed-files-lint, scenarios/dotnet-build-test]
+  - feature: fail (code)
+    verdict: keep
+    why: User error codes are what retry conditions and agents match on.
+    used_in: [basics/fail-with-code, basics/race-watchdog, scenarios/deploy-health-check, scenarios/cross-platform-setup]
+  - feature: assert (message, code)
+    verdict: keep
+    why: Preconditions are in 9 plans; overlaps `when` + `fail` but reads better and keeps condition errors distinct.
+    used_in: [basics/assert-check, basics/command-check, scenarios/release-matrix, scenarios/wait-for-ci, scenarios/dotnet-build-test, scenarios/deploy-health-check]
+  - feature: set
+    verdict: keep
+    why: Values chosen in branches and joined strings without a shell; templates stayed join-only in every example.
+    used_in: [basics/set-in-branches, basics/set-templates, scenarios/release-matrix, scenarios/deploy-health-check, scenarios/integration-tests, scenarios/cross-platform-setup]
+  - feature: set/vars whole-value { var } reference
+    verdict: simplify
+    why: Duplicates the `${X}` template in set/vars; no example uses it.
+    used_in: []
+    finding: MIN-10
+
+  # Leaf options
+  - feature: stdin
+    verdict: keep
+    why: Feeding a file or a value without `cat |` or a heredoc in shell; both reference forms are used.
+    used_in: [scenarios/integration-tests, scenarios/deploy-health-check]
+  - feature: ok_exit
+    verdict: keep
+    why: Five plans need "exit 1 is fine" (grep, docker rm); the alternative is a shell wrapper.
+    used_in: [basics/ignore-errors-ok-exit, basics/race-watchdog, scenarios/changed-files-lint, scenarios/dotnet-build-test, scenarios/integration-tests]
+  - feature: stderr (merge)
+    verdict: keep
+    why: One value, real use for logs whose interleaving matters.
+    used_in: [scenarios/integration-tests]
+  - feature: encoding
+    verdict: simplify
+    why: Only utf-16le has a real use (Windows tools); utf-16be and latin1 have none.
+    used_in: [scenarios/cross-platform-setup]
+    finding: MIN-8
+  - feature: max_log_bytes
+    verdict: cut
+    why: Affects only what the implementation stores, not what a plan can observe; already a config key.
+    used_in: [scenarios/wait-for-ci]
+    finding: MIN-8
+  - feature: keep_descendants
+    verdict: keep
+    why: Narrow but real (compiler servers across builds) and a single boolean.
+    used_in: [scenarios/dotnet-build-test]
+  - feature: capture
+    verdict: keep
+    why: Used in 22 plans; the text and JSON-field forms replace `$(...)` and jq plumbing.
+    used_in: [basics/capture-text, basics/capture-json-fields, scenarios/wait-for-ci, scenarios/deploy-health-check, scenarios/release-matrix]
+  - feature: capture_file
+    verdict: keep
+    why: The runtime-owned artefact for large or binary output, one of the brief's three main benefits.
+    used_in: [basics/capture-file, basics/outputs, scenarios/dotnet-build-test]
+  - feature: secret (on captures)
+    verdict: keep
+    why: The only way to mark a generated credential as secret; one boolean.
+    used_in: [scenarios/integration-tests]
+
+  # Modifiers
+  - feature: name
+    verdict: keep
+    why: Display only, rendered per iteration; costs nothing semantically.
+    used_in: [scenarios/changed-files-lint, scenarios/release-matrix, scenarios/wait-for-ci]
+  - feature: when
+    verdict: keep
+    why: The guard that makes optional steps and matrix exclusions cheap; in 13 plans.
+    used_in: [basics/when-guard, scenarios/changed-files-lint, scenarios/release-matrix, scenarios/cross-platform-setup, scenarios/deploy-health-check]
+  - feature: timeout
+    verdict: keep
+    why: The brief's first pain point.
+    used_in: [basics/timeout-vs-attempt-timeout, scenarios/wait-for-ci, scenarios/integration-tests, scenarios/release-matrix]
+  - feature: attempt_timeout
+    verdict: keep
+    why: Distinct from total timeout and used in six plans for polls and retries.
+    used_in: [basics/timeout-vs-attempt-timeout, basics/retry-on-code, scenarios/wait-for-ci, scenarios/release-matrix, scenarios/deploy-health-check, scenarios/cross-platform-setup]
+  - feature: lock (name, wait)
+    verdict: keep
+    why: Small (exclusive, no nesting) and used in three scenarios for shared caches, ports and deploys.
+    used_in: [basics/lock-one-at-a-time, scenarios/deploy-health-check, scenarios/dotnet-build-test, scenarios/integration-tests]
+  - feature: tempdir (as, prefix)
+    verdict: keep
+    why: Runtime-owned temp dirs are a core promise of the brief (no hand-written rm -rf).
+    used_in: [basics/tempdir, scenarios/release-matrix]
+  - feature: cwd
+    verdict: keep
+    why: Nesting relative cwds replaces `cd` and path joining.
+    used_in: [basics/cwd-nesting, scenarios/release-matrix, scenarios/integration-tests, scenarios/cross-platform-setup]
+  - feature: env
+    verdict: keep
+    why: The main way values and secrets reach processes.
+    used_in: [basics/env-export-secrets, scenarios/release-matrix, scenarios/dotnet-build-test, scenarios/integration-tests]
+  - feature: export
+    verdict: keep
+    why: Sugar for an env entry mapping X to its own variable, but used in four plans to pass variables to scripts; worth one key.
+    used_in: [basics/env-export-secrets, basics/for-matrix, scenarios/release-matrix, scenarios/dotnet-build-test]
+  - feature: container
+    verdict: cut
+    why: Largest modifier with the most provisional rules, no security payoff, and both uses are docker-run leaves (question for the maintainer).
+    used_in: [basics/container-build, scenarios/integration-tests]
+    finding: MIN-2
+  - feature: container.user, container.env_pass
+    verdict: cut
+    why: No example uses either; env_pass duplicates env with from_env.
+    used_in: []
+    finding: MIN-2
+  - feature: become
+    verdict: cut
+    why: Duplicates sudo -n / doas -n in an exec leaf, which the spec itself calls equally available.
+    used_in: [basics/become-root, scenarios/deploy-health-check]
+    finding: MIN-1
+  - feature: defaults.become (invoker)
+    verdict: cut
+    why: Serves only the "Blokky run as root" mode, which no example uses.
+    used_in: []
+    finding: MIN-1
+  - feature: services
+    verdict: simplify
+    why: Pays for itself (server, wait, test, stop), but at a smaller size.
+    used_in: [basics/services-depends-on, scenarios/integration-tests]
+    finding: MIN-3
+  - feature: services depends_on
+    verdict: cut
+    why: Every dependency in the examples is a linear chain that list order expresses.
+    used_in: [basics/services-depends-on, scenarios/integration-tests]
+    finding: MIN-3
+  - feature: services on_exit
+    verdict: cut
+    why: One contrived `ignore`; a dying service should fail the node.
+    used_in: [scenarios/integration-tests]
+    finding: MIN-3
+  - feature: services ready, ready_timeout
+    verdict: keep
+    why: Readiness is the point of services.
+    used_in: [basics/services-depends-on, scenarios/integration-tests]
+  - feature: finally (finally_timeout)
+    verdict: keep
+    why: Cleanup that always runs is the brief's trap replacement; finally_timeout is one field.
+    used_in: [basics/finally-cleanup, scenarios/release-matrix, scenarios/dotnet-build-test, scenarios/integration-tests]
+  - feature: ignore_errors
+    verdict: keep
+    why: Best-effort steps and "decide later" patterns appear in five plans.
+    used_in: [basics/ignore-errors-ok-exit, scenarios/wait-for-ci, scenarios/deploy-health-check, scenarios/changed-files-lint, scenarios/integration-tests]
+
+  # Repetition
+  - feature: retry (true and condition)
+    verdict: keep
+    why: Seven plans retry; the condition form (result error/exit/stderr) is what makes retries safe.
+    used_in: [basics/retry-backoff, basics/retry-on-code, scenarios/release-matrix, scenarios/dotnet-build-test, scenarios/cross-platform-setup]
+  - feature: max, every
+    verdict: keep
+    why: The bounds and delay every loop needs; the 1s default prevents hot loops.
+    used_in: [basics/retry-backoff, basics/until-polling, scenarios/wait-for-ci, scenarios/deploy-health-check]
+  - feature: backoff
+    verdict: keep
+    why: Real for registry and API retries; consider an integer factor.
+    used_in: [basics/retry-backoff, scenarios/release-matrix]
+    finding: MIN-7
+  - feature: jitter
+    verdict: cut
+    why: No herd in a single agent's plan; adds randomness and an RNG seeding rule.
+    used_in: [basics/retry-backoff, scenarios/release-matrix]
+    finding: MIN-7
+  - feature: until
+    verdict: keep
+    why: Polling is the brief's signature use case; in four plans.
+    used_in: [basics/until-polling, basics/race-watchdog, scenarios/wait-for-ci, scenarios/deploy-health-check]
+  - feature: while
+    verdict: merge
+    why: Both uses are waits that `until` writes directly; keep only if F-0008 makes it able to paginate.
+    used_in: [basics/while-draining, scenarios/deploy-health-check]
+    finding: MIN-4
+  - feature: on_body_failure
+    verdict: cut
+    why: Its only use sets the default value; fixed per-loop behaviour is enough.
+    used_in: [scenarios/deploy-health-check]
+    finding: MIN-4
+
+  # for sources and options
+  - feature: for each
+    verdict: keep
+    why: The basic loop; in three plans.
+    used_in: [basics/for-each, basics/for-collect, scenarios/cross-platform-setup]
+  - feature: for count
+    verdict: keep
+    why: Cheap and the natural way to repeat a flaky test N times.
+    used_in: [basics/for-count, scenarios/integration-tests]
+  - feature: for glob
+    verdict: keep
+    why: Globbing without a shell is a clear win over `for f in src/**/*.csproj`.
+    used_in: [basics/for-glob, scenarios/dotnet-build-test, scenarios/release-matrix]
+  - feature: for items (fields)
+    verdict: keep
+    why: Looping over gh/kubectl JSON is common for agents; fields saves a capture per iteration.
+    used_in: [basics/for-items-fields, scenarios/wait-for-ci]
+  - feature: for lines
+    verdict: keep
+    why: git and many CLIs emit lines; this replaces `while read`.
+    used_in: [basics/for-lines, scenarios/changed-files-lint]
+  - feature: for matrix
+    verdict: cut
+    why: Two nested `each` loops, with a special binding rule (no `as`, MATRIX_INDEX).
+    used_in: [basics/for-matrix, scenarios/release-matrix]
+    finding: MIN-5
+  - feature: for as / <AS>_INDEX
+    verdict: keep
+    why: Binding the item is the loop.
+    used_in: [basics/for-each, scenarios/release-matrix]
+  - feature: for concurrency, fail_fast
+    verdict: keep
+    why: Fan-out with a limit is in nine plans.
+    used_in: [basics/for-glob, basics/for-items-fields, scenarios/changed-files-lint, scenarios/dotnet-build-test]
+  - feature: for allow_empty
+    verdict: simplify
+    why: Every glob example that could be empty opts out of the failing default; make glob behave like the other sources.
+    used_in: [basics/for-glob, scenarios/dotnet-build-test]
+    finding: MIN-6
+  - feature: for keep_blank
+    verdict: cut
+    why: No use; blank-line data belongs in items.
+    used_in: []
+    finding: MIN-6
+  - feature: for max_items
+    verdict: simplify
+    why: A resource bound with per-source validity; apply uniformly or move to configuration.
+    used_in: [scenarios/changed-files-lint]
+    finding: MIN-6
+  - feature: collect
+    verdict: keep
+    why: The only way values leave a for loop; three plans use it.
+    used_in: [basics/for-collect, scenarios/dotnet-build-test, scenarios/changed-files-lint]
+
+  # Kind companions
+  - feature: concurrency (all, any)
+    verdict: keep
+    why: Bounding parallelism and first-success fan-out are both used.
+    used_in: [basics/all-parallel, scenarios/cross-platform-setup]
+  - feature: fail_fast (do, all)
+    verdict: keep
+    why: Running all checks and reporting every failure is common.
+    used_in: [basics/do-sequence, basics/all-parallel, scenarios/changed-files-lint]
+
+  # Conditions
+  - feature: condition subjects var, env, path
+    verdict: keep
+    why: Evaluated without a process and used across most plans.
+    used_in: [basics/conditions-tour, basics/when-guard, scenarios/changed-files-lint, scenarios/cross-platform-setup]
+  - feature: condition subject command
+    verdict: keep
+    why: Portable tool detection without a shell; the scenarios should use it (MIN-11).
+    used_in: [basics/command-check]
+    finding: MIN-11
+  - feature: condition subject host
+    verdict: keep
+    why: Static pruning is what makes one plan work on three OSes.
+    used_in: [basics/host-branches, scenarios/cross-platform-setup]
+  - feature: condition subject result
+    verdict: keep
+    why: Polling and selective retry depend on it.
+    used_in: [basics/until-polling, basics/retry-on-code, scenarios/wait-for-ci, scenarios/release-matrix, scenarios/deploy-health-check]
+  - feature: condition subject probe (true_exit, false_exit, timeout_result)
+    verdict: keep
+    why: The escape hatch that keeps the condition language small; exit-code mapping is used twice.
+    used_in: [basics/probe-conditions, scenarios/release-matrix, scenarios/cross-platform-setup, scenarios/dotnet-build-test]
+  - feature: condition subject port
+    verdict: keep
+    why: Cheap, portable readiness check for services.
+    used_in: [scenarios/integration-tests]
+  - feature: condition subject output
+    verdict: simplify
+    why: Both uses could be a port check; consider dropping in favour of port and probes.
+    used_in: [basics/services-depends-on, scenarios/integration-tests]
+    finding: MIN-3
+  - feature: condition operators (equals/in/contains/matches/empty/defined/exists/is_file/is_dir/open/gt-ge-lt-le and not_* forms)
+    verdict: keep
+    why: One subject plus one operator, no expression language; all operator families appear in examples.
+    used_in: [basics/conditions-tour, basics/assert-check, basics/probe-conditions, scenarios/deploy-health-check]
+  - feature: condition json, ignore_case
+    verdict: keep
+    why: Two small modifiers that avoid probes for JSON fields and case.
+    used_in: [basics/conditions-tour, scenarios/deploy-health-check, scenarios/changed-files-lint]
+  - feature: condition composites all/any/not
+    verdict: keep
+    why: Needed for matrix exclusions and multi-part guards; sequential and short-circuit.
+    used_in: [basics/conditions-tour, basics/command-check, scenarios/release-matrix, scenarios/changed-files-lint]
+
+  # Plan document
+  - feature: blokky version
+    verdict: keep
+    why: Required for versioned evolution.
+    used_in: [basics/do-sequence]
+  - feature: inputs (default, description, in, matches)
+    verdict: keep
+    why: Typed-by-constraint inputs keep values out of plan text; in 14 plans.
+    used_in: [basics/inputs-constraints, scenarios/deploy-health-check, scenarios/release-matrix, scenarios/wait-for-ci]
+  - feature: vars
+    verdict: keep
+    why: Constants visible to root modifiers and static views; in six plans.
+    used_in: [basics/vars-constants, scenarios/release-matrix, scenarios/deploy-health-check, scenarios/integration-tests, scenarios/wait-for-ci, scenarios/changed-files-lint]
+  - feature: outputs
+    verdict: keep
+    why: Structured results for agents instead of log parsing; in eight plans.
+    used_in: [basics/outputs, scenarios/wait-for-ci, scenarios/release-matrix, scenarios/deploy-health-check]
+  - feature: defaults.shell, defaults.leaf_timeout
+    verdict: keep
+    why: leaf_timeout is in seven plans; shell is one key.
+    used_in: [basics/choose-shell, scenarios/wait-for-ci, scenarios/dotnet-build-test, scenarios/release-matrix]
+
+  # Shells
+  - feature: shells bash, sh, pwsh, powershell
+    verdict: keep
+    why: The Unix and Windows defaults detection needs.
+    used_in: [basics/choose-shell, scenarios/cross-platform-setup, scenarios/dotnet-build-test]
+  - feature: shells zsh, fish
+    verdict: cut
+    why: No plan needs them on OSes that already have bash/sh; each adds matrix rows to specify and test.
+    used_in: [scenarios/cross-platform-setup]
+    finding: MIN-9

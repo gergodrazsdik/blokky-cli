@@ -1,0 +1,393 @@
+---
+- id: SQ-1
+  lens: spec-quality
+  kind: fix
+  severity: major
+  where: spec/reference.md §5.5; spec/errors.md §5.2 (BK_TIMEOUT_TOTAL "never"); spec/execution-model.md EM-66; ADR 0016
+  claim: >-
+    Since EM-66 makes a group carry its child's error code, the "never retried" rule for BK_TIMEOUT_TOTAL now also blocks retrying a group whose child hit its own timeout, even with an explicit retry condition.
+  evidence: |
+    reference §5.5: "| `BK_TIMEOUT_TOTAL`, cancellation, external stops | never | never |"
+    errors.md §5: "a `retry:` condition that matches the code can retry any node error except those marked 'never'".
+    EM-66: "When a `do`, `all`, `if`, `for` iteration or other group fails because a child failed, the group's error is that child's error itself (same code, `detail` and `node`), not a wrapper. So `retry:` conditions and `result: error` see the real cause".
+    reference §5.5: "For a group node with `retry`, 'attempt failed' means the group failed, and the group's error code is what the table and condition see."
+    So this plan can never retry, even though the timeout is the child's, not the retrying node's:
+      - retry: { result: error, equals: BK_TIMEOUT_TOTAL }
+        max: 3
+        do:
+          - exec: [curl, -fsS, -o, a.json, https://example.com/a]
+            timeout: 30s
+          - exec: [jq, empty, a.json]
+    The "never" row was written for the retrying node's own `timeout` (which sits outside repetition in EM-4). ADR 0016 adopted "no wrapper" so retry conditions "see the real cause" but doesn't address this row; the same applies to a child `defaults.leaf_timeout` firing inside a retried group.
+  proposal: |
+    Make "never" apply only to the retrying node's own `timeout`, ancestor limits, cancellation and external stops (decided by status/origin, not by code): a descendant's BK_TIMEOUT_TOTAL inside an attempt counts as an ordinary attempt failure (retried by `retry: true`, or at least by a matching condition). Say so in §5.5 and errors.md, and add a conformance case.
+  confidence: high
+
+- id: SQ-2
+  lens: spec-quality
+  kind: clarify
+  severity: major
+  where: spec/reference.md §8 intro; spec/errors.md §4; conformance/README.md CF-24 example
+  claim: >-
+    The value of `detail.rule` (a contract field per ER-3) is specified two incompatible ways, RF-n IDs versus slugs, and no slug list exists.
+  evidence: |
+    reference §8: "Rules carry IDs (`RF-n`) for conformance cases and for `detail.rule`."
+    errors.md §4: "`detail.rule` names the rule (for example `one-kind`, `bounded-loop`, `shadowing`), so new rules don't need new codes."
+    conformance/README.md example case: "rules: [RF-5] ... - code: BK_PLAN_INVALID / detail: { rule: bounded-loop }"
+    ER-3: "Messages are not a contract; codes and `detail` fields are."
+    No document maps slugs to rules, and static rules outside reference §8 (VA-36, VA-37, CO-10, CP-19/20, syntax.md, which has no IDs at all) have neither an RF id nor a slug. One implementer emits `RF-5`, another `bounded-loop`; both are "right".
+  proposal: |
+    Pick one: (a) `detail.rule` is the rule ID (RF-n, VA-n, CO-n, …), which needs syntax.md IDs (F-0010); or (b) a normative slug table in errors.md mapping every static rule (all files) to one stable slug. Fix the conformance example to match.
+  confidence: high
+
+- id: SQ-3
+  lens: spec-quality
+  kind: fix
+  severity: major
+  where: spec/syntax.md §4.3; spec/conditions.md CO-29, CO-35; spec/execution-model.md §5 table; spec/reference.md §4.3
+  claim: "`defaults.leaf_timeout` has three conflicting definitions for probes, and it's unclear whether it limits each process or a repeating leaf's whole loop."
+  evidence: |
+    syntax §4.3: "`leaf_timeout` | A `timeout` for every `exec`/`script` leaf and probe that has none."  (leaf_timeout: 10m gives a probe 10m)
+    CO-29: "Its limit is its own `timeout`, else the smaller of `probe_timeout` (default 30s) and `defaults.leaf_timeout` if set"  (leaf_timeout: 10m gives a probe 30s)
+    EM §5 table: "`defaults.leaf_timeout` | each leaf and probe without its own `timeout` | none | `BK_TIMEOUT_TOTAL`", while CO-35 says "a probe that times out is a condition error, unless `timeout_result`".
+    On repeating leaves: reference §4.3 says it "sets one [timeout] for leaves", and `timeout` sits outside repetition (EM-4), so it bounds all attempts together. examples/scenarios/deploy-health-check.blokky.yaml sets `leaf_timeout: 2m` and polls with
+      until: …, max: 24, every: 5s, attempt_timeout: 10s   (no own timeout)
+    23 waits of 5s plus 24 attempts of up to 10s run past 2m, so the implicit total timeout, not `max: 24`, ends the loop. The author's `max` suggests they read leaf_timeout as per process. cross-platform-setup's `retry: true, max: 100, every: 3s` under `leaf_timeout: 5m` hits the same limit.
+  proposal: |
+    State one rule in all three places. Suggested: a probe's limit is its own `timeout`, else min(30s, leaf_timeout), and a probe timeout is a condition error (fix syntax §4.3 and the EM table). For repeating leaves, choose explicitly: either leaf_timeout is the node's total `timeout` (document it and fix the examples), or it applies per attempt/iteration like an implicit `attempt_timeout` when the leaf has repetition.
+  confidence: high
+
+- id: SQ-4
+  lens: spec-quality
+  kind: clarify
+  severity: major
+  where: spec/variables.md VA-22; spec/conditions.md CO-20; spec/glossary.md "JSON path"; spec/syntax.md (per-field table); schema $defs/jsonPath
+  claim: >-
+    The JSON path language used by field captures, `json:`, `items.json` and `fields` has no grammar, the reference to syntax.md for it points at nothing, and the schema rejects one of the listed forms.
+  evidence: |
+    VA-22: "binds each name to the value at its JSON path ([syntax.md](syntax.md); `.`, `.name`, `.["key"]`, `[N]`)". syntax.md only lists "JSON path" as a type in §7.4; it defines no grammar.
+    The examples rely on composition that's never defined: `.defaultBranchRef.name` (capture-json-fields), `.number`, `.headRefName` (for-items-fields).
+    schema: "jsonPath": { "type": "string", "pattern": "^\\." }, which rejects a bare `[0]`, a form the prose lists.
+    Undecided: is `.a[0].b` valid? `.[0]`? `."key"` or only `.["key"]`? Which escapes inside `["…"]`? What chars may `.name` contain (`.foo-bar`, `.ünï`)? Negative indexes? Is `.a.` an error? Is a number key resolved on arrays? Two parsers will accept different sets, and since plan errors and BK_CAPTURE_PATH depend on it, the same plan validates on one implementation and fails on another.
+  proposal: |
+    Add a normative grammar (ABNF or regex) to syntax.md §6 for JSON paths: segments `.name` (name grammar), `["key"]` (JSON string escapes), `[N]` (non-negative integer), root `.`, and composition; align the schema pattern with it; give VA-22/CO-20 a working link.
+  confidence: high
+
+- id: SQ-5
+  lens: spec-quality
+  kind: clarify
+  severity: major
+  where: spec/reference.md §5.7 "Glob rules"
+  claim: "`for: { glob }` has rules about sorting and dotfiles but no pattern syntax: which wildcards exist and what they match is not specified."
+  evidence: |
+    reference §5.7: "**Glob rules:** ordinal sort of the matches; no dotfiles unless the pattern names them; no symlink following; `/` separators in item values; no `..` escaping the cwd subtree; zero matches is an error unless `allow_empty: true`. Patterns are host paths relative to the node's cwd."
+    Examples use `**`: `src/**/*.csproj` (reference, dotnet-build-test), `scripts/**/*.sh` (for-glob). Not specified: whether `**` matches zero directories (`src/A.csproj`), whether `?`, `[abc]`, `{a,b}` are supported, how a literal `*` is escaped, whether directories are matched as well as files, case sensitivity on Windows/macOS, whether `\` is a separator in patterns on Windows, whether an absolute pattern is allowed, and what "no symlink following" means for a symlinked file (excluded, or matched but not descended into).
+  proposal: |
+    Define the glob grammar normatively (e.g. `*`, `?`, `[...]`, `**` as a whole segment matching zero or more directories; no brace expansion), what kinds of entries match, case sensitivity per OS, separators, and absolute patterns (plan error or allowed). Add to the per-field table and conformance.
+  confidence: high
+
+- id: SQ-6
+  lens: spec-quality
+  kind: clarify
+  severity: major
+  where: spec/variables.md VA-28, VA-29, VA-31, VA-36, VA-38; spec/reference.md RF-8, RF-23, RF-26, §2.4, §2.6, §4.12
+  claim: >-
+    The static "definitely bound" analysis that decides plan errors vs warnings has holes, and the parallel-collision rule covers only direct-child captures.
+  evidence: |
+    VA-31: "A name bound … in both `then` and `else` of an `if`, or by every child of an `any` or `race`, is definitely bound after the node succeeds." VA-38: "Statically certain cases are plan errors; possible cases are warnings."
+    The rules don't say how these cases count:
+    - `race`/`any` whose children are all skipped succeeds (reference §2.6 "A race whose children were all skipped succeeds"; EM-44) with nothing bound.
+    - reference §2.6: a decider's "failure hidden by `ignore_errors` makes it succeed", but §4.12: "A node whose failure is ignored binds no captures". The race succeeds, and the name is unbound.
+    - A binding node with `when` or `ignore_errors` inside a branch (`then: [ { exec: …, capture: X, ignore_errors: true } ]`).
+    - VA-28 makes a capture "visible to later siblings" in a `do`, but with `fail_fast: false` later siblings run after the capturing sibling failed. examples/scenarios/changed-files-lint.blokky.yaml relies on this: under `fail_fast: false`, `capture: TODOS` (grep exit 2 fails it) is followed by `when: { var: TODOS, gt: 0 }`, which is a condition error if TODOS is unbound.
+    Parallel collisions: VA-29/RF-8 say "Two `all` children MUST NOT capture the same name", and VA-36 forbids rebinding only for "two sequential siblings". `all: [ { do: [ { set: { X: a } } ] }, { do: [ { set: { X: b } } ] } ]` breaks neither rule as written (`set` isn't a capture, and the bindings are in grandchildren), yet both publish X after the `all`.
+  proposal: |
+    Specify the analysis once (variables.md §6): a binding counts as definite only if the binding node has no `when` and no `ignore_errors`, every enclosing alternative binds it, and no enclosing `do`/`for`/`all` has `fail_fast: false` between it and the use. Otherwise it's "possibly unbound" (a warning). Also, for `race`/`any`, it's definite only if the node can't succeed through skips or ignored failures. Restate VA-29/RF-8 as "no two children of an `all` (or concurrent `for` iterations publishing via the same scope) may bind the same name anywhere in their subtrees, by any binding form".
+  confidence: high
+
+- id: SQ-7
+  lens: spec-quality
+  kind: fix
+  severity: major
+  where: spec/variables.md VA-1; spec/syntax.md §7.2 last bullet; spec/glossary.md "Explicit mapping"; spec/overview.md §2.4; spec/reference.md §3 stdin
+  claim: >-
+    Several places say a plan variable reaches a process only through `env`, `export` or an `exec` array element, but `stdin: { var: X }` (and `stdin: { file: { var: X } }`) is a fourth path that the spec itself defines.
+  evidence: |
+    VA-1: "a plan variable reaches a process only through `env:` …, `export: [X]`, or a `{ var: X }` element of an `exec` array."
+    syntax §7.2: "Plan variables reach processes only through `env:`, `export:` and `exec` array elements; there is no other way."
+    glossary: "**Explicit mapping.** The only ways a plan variable reaches a command: …" (same three).
+    reference §3: "`stdin: { var: X }` passes a variable's value". syntax §7.2 itself lists `stdin` among the places `{ var: X }` is allowed.
+    examples/scenarios/deploy-health-check.blokky.yaml writes a root-owned file this way: `become: root` … `exec: [tee, --, { var: ENV_FILE }]` with `stdin: { var: NEW_ENV }`.
+    reference §9 lists "dynamic stdin into an interpreter" as something to flag, so the authors know about the path. A static view or reviewer built from the "only ways" list misses it, which works against "hides nothing that will run".
+  proposal: |
+    List four routes everywhere (env, export, exec array element, stdin), and note that `{ var }` in `cwd`, `stdin.file`, `path:` and `mounts[].host` chooses a location rather than passing a value.
+  confidence: high
+
+- id: SQ-8
+  lens: spec-quality
+  kind: clarify
+  severity: major
+  where: spec/execution-model.md EM-6, EM-7, EM-25, EM-31; spec/reference.md §4.3, §4.11
+  claim: >-
+    It isn't defined whether a descendant's `finally` is bounded by an ancestor deadline that has already passed, so cleanup time under nested timeouts is undecidable.
+  evidence: |
+    EM-25: "Nested limits combine: the effective limit at any point is the earliest deadline of all enclosing limits." reference §4.3: "Nested limits combine as the minimum."
+    EM-7: "`finally` runs once per node … under its own `finally_timeout`, even after `timeout` fired." EM-31: "`finally` of a cancelled node still runs, under `finally_timeout`".
+    Plan:
+      timeout: 1m
+      do:
+        - finally: [ { exec: [docker, compose, down] } ]
+          exec: [dotnet, test]
+    At 1m the root's timeout cancels the child. Reading EM-25, the child's `finally` has an effective deadline already in the past (zero time). Reading EM-7/EM-31, it gets 5m. Nesting also stacks: N levels with `finally` could each claim up to `finally_timeout` past the outer `timeout`, so a 1m root timeout may end the run minutes later. Implementers will choose differently, and the run's duration is a user-visible contract.
+  proposal: |
+    State it in EM-25: a `finally` list's deadline is its own `finally_timeout` measured from when it starts, independent of the expired limits of the node and its ancestors (only an external stop may shorten it, EM-56). Say whether an ancestor's own `finally` waits for nested ones. Add a timeline example with a nested `finally`.
+  confidence: medium
+
+- id: SQ-9
+  lens: spec-quality
+  kind: clarify
+  severity: major
+  where: spec/errors.md §5 ("Retried" column, §5.5 "Later features"); spec/reference.md §5.5
+  claim: >-
+    For many node errors the spec doesn't say whether `retry: true` retries them, and the two retry tables disagree.
+  evidence: |
+    errors.md §5.5 ("Later features": BK_LOCK_TIMEOUT, BK_CONTAINER_FAILED, BK_CWD_UNMAPPED, BK_SERVICE_NOT_READY, BK_SERVICE_EXITED, BK_BECOME_DISABLED, BK_BECOME_FAILED) has no "Retried" column. All of these can surface inside a retried group (EM-66 propagates the code), e.g. `retry: true` on a `do` whose child has `lock: { name: x, wait: 0s }`.
+    "BK_RETRIES_EXHAUSTED … | — |" and "BK_LOOP_MAX_REACHED … | — |": "—" isn't defined, but nested repetition is how combinations are written (reference §5.1 "Combinations are written by nesting nodes"), so an outer `retry: true` around an inner `retry` or `until` sees exactly these codes.
+    "BK_ANY_ALL_FAILED … | as its causes |": undefined when the causes are mixed (one BK_EXIT, which is retried, and one user code, which is not).
+    reference §5.5 lists capture failures and spawn errors, but not BK_ITEMS_INVALID (errors.md: "yes"), BK_GLOB_EMPTY, BK_ITEMS_TOO_MANY, BK_CWD_INVALID, BK_TEMPDIR_FAILED, BK_ENV_TOO_LARGE, BK_UNDEFINED_VARIABLE, BK_FROM_ENV_UNSET or BK_FINALLY_FAILED, so the reference table is not the complete source it claims to be. ("retry: true" behaviour is normative in errors.md: "It is normative for the code names, their meaning and how `retry: true` treats them.")
+    The heading "Later features" also contradicts reference line 16 ("Every feature described here belongs to the language 1.0") and AGENTS.md ("without milestone tags").
+  proposal: |
+    Give every code a yes/no value in one table (errors.md), define "—" or remove it (suggest: RETRIES_EXHAUSTED and LOOP_MAX_REACHED are "no"), define "as its causes" (e.g. "yes if any cause is retried"), and have reference §5.5 point to that table instead of keeping a second partial copy. Merge §5.5 into the other sections.
+  confidence: high
+
+- id: SQ-10
+  lens: spec-quality
+  kind: fix
+  severity: major
+  where: examples/basics/when-guard.blokky.yaml line 12; spec/conditions.md CO-38
+  claim: >-
+    The basic `when` example fails outside CI instead of skipping, because `env` with `equals` on an unset variable is a condition error.
+  evidence: |
+    when-guard.blokky.yaml:
+      - name: publish only in CI
+        when: { env: CI, equals: 'true' }
+        exec: [dotnet, publish, …]
+    CO-38: "These are condition errors: a reference to an undefined variable or unset environment variable, except with `defined`/`not_defined`". CO-41: "In `when`, a condition error fails the node". So on a developer machine (CI unset) the plan fails with BK_CONDITION_ERROR. The file's comment ("Use it for optional steps") and the node name say it should skip.
+    conditions-tour.blokky.yaml does it right: `all: [ { env: GITHUB_REF_NAME, defined: true }, { env: GITHUB_REF_NAME, matches: … } ]`.
+    This is the canonical "when" example that agents will copy.
+  proposal: |
+    Change it to `when: { all: [ { env: CI, defined: true }, { env: CI, equals: 'true' } ] }` and add a comment explaining why. Consider a lint warning (or a conformance case) for `env:` comparisons without a `defined` guard.
+  confidence: high
+
+- id: SQ-11
+  lens: spec-quality
+  kind: clarify
+  severity: major
+  where: spec/reference.md §5.7 collect; spec/variables.md VA-34, VA-55; examples/scenarios/changed-files-lint.blokky.yaml line 104
+  claim: >-
+    The spec doesn't say whether `collect` binds its list variable when the `for` node itself fails, and the two descriptions point in opposite directions.
+  evidence: |
+    VA-55: "The list variable is bound after the loop, in the `for` node's enclosing scope like a capture of the node". A capture is "bound only if the node succeeds" (VA-18), so on failure it would be unbound.
+    reference §5.7 and VA-34: "with `null` for iterations that failed". With the default `fail_fast: true`, or with `fail_fast: false`, a failed iteration fails the `for`. A `null` for a failed iteration is only observable if the list is bound when the `for` failed, unless the failure was ignored inside the body.
+    changed-files-lint.blokky.yaml guards with `when: { var: TODO_COUNTS, defined: true }` after a `for` with `fail_fast: false`, which suggests the author expected TODO_COUNTS to be unbound when the loop fails. But that same do has `fail_fast: false` precisely so the summary runs after failures, and in that case it would print nothing.
+  proposal: |
+    Decide and state it: either (a) `collect` binds after the loop whatever its outcome, with `null` for failed, skipped and cancelled iterations (useful for summaries; requires saying this is an exception to VA-18), or (b) it binds only when the `for` succeeds (then drop "failed" from the null list). Fix the scenario accordingly.
+  confidence: high
+
+- id: SQ-12
+  lens: spec-quality
+  kind: clarify
+  severity: major
+  where: spec/reference.md §4.12; spec/execution-model.md §8.1, EM-43, EM-50; spec/results.md §3 "ignored"
+  claim: >-
+    It isn't specified whether `ignore_errors` hides a node's own timeout (status `timed_out`), or what it means on the root.
+  evidence: |
+    reference §4.12: "if the node fails, its parent treats it as not failed. The run result shows status `failed` with `ignored: true`."
+    EM §8.1: only the `failed` row mentions `ignored`; results.md §3: "ignored | failed nodes". Yet EM-43 lists "failed, timed out or was cancelled" as separate child outcomes that fail a parent.
+    examples rely on the hiding: wait-for-ci.blokky.yaml `gh run watch` has `timeout: 2h` and `ignore_errors: true` ("the conclusion check below decides"); deploy-health-check's poll has `ignore_errors: true` and is bounded by an implicit total timeout (see SQ-3). If `timed_out` isn't covered, both plans fail where their comments say they continue. And if it is covered, the result shape (`timed_out` + `ignored`?) is undefined.
+    Root: `ignore_errors: true` is valid on the root (§7 allows it on every kind but four), but the root has no parent; EM-50 doesn't say whether the run is `succeeded` or `failed`.
+  proposal: |
+    State that `ignore_errors` covers the node's own failure of any kind, including its own `timeout`/`attempt_timeout` (status stays `timed_out`, plus `ignored: true`), but not cancellation by ancestors or external stops. Update §8.1 and results.md. For the root, either forbid `ignore_errors` (RF rule) or define the run status.
+  confidence: medium
+
+- id: SQ-13
+  lens: spec-quality
+  kind: clarify
+  severity: minor
+  where: spec/variables.md VA-18, VA-32; spec/execution-model.md EM-24; spec/conditions.md §6 table (retry row)
+  claim: >-
+    Captures are "evaluated … and bound only if the leaf succeeded", but a retry condition is said to see the captures of a failed attempt; how they are evaluated, and what a capture error does there, is undefined.
+  evidence: |
+    EM-24: "Captures are evaluated after completion and bound only if the leaf succeeded".
+    VA-32: "A capture on a node with `retry` … is visible to that attempt's own condition (even if the attempt failed)".
+    conditions.md §6: "`retry: <condition>` | after each failed attempt | the node's own scope, plus the attempt's captures and `result:`".
+    For a failed attempt with `capture: { STATE: .state }` whose stdout is an HTML error page: is the capture evaluated (BK_CAPTURE_JSON)? Does that replace the attempt's BK_EXIT as the error the condition sees? Is STATE simply undefined, so `{ var: STATE, … }` in the retry condition is a condition error, which ends the retry (CO-40)?
+  proposal: |
+    Specify: for a failed attempt, captures are evaluated best-effort for the retry condition only; a capture that can't be evaluated leaves the name undefined and doesn't change the attempt's error. Or drop "even if the attempt failed" and point to `result: stdout` instead.
+  confidence: medium
+
+- id: SQ-14
+  lens: spec-quality
+  kind: fix
+  severity: major
+  where: spec/reference.md §2.5, §2.6, §5.2, §7, §8 (RF-3, RF-4, RF-25)
+  claim: >-
+    The validity rules for repetition and companion fields contradict each other in places and leave several combinations undecided.
+  evidence: |
+    - §2.5: "`fail_fast` and `on_body_failure` are not valid on `any`." But §7 gives `any` ✓ for `while`/`until`, and §5.2 makes `on_body_failure` a sibling of exactly those, so `any` + `until` + `on_body_failure: stop` is both valid and invalid.
+    - §7 race row: `concurrency` "—" but `fail_fast` "`for` only". `for.concurrency` is a property of the loop, not of the kind (`log` gets "`for` only"), so `race` + `for: { each: […], as: X, concurrency: 4 }` is rejected for no stated reason.
+    - §5.2's table has columns `retry`, `while`, `until` only ("Using a field where the table says '—' is a plan error"). Whether `max`, `every`, `backoff`, `jitter` or `on_body_failure` are valid next to `for` isn't said; the schema accepts them on any node.
+    - No RF rule covers owner-less fields that the schema accepts: `finally_timeout` without `finally`; `max`/`every`/`backoff`/`jitter`/`on_body_failure` without any repetition (RF-4 covers only `attempt_timeout`); `collect` without `for` (`collect` appears in neither the §4 modifier table nor the §7 matrix); an `if` without `then` (§2.7 says required; the schema and RF list don't). The §7 note that companions are "valid only on their kind" doesn't cover `finally_timeout`, `collect` or the repetition siblings, which aren't kind companions.
+  proposal: |
+    Remove `on_body_failure` from §2.5's sentence; make race's `concurrency` cell "`for` only" (or explain the exception); add a `for` column to §5.2 ("—" for all five); add RF rules: "`finally_timeout` only with `finally`", "repetition siblings only with their repetition", "`collect` only with `for`", "`if` has `then`". Optionally encode the owner rules in the schema with `dependentRequired`.
+  confidence: high
+
+- id: SQ-15
+  lens: spec-quality
+  kind: fix
+  severity: minor
+  where: spec/results.md RS-6, §3 "probes"; spec/conditions.md CO-31, CO-7
+  claim: >-
+    RS-6 drops the probe record of a node skipped by a `when` probe, contradicting CO-31, and the result of a statically pruned node is undefined.
+  evidence: |
+    RS-6: "A node that never started has status `skipped` with its skip reason and no other result fields."
+    CO-31: "Every executed probe is recorded in the run result (command, exit code, duration, result)". results §3: "probes | nodes whose conditions ran probes".
+    A `when: { probe: … }` that evaluates false runs a process, but the node is `skipped`, so RS-6 forbids recording it. That's one of the processes a reviewer would want to see after the fact.
+    CO-7 prunes `host:` branches "before the shell and OS checks", but no rule says how a pruned node appears in the run result (absent, or `skipped` with which `skip_reason`: `condition`?). RS-3 says the result is "a tree mirroring the plan".
+  proposal: |
+    RS-6: "…and no other result fields except the probes its `when` ran". Add a skip reason (e.g. `pruned`) or state that pruned nodes are `skipped` with `condition`.
+  confidence: high
+
+- id: SQ-16
+  lens: spec-quality
+  kind: fix
+  severity: minor
+  where: spec/syntax.md §6.4; spec/reference.md §3 ok_exit; spec/conditions.md probe true_exit/false_exit; schema $defs/int
+  claim: >-
+    Windows exit codes are unsigned 32-bit, but the integer grammar stops at 2 147 483 647, so common Windows exit codes can't be listed in `ok_exit`, `true_exit` or `false_exit`.
+  evidence: |
+    reference §3: "`ok_exit`. A list of integers … On Windows, exit codes are unsigned 32-bit values." EM-23 and results.md: "an unsigned 32-bit value on Windows".
+    syntax §6.4: "`^(0|[1-9][0-9]*)$` … at most 2 147 483 647"; schema "int": "maximum": 2147483647.
+    NTSTATUS codes such as 3221225477 (0xC0000005) or 3221225786 (0xC000013A, Ctrl+C) can't be written: `ok_exit: [3221225786]` is a plan error. `result: exit` with `equals: '3221225786'` works only because operands are strings.
+  proposal: |
+    Use an exit-code type with range 0..4294967295 for `ok_exit`, `true_exit` and `false_exit` (on Unix values over 255 can never match; a warning is enough), and update the schema.
+  confidence: high
+
+- id: SQ-17
+  lens: spec-quality
+  kind: clarify
+  severity: major
+  where: spec/containers-and-privilege.md CP-20, CP-21, CP-2; spec/reference.md §4.9
+  claim: >-
+    Whether `defaults.become` makes every `container` node a plan error, and which user services run as under `become`, is undefined.
+  evidence: |
+    CP-21: "`defaults.become` … applies to every leaf and probe without its own `become`." CP-20: "`become` on a node inside a container's scope, or `container` inside a `become` scope, is a plan error."
+    Plan: `defaults: { become: invoker }` (the CP-21 example) plus one node with `container: { image: … }`. Is the root a "become scope" (plan error), do container leaves get an implicit `become` (plan error by CP-20), or does the default not apply inside containers? CP-32 recommends `defaults.become` whenever Blokky runs as root, so this combination will be common.
+    reference §4.9 and CP-21 name "leaves and probes"; CP-2 lists "leaves, probes and services" for containers. Services under a `become` node (or under `defaults.become`) have no stated user.
+  proposal: |
+    State: `defaults.become` doesn't apply inside a `container` scope (the container's `user` governs there); it is not a "become scope" for CP-20. And `become` applies to services as well as leaves and probes (or explicitly doesn't).
+  confidence: high
+
+- id: SQ-18
+  lens: spec-quality
+  kind: fix
+  severity: minor
+  where: spec/containers-and-privilege.md CP-1, CP-14, §2.1 example comment; spec/reference.md §4.6
+  claim: >-
+    CP-1 says `cwd` is always a host path, while CP-14 and reference §4.6 make an absolute `cwd` under `container` a container path; the example's comment also cites the wrong rule.
+  evidence: |
+    CP-1: "`path:` subjects, `for: { glob }`, `tempdir`, `cwd`, … are **host** paths, evaluated on the host, whether or not a node runs in a container."
+    CP-14: "An absolute `cwd` that isn't a host path under a mount is taken as a container path." reference §4.6: "Under `container`, an absolute `cwd` that isn't under a mount is a path inside the container and is checked there, not on the host (CP-14)."
+    CP §2.1 example: "cwd: /src  # see CP-10". CP-10 is the Windows drive-letter mapping; the rule that makes `/src` work is CP-14.
+    Also undefined: on a Windows host with a Linux container, `cwd: /src` isn't a host path at all, so which test decides it's "not under a mount"?
+  proposal: |
+    Remove `cwd` from CP-1's list or add "except CP-14"; make the example cite CP-14; specify the Windows-host case.
+  confidence: high
+
+- id: SQ-19
+  lens: spec-quality
+  kind: clarify
+  severity: minor
+  where: spec/glossary.md "Canonical form"; spec/reference.md §2.1; examples/README.md; spec/syntax.md §8
+  claim: >-
+    The examples claim to use canonical forms only, but they use the `exec` string form, which the reference calls the non-canonical shorthand; canonical forms are never listed for constructs with several spellings.
+  evidence: |
+    reference §2.1: "**Array form (canonical):** `exec: [prog, arg, { var: X }]`" … "**String form:** …". glossary: "Canonical form. The single preferred spelling … other accepted spellings are shorthands."
+    examples/README.md: "All of them use the canonical form". AGENTS.md: "examples use canonical forms only".
+    String-form exec in examples: do-sequence (`exec: dotnet restore`), exec-vs-script (`exec: git status --short`), cross-platform-setup (`exec: open -a Docker`, `exec: npm ci --no-audit --no-fund`, `exec: git config core.hooksPath .githooks`), dotnet-build-test (`exec: dotnet restore`, `exec: dotnet build-server shutdown`), release-matrix (`exec: git rev-parse --show-toplevel`, `exec: git rev-parse HEAD`).
+    syntax §8 meanwhile recommends "plain scalars only for simple `exec` strings". Other dual spellings with no stated canonical: `lock: NAME` vs `{ name, wait }`, `become: USER` vs `{ user }`, `tempdir: true` vs mapping.
+  proposal: |
+    Either declare the string form canonical for static argv without quoting (and say so in reference §2.1), or convert the examples. Add a short canonical-forms table to syntax.md.
+  confidence: high
+
+- id: SQ-20
+  lens: spec-quality
+  kind: fix
+  severity: minor
+  where: examples/scenarios/dotnet-build-test.blokky.yaml lines 2-4, 62-72
+  claim: >-
+    The scenario's header says it fails with the test summary "then" checks for vulnerable packages, but the failing assert stops the root `do` before the vulnerability check runs.
+  evidence: |
+    Header: "runs every test project under tests/ and fails at the end with a per-project summary, then checks the packages for known vulnerabilities."
+    The root `do` has the default `fail_fast: true`; `assert … code: TESTS_FAILED` (line 62) comes before `list vulnerable packages` (line 70). When tests fail, the vulnerability nodes are `skipped` (`not_reached`) and the output VULNERABILITY_REPORT is null.
+  proposal: |
+    Reword the comment ("…fails with a per-project summary if a test project failed; otherwise checks the packages…"), or move the test assert to the end / set `fail_fast: false` if both checks are intended.
+  confidence: high
+
+- id: SQ-21
+  lens: spec-quality
+  kind: fix
+  severity: minor
+  where: multiple (list in evidence)
+  claim: >-
+    Mechanical inconsistencies, broken links and stale terms across the documents.
+  evidence: |
+    1. syntax.md §3.4 synonym table: "`params`, …, `vars`, `variables` (at the root) | `inputs`", but `vars` is a valid root key (§4.1, schema), so the suggestion can never fire for `vars`, and `variables` should probably suggest `vars`.
+    2. variables.md VA-56 links `syntax.md#73-interpolation-in-display-strings`; the heading is "7.3 Interpolation in display strings and templates" (broken anchor; the only one found by a full link check).
+    3. adr/0010 cites "EM-54" twice ("Short budgets (EM-54)", "Applied in: … EM-54"); EM-54 doesn't exist (moved to blokky-cli). EM gaps 34, 35, 37–42, 54 are covered by the "not reused" note; SH-31, CP-31 and CP-33 are gaps with no note.
+    4. glossary "Plan" lists the plan-only keys as "`blokky:`, `inputs:`, `outputs:`, `defaults:`", missing `vars:` (syntax §4.1, overview §2.1 include it).
+    5. glossary "Modifier" includes `capture`, which reference §3 defines as a leaf option, not a modifier.
+    6. "Group" means do/all/any/race (glossary), but do/all/any/race/if (overview §2.1), and EM-66 says "a `do`, `all`, `if`, `for` iteration or other group". Which nodes are "groups" matters for reference §5.5 ("For a group node with `retry`").
+    7. results.md §3 repetition "what ended them (`condition`, `max`, `timeout`, `failure`, `success`)" vs reference §5.1 "which bound ended the loop (`condition`, `max`, `timeout`)"; `ended_by` is asserted by conformance (CF table), so the value set must be one.
+    8. results.md §3 "bindings | `exec`, `script`, `set`" omits `for` (`collect`, VA-55) and `tempdir.as`.
+    9. EM-8 lists probes "in `if`, `while`, `until` and `retry` conditions", omitting `assert`, which conditions.md §6 evaluates in the node's own scope too.
+    10. errors.md §5.3 BK_CONDITION_ERROR `detail.reason` has no value for invalid output encoding in `result: stdout` or probe stdout, and CO-38 doesn't say whether undecodable probe output is a condition error or becomes U+FFFD (reference §3 says U+FFFD "wherever output is shown as text"; captures fail).
+    11. overview §2.3 subject list omits `command` (CO-45).
+    12. CP-7: "Which engines are supported and how one is chosen is a later question (Q16b)" and SH-20 "the spec will state it" are open TODOs in normative text.
+  proposal: |
+    Fix each item; for 6, define "group" once (glossary) and use it consistently; for 7, choose one `ended_by` enumeration; for 10, add an `encoding` reason or state U+FFFD replacement for condition subjects.
+  confidence: high
+
+- id: SQ-22
+  lens: spec-quality
+  kind: clarify
+  severity: minor
+  where: spec/results.md intro; spec/variables.md VA-51; spec/reference.md §4.3, §5.7; spec/shells.md §6
+  claim: >-
+    Some requirements and permissions are written in lower case, which syntax §1 says makes them non-normative.
+  evidence: |
+    syntax §1: keywords apply "when, and only when, they appear in all capitals."
+    - results.md intro: "the run result … that every implementation must be able to produce" (the core conformance requirement; RS-1..RS-6 contain no MUST).
+    - VA-51: "…MUST be replaced with `***` … Output must be masked even when a value is split across chunks." (the chunking requirement is lower case)
+    - reference §4.3: "An implementation may also stop a whole run from outside" (permission; EM §7 has no MAY either).
+    - shells.md §6: "implementations may flag the common mistakes"; "implementations may flag it for review" (SH-30 uses MAY for the same thing).
+    - reference §5.7: "Item values and inputs used as `exec` arguments should be preceded by `--`" (advice to plan authors; fine if informative, but reads as SHOULD).
+    The documents otherwise state most rules in the indicative ("is a plan error"), which is fine since each file declares itself normative; the issue is only the lower-case keywords mixed into rules that also use capitals.
+  proposal: |
+    Capitalize where a requirement or permission is meant (results intro, VA-51, reference §4.3, shells §6), or rephrase as plain indicative; keep author advice explicitly informative.
+  confidence: medium
+
+- id: SQ-23
+  lens: spec-quality
+  kind: clarify
+  severity: minor
+  where: spec/variables.md VA-58, VA-61; spec/execution-model.md EM-1; spec/errors.md §2
+  claim: >-
+    The phase and kind of a `vars` error from an unset `from_env` aren't defined.
+  evidence: |
+    VA-61: "`vars` entries are bound in the plan scope … before anything runs. Their values may use only inputs, earlier `vars` entries and `from_env`".
+    VA-58: "An undefined variable in a template or reference fails the `set` node with `BK_UNDEFINED_VARIABLE` (a plan error for `vars` …); an unset `from_env` fails with `BK_FROM_ENV_UNSET`."
+    errors.md lists BK_FROM_ENV_UNSET only as a node error, but `vars` belongs to no node. EM-1 only ends the run in validation on "plan or input error", so it's undefined whether `vars: { T: { from_env: TOKEN } }` with TOKEN unset is a validation-phase error (no run result, EM-1) or a run that starts and fails at the root (with a run result, EM-3, `node` = `/`?).
+  proposal: |
+    State that `vars` are bound at the end of validation, and that BK_FROM_ENV_UNSET or BK_UNDEFINED_VARIABLE there is reported with the plan/input errors (EM-1, EM-2), with the `vars` entry's line and column.
+  confidence: medium

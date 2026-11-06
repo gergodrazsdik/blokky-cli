@@ -1,0 +1,387 @@
+---
+exercise:
+  - task: 1
+    first_try: correct
+    issue: "attempt_timeout + retry: { result: error, equals: BK_TIMEOUT_ATTEMPT } + max: 4 is right, but only because reference §5.2 says max counts attempts; the syntax §9 fix-it for 'retry: 3' would have given 2 retries (AGT-9)."
+    finding: AGT-9
+  - task: 2
+    first_try: semantic-error
+    issue: "until: { result: stdout, json: .status, equals: ok } passes schema, but a 200 response that isn't JSON (proxy page, empty body while starting) is a condition error that ends the poll (CO-22, CO-40) instead of polling again; the deploy-health-check scenario has the same latent bug."
+    finding: AGT-3
+  - task: 3
+    first_try: impossible
+    issue: "tempdir is never deleted by the plan (reference §4.5); 'cleaned up automatically' is only true after an implementation-specific 'blokky clean', which overview §1 and §4 don't make clear."
+    finding: AGT-5
+  - task: 4
+    first_try: correct
+    issue: "for: { glob: 'docs/**/*.md', concurrency: 4, fail_fast: false } validates and matches the examples, but no spec file defines glob syntax, so whether docs/README.md (zero directories under **) is linted is undecidable."
+    finding: AGT-4
+  - task: 5
+    first_try: correct
+    issue: "Found { command: pnpm, exists: true } only in the syntax.md per-field table; overview §2.3 lists subjects without command and steers to probes, and a probe of a missing program is a condition error, not false (CO-38)."
+    finding: AGT-10
+  - task: 6
+    first_try: semantic-error
+    issue: "ready: { port: 5432, open: true } on a 'docker run -p' service is true as soon as the engine's port forwarder listens, before postgres accepts connections; nothing in CO-42 warns about it (the examples quietly use a pg_isready probe)."
+    finding: AGT-13
+  - task: 7
+    first_try: correct
+    issue: "capture + assert { var: BRANCH, not_equals: main } with message and code worked first try from the three entry docs."
+    finding: none
+  - task: 8
+    first_try: correct
+    issue: "if { host: os, equals: windows } with pwsh/bash scripts is identical to the host-branches example; shell: pwsh fails on a Windows machine with only Windows PowerShell 5.1, and the only portable 'any PowerShell' form is to omit shell, which no doc recommends."
+    finding: AGT-14
+  - task: 9
+    first_try: impossible
+    issue: "Page-number pagination needs a set template for 'page=N' (not mentioned by the exec fix-it, AGT-2), can't stop at the last page (F-0008, no iteration index in while), and collect double-encodes each page's JSON as a string (AGT-7); the real answer is a single gh api --paginate leaf."
+    finding: AGT-7
+  - task: 10
+    first_try: correct
+    issue: "all with the default fail_fast: true is exactly this; race would be wrong (a success would also decide), and the docs make the difference clear."
+    finding: none
+
+findings:
+  - id: AGT-1
+    lens: agent-user
+    kind: fix
+    severity: major
+    where: schema/blokky.schema.json ($defs.node, $defs.root, kindChoice); reference.md §8 (title "Rules the schema doesn't express"); examples/README.md
+    claim: The schema is the only validator an agent has before an implementation ships, but its errors blame the wrong keys and it accepts many plans that RF rules reject, although several of those rules are expressible in JSON Schema.
+    evidence: |
+      All 10 exercise plans passed the schema on the first try, including the three with
+      semantic errors. Then I fed it common agent mistakes (jsonschema 4.x, Draft 2020-12, best_match):
+
+        exec: [npm, test] / retry: 3
+          -> "Unevaluated properties are not allowed ('exec', 'retry' were unexpected)"
+        exec: [npm, test] / timeout: 30
+          -> "Unevaluated properties are not allowed ('exec', 'timeout' were unexpected)"
+        do: { exec: [npm, test] }           -> "('do' was unexpected)"
+        exec: { cmd: npm test, timeout: 5m } -> "('exec' was unexpected)"
+        exec: [...] plus if: {...}
+          -> "{...} is valid under each of {'required': ['if']}, {'required': ['exec']}"
+
+      A valid `exec` is reported as "unexpected" because `unevaluatedProperties: false` sits
+      next to `allOf: [nodeProps, kindChoice]`: when any property in nodeProps fails, its
+      annotations are dropped and every key looks unknown. None of these messages leads to
+      the fix that syntax.md §9 describes.
+
+      Accepted by the schema but plan errors per reference §8:
+        sleep: 2s + timeout: 5s (RF-28); capture: X on a do (RF-12);
+        for: {...} + node-level concurrency: 4 + max: 3 on an exec (RF-3);
+        exec: [git, clone, "${REPO}"] (RF-9/RF-27).
+      Several RF rules are plain JSON Schema: RF-4 (attempt_timeout requires one of
+      retry/while/until/for: dependentSchemas), RF-5 (while/until require max or timeout:
+      if/then), RF-12, RF-18, RF-25, RF-28, the §5.2 sibling table (backoff/jitter only with
+      retry, on_body_failure only with while/until), and "no ${ in exec array elements"
+      (a pattern not: contains '${').
+    proposal: |
+      1. Restructure node/root so that a bad value is reported at its own key: list the
+          properties in the same schema object with `additionalProperties: false` (the root
+          gets its own list with the plan-only keys), instead of `allOf` + `unevaluatedProperties`.
+      2. Move every rule that JSON Schema can express into the schema (list above), and
+          rename reference §8 to "Rules beyond the schema", listing only those left.
+      3. Add a conformance or CI check that runs a set of known-bad plans through the schema
+          and asserts that the error path points at the offending key.
+    confidence: high
+
+  - id: AGT-2
+    lens: agent-user
+    kind: fix
+    severity: major
+    where: syntax.md §9 (targeted errors, "${X} in a literal field or an exec string"); §7.2, §7.3; RF-27
+    claim: The fix-it for the most common agent mistake, `${X}` inside an exec argument, never mentions the `set` template, which is the only way to build an argument like `page=${PAGE}` or `--name=${X}`.
+    evidence: |
+      syntax.md §9: "`${X}` in a literal field or an `exec` string | Use `{ var: X }` where
+      references are allowed, nest a relative `cwd`, or `"$X"` in shell text with `export: [X]`."
+      None of the three helps with a partial argument. Task 9 needs `-f page=N`; the only
+      script-free form is:
+        - set: { PAGE_ARG: 'page=${PAGE}' }
+        - exec: [gh, api, { var: ENDPOINT }, -f, { var: PAGE_ARG }]
+      which ADR 0015 introduced after this fix-it table was written. An agent following the
+      fix-it ends up writing a bash script with export, which is exactly the shell layer
+      Blokky wants to avoid. The schema also accepts `exec: [git, clone, "${REPO}"]` (AGT-1),
+      so the mistake is only caught by an implementation.
+    proposal: |
+      Change the fix-it to name the template route first, with a snippet:
+      "Build the string with `set: { ARG: '--name=${X}' }` and pass `{ var: ARG }`; for a
+      whole value use `{ var: X }` directly." Add the same sentence to syntax §7.2 next to
+      "There is no string concatenation", which today reads as if there were none at all.
+    confidence: high
+
+  - id: AGT-3
+    lens: agent-user
+    kind: question
+    severity: major
+    where: conditions.md CO-22, CO-38, CO-40; reference.md §5.6; examples/scenarios/deploy-health-check.blokky.yaml
+    claim: In polling loops a condition error ends the loop, so `until` with `json:` (the natural way to wait for a JSON health endpoint) fails the whole node on one transient non-JSON response instead of polling again, and there is no operator to guard against it.
+    evidence: |
+      My task 2 plan (and the spec's own deploy scenario) is:
+        exec: [curl, -fsS, http://localhost:8080/health]
+        until: { result: stdout, json: .status, equals: ok }
+        every: 2s
+        timeout: 2m
+      CO-22: "Invalid JSON or a path that doesn't resolve is a condition error"; CO-40: "In
+      retry, while and until, a condition error ends the repetition and fails the node".
+      `on_body_failure: continue` only covers body failures. During startup, servers and
+      proxies often answer 200 with an HTML page, an empty body or `{}` (missing .status:
+      also a condition error). A guard isn't possible: `defined` is only valid for var/env
+      (conditions.md §3 operator table), and `all` short-circuits only on false, not on error.
+      The only workarounds are `matches: '"status":\s*"ok"'` on raw text or a jq probe, both
+      less precise than json:.
+    proposal: |
+      Options:
+      (a) In `until`/`while` conditions, treat a condition error from the `result:` subject
+          (json_invalid, json_path) as "not done yet" when on_body_failure is continue, and
+          record it in the iteration's result.
+      (b) Allow `defined`/`not_defined` with `result:` + `json:` and make invalid JSON count
+          as undefined there, so `all: [ {result: stdout, json: .status, defined: true}, ... ]`
+          works.
+      (c) Keep the rule and document the `matches` pattern for polling JSON in reference §5.6
+          and in the deploy scenario.
+      I'd pick (a): polling is exactly where transient garbage is expected.
+    confidence: medium
+
+  - id: AGT-4
+    lens: agent-user
+    kind: clarify
+    severity: major
+    where: reference.md §5.7 ("Glob rules"); syntax.md §7.4 (for.glob "glob pattern"); examples basics/for-glob, scenarios/dotnet-build-test
+    claim: The glob pattern language is never defined, so whether a plan like `docs/**/*.md` matches top-level files, what `**`, `?`, `[...]` and `{a,b}` mean, and whether matching is case-sensitive on Windows is undecidable from the spec.
+    evidence: |
+      reference §5.7 "Glob rules" covers sorting, dotfiles, symlinks, separators, `..` and
+      empty matches, but not syntax. syntax §7.4 types it as "glob pattern". grep for glob
+      in spec/ and adr/ finds no grammar. The examples rely on `**`
+      ('scripts/**/*.sh', 'src/**/*.csproj', 'tests/**/*Tests.csproj'). For task 4,
+      `docs/**/*.md` must or must not include docs/README.md depending on whether `**`
+      matches zero directories (it does in .NET's Microsoft.Extensions.FileSystemGlobbing
+      and in bash globstar, but conventions differ). Also undefined: whether `*` matches
+      dotfiles inside a `**` walk ("no dotfiles unless the pattern names them"), and
+      case-sensitivity on Windows/macOS.
+    proposal: |
+      Add a short grammar to syntax §6 (e.g. `*` within a segment, `?` one character,
+      `**` as a whole segment matching zero or more directories, `[...]` class or not
+      supported, no braces), state case-sensitivity per OS, and add conformance cases for
+      `dir/**/*.ext` matching `dir/x.ext`.
+    confidence: high
+
+  - id: AGT-5
+    lens: agent-user
+    kind: clarify
+    severity: major
+    where: overview.md §1 (line "The runtime owns the temp directories ... so cleaning up never needs a hand-written rm -rf"), §4; reference.md §4.5; glossary "Run-owned files"
+    claim: The overview reads as if tempdirs are removed automatically, but they are never removed during or at the end of a run, so an agent either leaves clones (possibly of private repos) on disk indefinitely or adds the `rm -rf` the overview says isn't needed.
+    evidence: |
+      overview §1: "The runtime owns the temp directories, scripts and capture files it
+      creates, so cleaning up never needs a hand-written `rm -rf`."; §4: "work in a
+      temporary directory, cleanup that runs even after failure or timeout".
+      reference §4.5: "The directory is not deleted when the node or the run ends; removing
+      it is the implementation's business (for blokky-cli: `blokky clean`)."
+      glossary: run-owned files "outlive the run, and are removed by the implementation
+      when asked". Task 3 ("the temp dir is cleaned up automatically") can't be expressed:
+      the plan doesn't remove it and doesn't know when it will be removed. An agent that
+      wants it gone writes `finally: [ { exec: [rm, -rf, { var: WORK }] } ]`, which the
+      overview presents as the thing Blokky removes.
+    proposal: |
+      Either (a) reword overview §1/§4 to say "the runtime keeps them for inspection and
+      removes them on `clean`; nothing is deleted during the run", or (b) add an opt-in
+      `tempdir: { remove: true }` (delete at node end after finally) for agents that want
+      a scratch clone gone. At minimum (a).
+    confidence: high
+
+  - id: AGT-6
+    lens: agent-user
+    kind: simplify
+    severity: major
+    where: reference.md §7 validity matrix ("`for` only" cells), §2.3, §2.4, §5.7
+    claim: "`concurrency` and `fail_fast` mean different things at node level and inside `for:` on the same node, so a valid plan can silently apply an agent's `fail_fast: false` to the wrong construct."
+    evidence: |
+      On a `do` node, node-level `fail_fast` is the do's own option (matrix: `do` row,
+      `fail_fast` ✓), while the loop's is `for.fail_fast`. This plan is valid and the
+      loop still stops at the first failing project:
+        - name: test ${P}
+          for: { glob: 'tests/*', as: P }
+          fail_fast: false          # intended for the loop; applies to the do
+          do:
+            - exec: [make, -C, { var: P }]
+            - exec: [make, -C, { var: P }, check]
+      The same holds for `concurrency` on an `all` with `for`. On exec/script a node-level
+      `concurrency` next to `for` is a plan error (RF-3) but the schema accepts it (my
+      wrong/w6.yaml). An agent sees `all: ... concurrency: 2` at node level in the
+      all-parallel example and `for: { ..., concurrency: 4 }` in for-glob, and has to
+      remember which applies where.
+    proposal: |
+      Make one of the pair unambiguous: e.g. forbid node-level `concurrency`/`fail_fast`
+      on a node that has `for` (write the inner group as a child), or warn when both a
+      `for` and a node-level `fail_fast`/`concurrency` are present. Enforce the "for only"
+      cells in the schema (AGT-1).
+    confidence: high
+
+  - id: AGT-7
+    lens: agent-user
+    kind: question
+    severity: major
+    where: 'reference.md §5.7 (`collect`, "The list can feed another `for: { items }`"); variables.md VA-55, VA-21'
+    claim: "`collect` turns each iteration's JSON capture into a JSON string inside the list, so gathering JSON per iteration (pages, per-project reports) gives a double-encoded array that `for: { items, fields }` and `json:` can't look into."
+    evidence: |
+      VA-55: the list is "a compact JSON array of strings with null entries". Task 9:
+        - for: { each: ['1','2','3'], as: PAGE }
+          collect: { ITEMS: PAGES }
+          do:
+            - set: { PAGE_ARG: 'page=${PAGE}' }
+            - exec: [gh, api, --method, GET, { var: ENDPOINT }, -f, per_page=100, -f, { var: PAGE_ARG }]
+              capture: ITEMS
+      binds PAGES = ["[{\"number\":1,...}]", "[...]"]. `for: { items: { var: PAGES }, fields: { NUM: .number } }`
+      then iterates strings, and `.number` on a string fails with BK_CAPTURE_PATH. No path
+      in the subset (no `.[]`, ADR 0002) flattens it. A 100-issue page also often exceeds
+      max_capture_bytes (1 MiB, VA-21), and collect's interaction with capture_file isn't
+      stated. Together with F-0008 (and AGT-8) this makes in-plan pagination impossible;
+      the realistic plan is one `gh api --paginate --slurp` leaf.
+    proposal: |
+      Decide and state one of: (a) collect embeds a capture whose text is valid JSON as a
+      JSON value (objects/arrays), strings otherwise; (b) keep strings and add a sentence
+      that items are strings, with the "feed another for: { items }" claim limited to
+      scalar captures; (c) allow `items: { var: X, json: . }` to parse string elements.
+      Also state whether a `capture_file` variable can be collected (list of paths).
+    confidence: high
+
+  - id: AGT-8
+    lens: agent-user
+    kind: question
+    severity: minor
+    where: reference.md §5.6; variables.md §3 (binding table, loop index only for `for`); related to F-0008
+    claim: Additional evidence for F-0008, `while`/`until` expose no iteration index, so page-number pagination can't be written even if the previous iteration's captures become visible, because templates have no arithmetic.
+    evidence: |
+      variables.md §3 lists `<AS>_INDEX` only for `for`. A `while` that fetches page N needs
+      N; there's no counter variable and no arithmetic (overview §5). The only bounded
+      approximation is `for: { count: K }` (0-based, so `page=${I}` asks GitHub for page 0,
+      which it treats as page 1: a duplicate) or a hand-written `each: ['1','2',...]`, and
+      neither can stop at the last page.
+    proposal: |
+      When resolving F-0008, also bind a 1-based or 0-based iteration index on while/until
+      (e.g. `ITERATION` via an `as:`-like key), or state explicitly that page-number
+      pagination is out of scope and point to `gh api --paginate` style tools.
+    confidence: medium
+
+  - id: AGT-9
+    lens: agent-user
+    kind: clarify
+    severity: minor
+    where: syntax.md §3.4 (synonym `retries`), §9 (`retry 3` fix-it to `retry true` plus `max 3`); reference.md §5.2; examples/basics/retry-backoff comment; overview §2.2
+    claim: "`max` counts attempts including the first, but the fix-its translate `retry: 3`/`retries: N` to `max: 3`/`max: N`, so an agent asking for 3 retries gets 2."
+    evidence: |
+      reference §5.2: "`max` (total attempts or iterations, integer ≥ 1)".
+      syntax §9: "`retry: 3` | `retry: true` plus `max: 3`"; §3.4: "`retries` | `retry: true`
+      plus `max: N`". retry-backoff example: "`retry: true` retries failed attempts up to
+      `max` times in total" (max: 5, then lists 4 delays). overview §2.2: "retry up to three
+      times". Task 1 ("retrying up to 3 times") needs max: 4; the fix-it path gives max: 3.
+    proposal: |
+      Make the fix-it `max: 4` for `retry: 3` (and `max: N+1` for `retries: N`) with the
+      message "max counts attempts, including the first", and reword the retry-backoff
+      comment ("tries up to `max` times in total").
+    confidence: high
+
+  - id: AGT-10
+    lens: agent-user
+    kind: fix
+    severity: minor
+    where: overview.md §2.3; conditions.md CO-38, CO-45; reference.md (no subject list)
+    claim: The overview's subject list omits `command` (and the service subjects) and says anything beyond subject+operator is a probe, steering agents to a probe of the program, which is a condition error exactly when the program is missing.
+    evidence: |
+      overview §2.3: "a subject (`var`, `env`, `path`, `host`, `result`, `probe`) ... There
+      is no expression language: a check that needs more than a subject and an operator is
+      a probe." With only overview/syntax/reference read, the natural task 5 plan is
+      `if: { probe: { exec: [pnpm, --version] } }`, which CO-38 makes a condition error
+      ("a probe that can't be started (program not found ...)") and fails the node instead
+      of falling back to npm. I found `command` only in the syntax.md §7.4 per-field table.
+    proposal: |
+      Add `command` to the overview list with one line ("is a program installed?"), list
+      `port`/`output` as service-only, and add a sentence to reference §2.7 (`if`) or a
+      pointer from reference to the conditions subject table.
+    confidence: high
+
+  - id: AGT-11
+    lens: agent-user
+    kind: fix
+    severity: minor
+    where: errors.md §4 (`detail.rule` "for example `one-kind`, `bounded-loop`, `shadowing`"); reference.md §8 intro; ADR 0016 Clarifications; conformance/README.md CF-24 example
+    claim: The spec contradicts itself on what `detail.rule` holds (a slug like `bounded-loop` or an ID like `RF-5`), so an agent can't key its handling of `BK_PLAN_INVALID` on it.
+    evidence: |
+      errors.md §4: "`detail.rule` names the rule (for example `one-kind`, `bounded-loop`,
+      `shadowing`)". reference §8: "Rules carry IDs (`RF-n`) for conformance cases and for
+      `detail.rule`." ADR 0016: "reference §8's rules are now RF-1 to RF-28 (used by
+      conformance cases and detail.rule)". conformance/README.md shows
+      `detail: { rule: bounded-loop }`.
+    proposal: |
+      Pick one: slugs (stable, readable) with the RF-n ID in a second field
+      (`detail.rule_id`), or RF-n only. List each rule's slug next to its RF-n in
+      reference §8 so agents can look it up.
+    confidence: high
+
+  - id: AGT-12
+    lens: agent-user
+    kind: clarify
+    severity: minor
+    where: results.md §5 (error fields), §3 (repetition), reference.md §1 (path ids in loop bodies)
+    claim: Errors from loop iterations carry only the plan path id, so in a `for` with `fail_fast` false the causes list N identical-looking errors and the agent must cross-reference repetition entries to learn which item failed.
+    evidence: |
+      reference §1: "Nodes inside loop bodies keep their plan path id; the run result tells
+      iterations apart by their index". results.md §5 error fields: code, message, node,
+      detail, causes, context: no iteration index or item. Task 4 ("fail at the end,
+      listing the failures") produces an error whose causes are all `BK_EXIT` with node
+      `/`; the file name is only in messages (not a contract, ER-3) or in the separate
+      repetition entries.
+    proposal: |
+      Add optional `iteration` (index) and `item` fields to an error raised inside a loop
+      iteration or attempt (masked like other values).
+    confidence: medium
+
+  - id: AGT-13
+    lens: agent-user
+    kind: clarify
+    severity: minor
+    where: conditions.md CO-42; reference.md §4.10 (example, "While the body runs"); execution-model.md EM-64, EM-65
+    claim: Two service details trip agents running a database in a container, which is the most common service use. A published container port is "open" before the service is ready, and it is unspecified what happens when a service exits during `finally`.
+    evidence: |
+      Task 6 asked to "wait until port 5432 accepts connections"; I wrote
+        exec: [docker, run, --rm, -p, '5432:5432', -e, POSTGRES_PASSWORD=test, postgres:16]
+        ready: { port: 5432, open: true }
+      With Docker's userland proxy or rootless Podman's port forwarder, the host port accepts
+      connections as soon as the container starts, so CO-42 is true before postgres is
+      up. The reference §4.10 example uses `port` (native postgres, where it is fine); the
+      examples switch to a pg_isready probe without saying why.
+      Separately, EM-64 covers a service exiting "on its own" while the body runs; a
+      `finally: [ { exec: [docker, stop, pg] } ]` makes the service exit during `finally`,
+      before EM-65's stop. Whether on_exit: fail then fails the node isn't stated.
+    proposal: |
+      Add a note to CO-42: "for a container with a published port, the engine may accept
+      connections before the service does; use a probe such as pg_isready". State in EM-64
+      that a service exit after the body ended (during `finally`) is recorded and is not a
+      failure (or the opposite).
+    confidence: medium
+
+  - id: AGT-14
+    lens: agent-user
+    kind: simplify
+    severity: minor
+    where: examples basics/finally-cleanup, race-watchdog, until-polling, host-branches, choose-shell; reference.md §5.4, §5.6; shells.md SH-22
+    claim: Common intents have several competing spellings with different results and error codes, and nothing names the canonical one.
+    evidence: |
+      "Wait until a command succeeds":
+        - finally-cleanup: `exec: [docker, exec, ..., pg_isready]` + `retry: true` + `max: 30`
+          (failure: BK_RETRIES_EXHAUSTED; every failed attempt recorded as a failure);
+        - race-watchdog: `ok_exit: [1, 2]` + `until: { result: exit, equals: '0' }`
+          (failure: BK_LOOP_MAX_REACHED / BK_TIMEOUT_TOTAL);
+        - until with on_body_failure: continue on the plain command.
+      "PowerShell on Windows": host-branches uses `shell: pwsh`, which fails on machines
+      with only Windows PowerShell 5.1, while omitting `shell` gets pwsh-else-powershell
+      (SH-22); nothing says which is canonical. Conditional step: `if` without `else` vs
+      `when` (reference §2.7 says SHOULD suggest when).
+      For agents, two spellings mean two sets of rules to keep straight and differing
+      error codes in the run result.
+    proposal: |
+      Add a short "Idioms" table to the overview or examples README: one canonical form per
+      intent (wait until a command succeeds; poll output; is a tool installed; Windows vs
+      Unix script; optional step), with the error code each produces. Consider a lint
+      warning for `retry: true` with max > 10 and no backoff ("this is polling; use until").
+    confidence: medium
