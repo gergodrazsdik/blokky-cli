@@ -105,6 +105,7 @@ blokky-specs becomes language-only; the spec moves to `1.0.0-draft.N` without mi
 - [ ] T-0037 [both] Spec `1.0.0` once the runtime has validated the draft (was: finalize the spec after the spikes)
 - [ ] T-0038 [cli] Enable CodeQL (C#) once C# code lands
 - [ ] T-0039 [cli] Enable the Dependabot `nuget` block once the solution exists
+- [ ] T-0054 [cli] Add .NET `.editorconfig` rules (C# style, naming, `*.csproj` indentation) once the solution exists (removed from the bootstrap version on 2026-11-06)
 - [ ] T-0040 [cli] Release workflow verifies the release tag's signature (`git verify-tag`): GitHub tag rulesets can't check tag-object signatures
 - [ ] T-0041 [both] Protected `release` environment with manual approval (brief §7)
 
