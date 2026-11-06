@@ -8,8 +8,8 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0056 [specs] Maintainer tags `v1.0.0-draft.2`
-2. T-0031 [specs] Example suite, conformance format, overview, prior art (propose the plan first)
+1. T-0031 [specs] Example suite: merge the parts (specs #29–#33), restyle, write the `examples/README.md` index
+2. T-0058 [specs] Maintainer tags `v1.0.0-draft.3`
 3. T-0050 [both] Propose the agent council
 
 ## Phase 0 — Bootstrap
@@ -77,7 +77,9 @@ blokky-specs becomes language-only; the spec moves to `1.0.0-draft.N` without mi
 - [x] T-0048 [specs] Specify `race`, `lock`, `services`, `items`/`lines`/`matrix`, `collect`, `consent`, `zsh`/`fish` to full depth — 2026-11-05, specs PR #26 ([specs ADR 0014](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0014-remaining-features.md)), cli PR #29
 - [x] T-0049 [specs] Maintainer tags `1.0.0-draft.1` — 2026-11-05, tag `v1.0.0-draft.1`
 - [x] T-0055 [specs] `set` node kind and root `vars:` (plan constants), with `${}` templates and single assignment — 2026-11-06, specs PR #28 ([specs ADR 0015](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0015-set-and-vars.md)), cli PR #31
-- [ ] T-0056 [specs] Maintainer tags `v1.0.0-draft.2`
+- [x] T-0056 [specs] Maintainer tags `v1.0.0-draft.2` — 2026-11-06, tag `v1.0.0-draft.2`
+- [x] T-0057 [specs] Fixes found while writing the examples: group errors, `any` + `when`, the `command:` subject, the `race` example, `${` in scripts, clarifications — 2026-11-06, specs PR #34 ([specs ADR 0016](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0016-fixes-from-examples.md)), cli PR #32
+- [ ] T-0058 [specs] Maintainer tags `v1.0.0-draft.3`
 
 ## Phase 2 — Example suite (brief §8 step 6)
 
@@ -174,6 +176,9 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - F-0005 [both] `just lint-md` failed inside Claude Code's Bash sandbox (`EACCES` on placeholder files such as `.claude/loop.md`): `.markdownlint-cli2.yaml` globbed the whole work tree, and markdownlint-cli2 adds config `globs` to command-line files, so the pre-commit hook also linted every file instead of the staged ones. Fixed 2026-11-04 (branch `chore/lint-md-tracked-files` in both repos): no `globs` in the config; `lint-md` passes `git ls-files '*.md'`. Untracked Markdown is linted once staged.
 - F-0006 [both] A run budget at or below `cleanup_reserve` (default 30s), e.g. `--max-duration 20s`, would enter budget mode at once. Open: reject it as a usage error, shrink the reserve proportionally, or run without a reserve. Raised in cli ADR 0002's open items and `spec/execution-model.md` §9; decide before `cli.md`. Resolved 2026-11-05: run with no reserve (EM-54, [specs ADR 0010](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0010-variables-details.md)).
 - F-0007 [specs] Nothing checks the JSON Schemas in CI yet. While drafting T-0025 they were checked by hand (meta-schema plus good and bad sample plans), which caught an inconsistent `phase` in the output-contract example. Add a schema check (meta-validation, `examples/` validated against the plan schema, fixture reports/leaves) to `just lint` and CI, with the conformance setup.
+- F-0008 [specs] Review: a `while` body can't see the previous iteration's captures (VA-33), so cursor pagination ("fetch the next page with the last cursor") can't be written. Decide in the review whether to allow it. Raised by the examples agent ([specs ADR 0016](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0016-fixes-from-examples.md)).
+- F-0009 [specs] Review: EM-22 stops every descendant at run end, so a plan can't start a long-lived daemon (for example Docker Desktop on Windows); `keep_descendants` only lasts until run end. Decide whether that is intended or needs an escape hatch ([specs ADR 0016](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0016-fixes-from-examples.md)).
+- F-0010 [specs] Add rule IDs (`SY-n`) to `spec/syntax.md` and pin the conformance feature-id vocabulary used by `BK_PLAN_NOT_SUPPORTED`'s `detail.feature`; both needed before the conformance cases (T-0052).
 
 ## Decisions
 
@@ -199,3 +204,4 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - 2026-11-05 [both] Direction revised: blokky-specs is language-only; the spec is completed as `1.0.0-draft.N` with all features and no milestone tags; phase order spec → examples → review (maintainer + agent council) → conformance suite → runtime planning, spikes, incremental CLI: [cli ADR 0006](../adr/0006-phase-order-and-incremental-cli.md), [specs ADR 0013](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0013-scope-and-versioning.md)
 - 2026-11-05 [specs] Remaining features, batch 7 (T-0047): `race` like `do`/`any`; `lines` drops blank lines (`keep_blank`); plain `matrix`; `items` with `fields`; `collect` as a JSON array; per-user exclusive locks waiting within `timeout`; `services` in parallel with `depends_on`, required `ready:` (30s/250ms), per-service `on_exit`, status only; `consent` dropped; `zsh`/`fish` rows: [specs ADR 0014](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0014-remaining-features.md)
 - 2026-11-06 [specs] Setting variables: a `set` node kind, root `vars:` constants, `${}` templates allowed only in `set`/`vars` values (no functions), single assignment with definite assignment through branches: [specs ADR 0015](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0015-set-and-vars.md)
+- 2026-11-06 [specs] Fixes from the example suite: a failed group carries its child's error, ordered `any` skips `when`-skipped children, new `command:` condition subject, `${` allowed in script text, fixed `race` example: [specs ADR 0016](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0016-fixes-from-examples.md)
