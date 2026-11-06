@@ -8,9 +8,8 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0031 [specs] Example suite: merge the parts (specs #29–#33), restyle, write the `examples/README.md` index
-2. T-0058 [specs] Maintainer tags `v1.0.0-draft.3`
-3. T-0050 [both] Propose the agent council
+1. T-0058 [specs] Maintainer tags `v1.0.0-draft.3` (after specs PR #35)
+2. T-0050 [both] Propose the agent council
 
 ## Phase 0 — Bootstrap
 
@@ -83,7 +82,9 @@ blokky-specs becomes language-only; the spec moves to `1.0.0-draft.N` without mi
 
 ## Phase 2 — Example suite (brief §8 step 6)
 
-- [ ] T-0031 [specs] `examples/` (small per-feature and comprehensive examples covering every feature), `conformance/README.md`, `conformance/testkit-interface.md`, `spec/overview.md`, `spec/prior-art.md`
+The example suite is done: 45 basic examples, seven scenarios and an index, plus the conformance case format, the testkit interface, the overview and prior art.
+
+- [x] T-0031 [specs] `examples/` (small per-feature and comprehensive examples covering every feature), `conformance/README.md`, `conformance/testkit-interface.md`, `spec/overview.md`, `spec/prior-art.md` — 2026-11-06, specs PRs #29, #30, #31, #33, #35
 
 ## Phase 3 — Review (brief §8 step 7)
 
