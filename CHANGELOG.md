@@ -9,7 +9,4 @@ Each release also states which spec versions of
 
 ## [Unreleased]
 
-### Added
-
-- Runtime contracts moved from blokky-specs ([ADR 0006](docs/adr/0006-phase-order-and-incremental-cli.md)): `docs/contracts/output-contract.md`, `docs/contracts/leaves-and-validation.md`, `docs/contracts/errors.md` (CLI-only error codes and the phase → exit-code mapping), and the report, events, `leaves` and validator schemas in `schema/`.
-- `docs/contracts/run-control.md`: run lifecycle, process control, run budget, cleanup deadline, shutdown and privilege mechanics, moved from the blokky-specs execution model, containers and shells docs (former rule IDs kept in brackets); the script heuristics now live in `leaves-and-validation.md` (LV-16).
+Nothing released yet. The first entry will be the first release; until then, decisions are in [`docs/adr/`](docs/adr/README.md) and progress in the [tracker](docs/plan/TRACKER.md).

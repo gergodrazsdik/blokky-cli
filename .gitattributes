@@ -1,27 +1,2 @@
-# Normalize text to LF everywhere, including Windows checkouts.
-# Blokky writes script files at runtime; committed fixtures and examples
-# must keep exact LF bytes so tests behave the same on every OS.
+# LF everywhere, including Windows checkouts; Git detects binary files itself.
 * text=auto eol=lf
-
-# PowerShell handles LF fine; keep it LF like everything else.
-*.ps1 text eol=lf
-*.psm1 text eol=lf
-
-# Binary files
-*.png binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
-*.ico binary
-*.pdf binary
-*.zip binary
-*.gz binary
-*.tgz binary
-*.7z binary
-*.dll binary
-*.exe binary
-*.so binary
-*.dylib binary
-*.snk binary
-*.pfx binary
-*.p12 binary
