@@ -8,7 +8,7 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0051 [both] Maintainer review of the [council report](../review/council-draft.3.md): decisions D-1 to D-5, S-1 to S-14, then the corrections
+1. T-0051 [both] Apply the maintainer's decisions ([council report](../review/council-draft.3.md) §6) as specs ADRs and `1.0.0-draft.4`, with the spike-plan changes in blokky-cli
 
 ## Phase 0 — Bootstrap
 
@@ -89,6 +89,8 @@ The example suite is done: 45 basic examples, seven scenarios and an index, plus
 
 - [x] T-0050 [both] Agent council review: propose the council (lenses, prompts, output format), run it, verify and consolidate findings — 2026-11-06, [council report](../review/council-draft.3.md) (76 findings, 0 refuted)
 - [ ] T-0051 [both] Maintainer review; accepted findings as ADRs; next draft (`1.0.0-draft.N`), including features cut or kept
+  - Review done 2026-11-07: every decision recorded in the [council report](../review/council-draft.3.md) §6 (D-1 to D-6, S-1 to S-14, C-1 to C-8, spikes).
+- [ ] T-0059 [specs] Maintainer tags `v1.0.0-draft.4`
 - [-] T-0036 [both] Consistency pass — dropped 2026-11-05: replaced by the review phase (cli ADR 0006)
 
 ## Phase 4 — Conformance suite (brief §8 step 8)

@@ -529,8 +529,17 @@ All follow the recommendation, with these specifics:
 - **S-13:** `from_env` values are treated like inputs: resolved at validation (an unset name is a validation error), shown in static views (masked when secret) and part of the inputs hash (secret values excluded). One wording everywhere: programs, argv shapes, environments and the source of every dynamic value are static; captured values are known only at run time. Each leaf's cwd is recorded in the result.
 - **S-14:** static views show pruned `host:` branches, marked as pruned with their condition. `arch` is the OS's native architecture.
 
+### Decisions on the corrections and spikes (2026-11-07)
+
+- **C-1 to C-7:** accepted as a batch, adjusted for the decisions above. Items about `become` (SEC-2, CP-20 to CP-35, spike 11's privilege half) reduce to: every process runs as the user Blokky runs as.
+- **`exec` string form (C-2, SQ-19):** canonical for a static argv with no quoting and no variables; the array form otherwise. A canonical-forms table states it.
+- **Running as root (CP-32):** dropped. With `become` cut, `sudo blokky run` is like `sudo bash plan.sh`; no warning.
+- **Locks (IMP-17):** per user and per machine: a lock excludes runs of the same user on the same machine, stated explicitly. There is no shared store across users.
+- **Examples added by the decisions:** a `return` (changed-files-lint), a work-loop `while`, `until` with `on_body_failure: stop` (wait-for-ci), pagination with `carry`/`collect`/`index`, `env_pass`, `keep_blank`, `keep_descendants: detach`, `tempdir` removal; deploy-health-check without `become`.
+- **Spikes (§4):** drop the `become` transport spike. The in-container spike checks images with `sh`, `sleep` and `kill` (no helper). The engine-matrix spike adds user mapping for non-root build images (D-2) and the `--env-file` transport. The others stay as listed.
+
 ## Next steps
 
-1. **Maintainer review (T-0051):** read this report next to the spec. The decisions are asked in batches (D-1 to D-5, then S-1 to S-14, then the corrections as a batch). D-6 and C-8 are already decided (§6).
+1. **Maintainer review (T-0051):** done 2026-11-07; every decision is in §6.
 2. Accepted items become specs ADRs and `1.0.0-draft.4`. Changes to the spike plan go into blokky-cli.
 3. Items that turn out to fit poorly are raised again as open questions (brief §1.5).
