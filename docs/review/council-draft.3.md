@@ -474,6 +474,38 @@ do:
 
 `{ command: NAME, exists: true }` is true only if `NAME` resolves to a file that exists **and** is executable for the current user (on Windows: the `.com`/`.exe` rule), matching the spawn-error rule in reference.md §5. A path (`/bin/sh`, `./tools/gen`) is already valid under CO-45; `NAME` stays a literal (CO-46).
 
+### Decisions on D-1 to D-5 (2026-11-06)
+
+The maintainer's principle for this batch: a feature that no example uses is a gap in the examples, not a reason to cut it. Cuts need a cost the feature doesn't repay.
+
+- **D-1 `become`:** cut `become` and `defaults.become`, and don't list them as ROADMAP candidates: not planned. Plans call `sudo -n` as in bash. The root-drop mode (`sudo blokky run`) still needs the scope rules of SEC-2/SQ-17 and the lock-owner rule of IMP-17.
+- **D-2 `container`:** keep, and decide again after the container spikes.
+  - Only compatible images are supported: the image provides `sh`, `sleep` and `kill` (no helper shipped). An image without them fails at container start, naming what is missing.
+  - Env values never go on a command line: an env file (mode 0600) passed to `exec --env-file` (Podman; Docker 23.0+).
+  - Blokky never relabels host paths; ownership and labelling of mounts are engine-defined, and the run result says when labelling was disabled for Blokky's mounts.
+  - Keep `env_pass` as a shorthand (like `export`) and add an example that uses it.
+  - Drop `container.user`. The implementation maps the invoking user into the container where the engine allows it (rootless Podman `--userns=keep-id`, rootful Docker `--user` with the invoking UID), so non-root build images can write the cwd mount. Provisional; the engine-matrix spike verifies it with non-root build images, and `user` comes back only if plans need to choose.
+- **D-3 `services`:** drop `depends_on`; services start in list order, each ready before the next, and stop in reverse order. Keep `on_exit` (helper services such as a mail catcher or a port-forward) and the `output:` readiness subject. A service that exits after the body ended (during `finally`) is recorded, not a failure (resolves the EM-64 / reference §4.10 contradiction). Add CO-42's published-port note.
+- **D-4 `while`, `on_body_failure` and pagination (F-0008):**
+  - Keep `while` and `on_body_failure`. Fix the examples: the two wait-style `while` loops become `until`; add a work-loop `while` (delete in batches while any remain) and an `until` with `on_body_failure: stop` in wait-for-ci (a permanent error fails at once instead of after the timeout).
+  - Keep single assignment (VA-36).
+  - Pagination is in 1.0 through loop-carried variables. `carry: { CURSOR: NEXT }` on `while`/`until` binds `CURSOR` once per iteration: `''` in the first, then the previous iteration's `NEXT` capture; long form `{ from: NEXT, initial: '…' }`. `collect` becomes valid on `while`/`until` too, with the same shape as on `for`.
+  - A named iteration index on `while`, `until` and `retry`: `index: NAME` (0-based, like `for`'s `<AS>_INDEX`), long form `{ as: NAME, start: 1 }`. An integer, visible in the body and the node's condition, not published.
+
+  ```yaml
+  - until: { var: NEXT, empty: true }
+    carry: { CURSOR: NEXT }        # '' in iteration 1, then the previous NEXT
+    collect: { PAGES: PAGE }       # every PAGE, as a list, after the loop
+    max: 100
+    do:
+      - exec: [./fetch-issues, --cursor, { var: CURSOR }]
+        capture:
+          PAGE: { json: .items }
+          NEXT: { json: .next_cursor }
+  ```
+
+- **D-5:** keep `matrix`, `allow_empty`, `keep_blank` (add an example), `jitter`, all four `encoding` values, `{ var }` in `set`/`vars` and `race`. `max_items` applies to every `for` source. `max_log_bytes` moves to implementation configuration. Keep `zsh`; cut `fish`.
+
 ## Next steps
 
 1. **Maintainer review (T-0051):** read this report next to the spec. The decisions are asked in batches (D-1 to D-5, then S-1 to S-14, then the corrections as a batch). D-6 and C-8 are already decided (§6).
