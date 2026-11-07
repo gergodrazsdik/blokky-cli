@@ -8,7 +8,7 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0066 [specs] Maintainer tags `v1.0.0-draft.5` (decide F-0022 and F-0023 first, or carry them)
+1. T-0066 [specs] Maintainer tags `v1.0.0-draft.5` (after specs stack #70/#71; F-0024 can be carried)
 2. T-0053 [cli] Runtime planning session
 
 ## Phase 0 — Bootstrap
@@ -99,7 +99,7 @@ The review is done: an agent council of five lenses (76 findings, all verified),
 
 ## Phase 4 — Conformance suite (brief §8 step 8)
 
-Conformance suite complete 2026-11-07: 1,135 cases cover all 374 rules; F-0022 and F-0023 remain open.
+Conformance suite complete 2026-11-07: 1,147 cases cover all 380 rules (with specs #70/#71); F-0024 has small open points.
 
 - [x] T-0052 [specs] Conformance cases for the features that survive the review, each citing its rule IDs (see F-0007 for schema checks) — 2026-11-07: waves A to E merged, 1,135 cases, rule coverage 374/374 (ADRs 0020 to 0025)
   - Plan agreed 2026-11-07: a static checker first, then validation cases before run semantics, in waves. Each area is its own PR from its own worktree, with a second agent checking every case against the spec text (cases can't run until the CLI has a runner). Spec gaps found while writing get a finding at once; blocking ones are fixed in a separate specs PR first.
@@ -210,14 +210,14 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - F-0019 [specs] Spec gaps found by the wave C cases (T-0063): glob semantics, symlinks in resolution, overlapping rule IDs and codes in conditions, positions, condition-error reasons, probe details, `host:` pruning, `.bat`/`.cmd`, backslash escapes, Windows quoting and prologue, conformance configuration ([review notes](../review/conformance-wave-c.md)). Decided 2026-11-07 and applied in [specs ADR 0023](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0023-wave-c-gaps.md).
 - F-0020 [specs] Spec gaps found by the wave D cases (T-0064): the status after an own `attempt_timeout`, `finally_timeout` results, timeout codes for per-attempt `leaf_timeout`, `ended_by` and nesting on cancellation, the stopped run's error, node durations, `while` timing, services results, lock contention inside one run, and kill cases that couldn't be written ([review notes](../review/conformance-wave-d.md)). Decided 2026-11-07 and applied in [specs ADR 0024](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0024-wave-d-gaps.md).
 - F-0021 [specs] Points left open after waves C and D; cases don't assert them. Decide with F-0017 before draft.5 (T-0066): when an external stop arrives during `finally` after the body already failed, is the root's error the body's error (EM-51) or `BK_CANCELLED` (EM-57); whether `?` in a glob can match a leading dot (SY-100 names only `*` and `**`); CO-46 has no observable case (only its `container` warning remains). Decided 2026-11-07 (questionnaire) and applied in [specs ADR 0025](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0025-open-points.md).
-- F-0022 [specs] Points left open by the wave E combination cases; no case asserts them:
+- F-0022 [specs] Points left open by the wave E combination cases; no case asserts them: Decided 2026-11-07 (questionnaire) and applied in [specs ADR 0026](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0026-runtime-edge-cases.md), [specs PR #70](https://github.com/gergodrazsdik/blokky-specs/pull/70).
   - does `finally` run when an outer layer fails the node (lock wait, `BK_CWD_INVALID`, `BK_TEMPDIR_FAILED`, a timeout during startup)?
   - are services stopped at once when the node's own timeout fires (EM-26 vs EM-7/EM-65)?
   - what `repetition` a node records that fails before its first attempt;
   - the status of an entry interrupted by the node's own timeout;
   - whether the `finally` and child nodes of a node skipped by `when` appear in the result (RS-3 vs RS-6), and what a node that failed in `when` records;
   - how soon a waiter gets a released lock (no polling bound, unlike EM-62).
-- F-0023 [specs] Points left open by the wave E container cases; no case asserts them:
+- F-0023 [specs] Points left open by the wave E container cases; no case asserts them: Decided 2026-11-07 (questionnaire) and applied in [specs ADR 0026](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0026-runtime-edge-cases.md), [specs PR #70](https://github.com/gergodrazsdik/blokky-specs/pull/70).
   - an image-reference grammar, and rule IDs for a missing `image` or mount `path`;
   - the subkeys of the result's `container` field;
   - error codes when argv[0] or the shell is missing from the image (CP-15);
@@ -228,6 +228,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
   - `env_pass` vs `env` overlaps;
   - a container leaf's `invocation`;
   - absolute container paths on Windows hosts.
+- F-0024 [specs] Small points left open after ADR 0026 (cases don't assert them): `ended_by` for a node that times out before its first attempt; the `image_digest` value form, engine name and container id form; a when-probe's `result` on a condition error; how "under a mount's host path" is compared (symlinks, letter case on Windows).
 
 ## Decisions
 
