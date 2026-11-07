@@ -6,5 +6,7 @@
   <Folder Name="/test/">
     <Project Path="test/Blokky.Cli.Tests/Blokky.Cli.Tests.csproj" />
     <Project Path="test/Blokky.Core.Tests/Blokky.Core.Tests.csproj" />
+    <Project Path="test/Blokky.Testkit.Tests/Blokky.Testkit.Tests.csproj" />
+    <Project Path="test/Blokky.Testkit/Blokky.Testkit.csproj" />
   </Folder>
 </Solution>

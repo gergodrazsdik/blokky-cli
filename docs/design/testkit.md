@@ -7,6 +7,7 @@ Status: **draft** (T-0067, 2026-11-07); built in T-0068. Normative interface: bl
 ## 1. Build
 
 - One project, `test/Blokky.Testkit`, published with Native AOT as a single executable `blokky-testkit` (`blokky-testkit.exe` on Windows), one per RID. It needs no runtime, config or network (TK-1).
+- `just publish` publishes it next to `blokky`: **`artifacts/publish/Blokky.Testkit/release_<rid>/blokky-testkit`** (for example `release_linux-x64`). The conformance runner and `just test-aot` (`BLOKKY_TESTKIT`) take it from there. The JIT build in `artifacts/bin/Blokky.Testkit/debug/` needs its `.dll` beside it, so only the published binary can be copied or hard-linked into a case's `bin/`.
 - It doesn't reference `Blokky.Core`: the testkit must not share bugs with the implementation it tests. Duration and size parsing (TK-2) are reimplemented from the spec grammar.
 - Same rules as `blokky`: AOT and trim warnings are errors; OS calls through `LibraryImport` ([tech-stack.md](tech-stack.md#6-platform-calls)).
 - It implements every command for the platforms Blokky targets in that release: Linux for 0.1, Windows for 0.6, macOS with the macOS port. Commands that a platform doesn't support exit with 123 (TK §3).
@@ -19,18 +20,20 @@ Status: **draft** (T-0067, 2026-11-07); built in T-0068. Normative interface: bl
 | Output | Raw stdout/stderr streams, flushed after every write, so a merged pipe sees the write order (TK-4). |
 | Invocation log | When `TESTKIT_LOG` is set: build the JSON line first, take an exclusive lock on the log file (`flock` / `LockFileEx`), append it in one write, release (TK-5). Failure exits with 124 before acting. |
 | Aliases | The invoked name is the basename of `argv[0]` without `.exe`; the directory is that of the resolved executable (`Environment.ProcessPath`). Under any name but `blokky-testkit`, read `<name>.testkit-args` from that directory and insert its lines before the arguments (TK-6). |
-| Signals | `PosixSignalRegistration` for SIGTERM, SIGINT and SIGHUP (and CTRL_BREAK/CTRL_C on Windows), with cancellation to ignore them (`sleep --ignore-term`) and a recorder for `--record-signals` (TK-14). `die` resets the disposition and raises the signal with `kill(getpid(), sig)` (TK-21). |
-| `spawn` | Starts its descendants as new testkit processes with the null device or inherited streams (TK-15). `--escape setsid` and `double-fork` are done by the child itself after start (`setsid()`, then start the grandchild and exit), so the testkit never calls `fork()` in a multi-threaded runtime. `breakaway` uses `CREATE_BREAKAWAY_FROM_JOB` (0.6). |
-| `alive` | `kill(pid, 0)` on Unix, `OpenProcess` plus exit-code check on Windows (TK-16). |
+| Signals | `PosixSignalRegistration` for SIGTERM, SIGINT and SIGHUP (and CTRL_BREAK/CTRL_C on Windows), with cancellation to ignore them (`sleep --ignore-term`) and a recorder for `--record-signals` (TK-14). A request that isn't cancelled ends the process by that signal, as the runtime's default does. `die` sets `RLIMIT_CORE` to 0 (no core file in the work dir), resets the disposition and raises the signal with `kill(getpid(), sig)` (TK-21). |
+| `spawn` | Starts its descendants with `posix_spawn` (default signal dispositions, empty mask), with the null device or inherited streams (TK-15); the testkit never calls `fork()` in a multi-threaded runtime. `--escape setsid` uses `POSIX_SPAWN_SETSID`. `--escape double-fork` starts an intermediate `blokky-testkit spawn --escape setsid … -- …` that starts the real child in a new session and exits at once, so the child is reparented. `--wait` reports a child killed by signal N as 128 + N. `breakaway` uses `CREATE_BREAKAWAY_FROM_JOB` (0.6); until then `spawn` exits with 123 on Windows. |
+| `alive` | Linux: `/proc/<pid>/stat`, where a zombie counts as not alive (it has exited and only waits to be reaped); macOS: `kill(pid, 0)`; Windows: `OpenProcess` plus exit-code check (TK-16). |
 | `info` | `open("/dev/tty")` for `tty`; `fstat` on fd 0 for `stdin` (TK-17). |
 | `count`, `flaky` | Read, increment and write the state file under an exclusive lock (TK-19). |
+| Exact bytes | On Linux, arguments come from `/proc/self/cmdline` and `spawn` passes `/proc/self/environ` on, so text that isn't valid UTF-8 reaches stdout, files and descendants unchanged (TK-3). JSON output (`argv`, `env`, the log) carries the decoded text. |
+| Shared files | The log, `--pids`, `--record-signals` and state files are written under `flock`, with .NET's own advisory lock on open turned off (`System.IO.DisableFileLocking`), so concurrent testkits wait instead of failing. |
 | `listen` | Binds `127.0.0.1` and, where available, `::1`; accepts and closes connections (TK-20). |
 
-`spawn --escape` needs an intermediate process (the child that calls `setsid()` and starts the grandchild). The testkit logs **every process it starts**, the intermediates included, each with its own TK-5 line ([ADR 0008](../adr/0008-spike-findings.md)); cases that count invocations are checked against that when the testkit is built.
+`spawn --escape double-fork` needs an intermediate process (the child that starts the grandchild in a new session and exits). The testkit logs **every process it starts**, the intermediates included, each with its own TK-5 line ([ADR 0008](../adr/0008-spike-findings.md)); cases that count invocations are checked against that when the testkit is built.
 
 ## 3. Unit tests
 
-The testkit gets its own tests (TUnit, [tech-stack.md](tech-stack.md#7-tests)), run against the published binary: every command and option of the interface, exit codes 123–125, alias expansion, concurrent log appends (no interleaved lines), and `TESTKIT_TIME_SCALE`. A wrong testkit would make conformance cases pass or fail for the wrong reason.
+The testkit gets its own tests (`test/Blokky.Testkit.Tests`, TUnit, [tech-stack.md](tech-stack.md#7-tests)), named after the TK rule they cover. `just test` runs them against the JIT build; `just test-aot` against the published binary: every command and option of the interface, exit codes 123–125, alias expansion, concurrent log appends (no interleaved lines), and `TESTKIT_TIME_SCALE`. A wrong testkit would make conformance cases pass or fail for the wrong reason.
 
 ## 4. Per-case environment (CF-56 to CF-58)
 

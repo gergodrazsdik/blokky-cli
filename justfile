@@ -100,7 +100,7 @@ editorconfig:
 # nodes) and tests through `dotnet run` (no `dotnet test` sockets). CI runs them.
 solution := "blokky.slnx"
 rid := "linux-x64"
-test_projects := "test/Blokky.Core.Tests test/Blokky.Cli.Tests"
+test_projects := "test/Blokky.Core.Tests test/Blokky.Cli.Tests test/Blokky.Testkit.Tests"
 
 # Build the solution (warnings are errors; CI=true restores in locked mode)
 [group('dotnet')]
@@ -116,7 +116,7 @@ test: build
       dotnet run --project "$project" --no-build
     done
 
-# Native AOT publish of `blokky` to artifacts/publish/; fails on any IL2xxx/IL3xxx warning
+# Native AOT publish of `blokky` and `blokky-testkit` to artifacts/publish/; fails on any IL2xxx/IL3xxx warning
 [group('dotnet')]
 publish rid=rid:
     #!/bin/sh
@@ -125,7 +125,9 @@ publish rid=rid:
     log="$(mktemp)"
     trap 'rm -f "$log"' EXIT
     status=0
-    dotnet publish src/Blokky.Cli -c Release -r {{ rid }} --no-restore -m:1 >"$log" 2>&1 || status=$?
+    for project in src/Blokky.Cli test/Blokky.Testkit; do
+      dotnet publish "$project" -c Release -r {{ rid }} --no-restore -m:1 >>"$log" 2>&1 || status=$?
+    done
     cat "$log"
     if grep -Eq '(warning|error) IL[23][0-9]{3}' "$log"; then
       echo "AOT publish produced trim/AOT diagnostics (IL2xxx/IL3xxx)" >&2
@@ -136,7 +138,8 @@ publish rid=rid:
 # Publish, then run the tests, including those against the published binary
 [group('dotnet')]
 test-aot rid=rid: (publish rid)
-    BLOKKY_BIN="{{ justfile_directory() }}/artifacts/publish/Blokky.Cli/release_{{ rid }}/blokky" just test
+    BLOKKY_BIN="{{ justfile_directory() }}/artifacts/publish/Blokky.Cli/release_{{ rid }}/blokky" \
+      BLOKKY_TESTKIT="{{ justfile_directory() }}/artifacts/publish/Blokky.Testkit/release_{{ rid }}/blokky-testkit" just test
 
 # Check C# formatting (whitespace; style rules are enforced by the build)
 [group('lint')]
