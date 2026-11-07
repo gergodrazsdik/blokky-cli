@@ -1,0 +1,11 @@
+<Project>
+  <!-- Test projects: TUnit on Microsoft.Testing.Platform (tech-stack.md §7). Never packed or shipped. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <OutputType>Exe</OutputType>
+    <!-- Test names read as sentences: Names_the_root_kind_with_its_position. -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+</Project>

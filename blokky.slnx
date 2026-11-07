@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Blokky.Cli/Blokky.Cli.csproj" />
+    <Project Path="src/Blokky.Core/Blokky.Core.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Blokky.Cli.Tests/Blokky.Cli.Tests.csproj" />
+    <Project Path="test/Blokky.Conformance/Blokky.Conformance.csproj" />
+    <Project Path="test/Blokky.Conformance.Tests/Blokky.Conformance.Tests.csproj" />
+    <Project Path="test/Blokky.Core.Tests/Blokky.Core.Tests.csproj" />
+    <Project Path="test/Blokky.Testkit.Tests/Blokky.Testkit.Tests.csproj" />
+    <Project Path="test/Blokky.Testkit/Blokky.Testkit.csproj" />
+  </Folder>
+</Solution>

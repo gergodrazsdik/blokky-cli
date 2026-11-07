@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The conformance runner and its adapter (validation-strategy.md §2, blokky-specs conformance/README.md §8).
+    A JIT console app: it isn't shipped, and it drives the published AOT `blokky` and `blokky-testkit`.
+  -->
+  <PropertyGroup>
+    <AssemblyName>blokky-conformance</AssemblyName>
+    <RootNamespace>Blokky.Conformance</RootNamespace>
+    <!-- LibraryImport for kill(2): the external stop sends SIGTERM (CF-55). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Declared support comes from Core's feature table, so skips and the binary can't drift (CF-12). -->
+    <ProjectReference Include="../../src/Blokky.Core/Blokky.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The testkit appends to the log under flock (TK-5); .NET's own LOCK_SH|LOCK_NB on open would make the runner's -->
+    <!-- reads fail while a testkit holds it. The runner takes a blocking shared flock itself (CaseWorkspace.LogLines). -->
+    <RuntimeHostConfigurationOption Include="System.IO.DisableFileLocking" Value="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Blokky.Conformance.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,5 @@
+# The blokky-specs version the conformance runner is measured against (ADR 0004, docs/design/ci-cd.md §2).
+# Bumped by hand, in a one-line PR, when a spec draft is tagged. CI checks out `tag` and verifies it is `commit`.
+repository: gergodrazsdik/blokky-specs
+tag: v1.0.0-draft.5
+commit: 8d01629dd44056228367f30b866a274b05b6a6dd

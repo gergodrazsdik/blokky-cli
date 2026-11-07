@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Blokky.Conformance.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Fixtures/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The testkit appends to the log under flock (TK-5); .NET's own LOCK_SH|LOCK_NB on open would make reads fail -->
+    <!-- while a testkit holds it. The runner code tested here takes a blocking shared flock itself (CaseWorkspace.LogLines). -->
+    <RuntimeHostConfigurationOption Include="System.IO.DisableFileLocking" Value="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Blokky.Conformance/Blokky.Conformance.csproj" />
+  </ItemGroup>
+</Project>

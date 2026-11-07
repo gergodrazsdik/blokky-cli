@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The `blokky-testkit` executable: the fake program conformance cases run (docs/design/testkit.md). -->
+  <!-- Never shipped; it doesn't reference Blokky.Core, so it can't share the implementation's bugs. -->
+  <PropertyGroup>
+    <AssemblyName>blokky-testkit</AssemblyName>
+    <RootNamespace>Blokky.Testkit</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <!-- LibraryImport generates unsafe marshalling code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- RIDs restored ahead of publish, so the lock file covers them (CI restores locked). -->
+    <RuntimeIdentifiers>linux-x64;linux-arm64</RuntimeIdentifiers>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shared files (log, pids, signals, state) are locked with flock by the testkit itself (TK-5, TK-19); -->
+    <!-- .NET's own advisory lock on open would make a concurrent open fail instead of wait. -->
+    <RuntimeHostConfigurationOption Include="System.IO.DisableFileLocking" Value="true" />
+  </ItemGroup>
+</Project>

@@ -7,7 +7,7 @@ Status: **draft** (T-0067, 2026-11-07). Source: brief §7, [ADR 0001](../adr/000
 | Workflow | Trigger | Jobs | Status |
 |---|---|---|---|
 | `lint.yml` | PR, push to `main` | `just lint` (markdownlint, yamllint, actionlint, ShellCheck, typos, editorconfig-checker); DCO check on PRs | exists |
-| `build.yml` | PR, push to `main` | build and unit tests; AOT publish; CLI tests; conformance (§2) | with the .NET solution (T-0068) |
+| `build.yml` | PR, push to `main` | build and unit tests; AOT publish; CLI tests; conformance (§2) | exists: `build-test` (`just build`, `just test-aot`) and `conformance` (`just conformance … --require-lock-match --require-testkit`, T-0068) |
 | `fuzz.yml` | schedule, manual | long fuzzing runs of the YAML front end ([validation-strategy.md](validation-strategy.md#6-fuzzing)) | with the parser (T-0069) |
 | `codeql.yml` | PR, push to `main`, schedule | CodeQL for C# and for workflows | with the .NET solution |
 | `release.yml` | push of a `cli-v*` tag | verify, build, gate, publish (§3) | before 0.1 (T-0072) |
@@ -29,6 +29,8 @@ Dependabot already updates GitHub Actions weekly; its NuGet block (commented out
    - run the conformance runner against the AOT binaries;
    - write the totals and the **pass rate** to the job summary, upload the JSON lines and JUnit results;
    - fail the job on any `fail` or `error` (the release gate, [validation-strategy.md](validation-strategy.md#release-gate)).
+
+`conformance.lock`, at the repo root, pins the suite. It holds `key: value` lines (`#` starts a comment): `repository` (`gergodrazsdik/blokky-specs`), `tag` (`v1.0.0-draft.5`) and `commit` (the tag's full commit SHA). The `conformance` job checks out `refs/tags/<tag>` of `repository` and fails unless it is `commit`; the runner then compares the checkout with the lock again (`--require-lock-match`). Locally, `just conformance` only warns about a different checkout.
 
 Shells: `bash` and `sh` come with the image; `pwsh` is tested at **7.4** (the supported minimum) and the **current release**, each from the official package on its own runtime ([ADR 0008](../adr/0008-spike-findings.md)). Container tests (0.7) run on Linux only, with the engine the spike E matrix picks.
 

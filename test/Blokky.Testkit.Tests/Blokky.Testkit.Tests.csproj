@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Tests of blokky-testkit, run against the built binary: the JIT build by default, the published AOT binary -->
+  <!-- when BLOKKY_TESTKIT names it (just test-aot). Each test cites the TK rule it covers. -->
+  <PropertyGroup>
+    <RootNamespace>Blokky.Testkit.Tests</RootNamespace>
+    <!-- LibraryImport (kill) generates unsafe marshalling code. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Expected values are inline arrays; clarity beats caching them in fields. -->
+    <NoWarn>$(NoWarn);CA1861</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Build order only: the tests run the testkit as a separate process. -->
+    <ProjectReference Include="../Blokky.Testkit/Blokky.Testkit.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+</Project>

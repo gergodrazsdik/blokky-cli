@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The `blokky` executable: argv, channels and exit codes over Blokky.Core (architecture.md §1). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>blokky</AssemblyName>
+    <RootNamespace>Blokky.Cli</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <!-- RIDs restored ahead of publish, so the lock file covers them (CI restores locked). -->
+    <RuntimeIdentifiers>linux-x64;linux-arm64</RuntimeIdentifiers>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Blokky.Core/Blokky.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Blokky.Cli.Tests" />
+  </ItemGroup>
+</Project>

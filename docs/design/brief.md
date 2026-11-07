@@ -4,6 +4,8 @@ You are starting the **specification phase** of Blokky, a new open-source projec
 
 > **Revised 2026-11-05** (blokky-cli ADR 0006, blokky-specs ADR 0013): blokky-specs covers only the language; the spec is completed as `1.0.0-draft.N` with all planned features and no milestone tags; the phase order is spec → examples → review → conformance suite → runtime planning, spikes and an incremental CLI (§1.5, §1.6, §8). Sections §2–§4 still use `v0.1`/`later` tags; in the spec they are historical, and they now feed the CLI planning session.
 
+> **Implementation started 2026-11-07** ([ADR 0007](../adr/0007-runtime-plan.md), §8 step 11): production code now lands on `feat/*` branches with tests; spikes stay on unmerged `spikes/*` branches. The rest of this brief is kept as written.
+
 This phase produces **documentation and specification**:
 - The only code allowed is throwaway spike code on unmerged `spikes/*` branches, after I approve the spike plan (§8).
 - Implementation starts after the spec draft has been reviewed and the runtime planning session has set the MVP scope (§8). The spec stays a draft during implementation and is refined by it.
@@ -1502,7 +1504,7 @@ Steps 1–3 are done (2026-11-05). The order from step 4 on was revised on 2026-
     13. container termination via the engine CLI, privilege-boundary kill, Sudo for Windows modes.
 
     After I approve the plan, spikes run on unmerged `spikes/*` branches. Their findings go back into the spec draft.
-11. **Incremental CLI implementation:** the MVP first, then feature by feature in the planned order, with the conformance pass rate as the guide. The spec is refined through ADRs as the runtime validates it, and becomes `1.0.0` when the runtime has validated it.
+11. **Incremental CLI implementation:** the MVP first, then feature by feature in the planned order, with the conformance pass rate as the guide. The spec is refined through ADRs as the runtime validates it, and becomes `1.0.0` when the runtime has validated it. *(Started 2026-11-07 with the solution skeleton, T-0068.)*
 
 **Style:**
 - Precise and concise.

@@ -1,0 +1,36 @@
+<Project>
+  <!-- Shared settings for every project (docs/design/tech-stack.md). -->
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+    <!-- One artifacts/ at the root, also for projects under src/ and test/ with their own props. -->
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+    <Deterministic>true</Deterministic>
+
+    <!-- Warnings are errors, AOT and trim warnings included (tech-stack.md §2, §8). -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- The language compares ordinally and has its own case mapping (CO-12). -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- A type missing from a source-generated JSON context fails, never falls back to reflection. -->
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix>dev</VersionSuffix>
+    <Authors>Blokky contributors</Authors>
+    <Copyright>Copyright Blokky contributors</Copyright>
+
+    <!-- Lock files are committed; CI restores in locked mode (tech-stack.md §8). -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CI)' == 'true'">
+    <RestoreLockedMode>true</RestoreLockedMode>
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+</Project>
