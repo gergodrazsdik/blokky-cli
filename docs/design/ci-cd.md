@@ -30,6 +30,8 @@ Dependabot already updates GitHub Actions weekly; its NuGet block (commented out
    - write the totals and the **pass rate** to the job summary, upload the JSON lines and JUnit results;
    - fail the job on any `fail` or `error` (the release gate, [validation-strategy.md](validation-strategy.md#release-gate)).
 
+`conformance.lock`, at the repo root, pins the suite. It holds `key: value` lines (`#` starts a comment): `repository` (`gergodrazsdik/blokky-specs`), `tag` (`v1.0.0-draft.5`) and `commit` (the tag's full commit SHA). The `conformance` job checks out `refs/tags/<tag>` of `repository` and fails unless it is `commit`; the runner then compares the checkout with the lock again (`--require-lock-match`). Locally, `just conformance` only warns about a different checkout.
+
 Shells: `bash` and `sh` come with the image; `pwsh` is tested at **7.4** (the supported minimum) and the **current release**, each from the official package on its own runtime ([ADR 0008](../adr/0008-spike-findings.md)). Container tests (0.7) run on Linux only, with the engine the spike E matrix picks.
 
 Branch protection on `main` requires `lint`, `dco` and the build/conformance jobs.

@@ -5,6 +5,8 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/Blokky.Cli.Tests/Blokky.Cli.Tests.csproj" />
+    <Project Path="test/Blokky.Conformance/Blokky.Conformance.csproj" />
+    <Project Path="test/Blokky.Conformance.Tests/Blokky.Conformance.Tests.csproj" />
     <Project Path="test/Blokky.Core.Tests/Blokky.Core.Tests.csproj" />
   </Folder>
 </Solution>

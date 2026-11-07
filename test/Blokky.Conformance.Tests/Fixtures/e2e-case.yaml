@@ -1,0 +1,16 @@
+---
+title: t
+rules: [EM-1]
+features: [exec]
+plan: |
+  blokky: 1.0
+  exec: [blokky-testkit, exit, '0']
+files: {in/data.txt: hello}
+programs: {git: [print, --out, v2]}
+expect:
+  status: succeeded
+  nodes: {/: {status: succeeded, exit_code: 0}}
+  invocations: []
+  files: {in/data.txt: {text: hello}}
+after_run:
+  - {argv: [alive, pids.txt], exit_code: 0}
