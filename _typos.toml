@@ -1,6 +1,6 @@
 # typos configuration (https://github.com/crate-ci/typos)
 [files]
-extend-exclude = ["LICENSE", "CODE_OF_CONDUCT.md"]
+extend-exclude = ["LICENSE", "CODE_OF_CONDUCT.md", "spikes/"]
 
 [default.extend-words]
 # Project vocabulary that is not a typo.
