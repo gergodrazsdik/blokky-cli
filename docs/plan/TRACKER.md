@@ -8,8 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0066 [specs] Maintainer tags `v1.0.0-draft.5` (after specs stack #70/#71; F-0024 can be carried)
-2. T-0053 [cli] Runtime planning session
+1. T-0053 [cli] Runtime planning session: propose the agenda first (MVP feature set, feature order, CLI versioning, when each CLI doc is needed)
+2. T-0027 [cli] Spike plan: every "Provisional — verify in spike" item
+3. T-0028 [cli] Maintainer approves the spike plan
 
 ## Phase 0 — Bootstrap
 
@@ -109,7 +110,7 @@ Conformance suite complete 2026-11-07: 1,147 cases cover all 380 rules (with spe
 - [x] T-0063 [specs] Wave C: conditions and shells (CO, SH) — 2026-11-07, specs stack [#55](https://github.com/gergodrazsdik/blokky-specs/pull/55) to [#58](https://github.com/gergodrazsdik/blokky-specs/pull/58) (ADR 0023, checker position check, 166 cases); coverage 329/373 rules (shells.md complete, conditions.md 48/50)
 - [x] T-0064 [specs] Wave D, timing and process control: `timeout` and grace, `finally`, `lock`, `services`, external stop and kill, repetition with `carry`, `collect` and `index` (EM) — 2026-11-07, specs stack [#60](https://github.com/gergodrazsdik/blokky-specs/pull/60) to [#63](https://github.com/gergodrazsdik/blokky-specs/pull/63) (ADR 0024, 78 cases); coverage 350/374 (execution-model.md complete)
 - [x] T-0065 [specs] Wave E: modifier combinations (CF-46, CF-47) and containers (CP) — specs stack [#65](https://github.com/gergodrazsdik/blokky-specs/pull/65) to [#68](https://github.com/gergodrazsdik/blokky-specs/pull/68): ADR 0025, the ADR 0025 sweep, 36 container cases and 13 combination cases; with it coverage is 374/374 rules across 1,135 cases — merged 2026-11-07
-- [ ] T-0066 [specs] Maintainer tags `v1.0.0-draft.5` with the spec fixes found while writing the cases
+- [x] T-0066 [specs] Maintainer tags `v1.0.0-draft.5` with the spec fixes found while writing the cases — 2026-11-07, tag `v1.0.0-draft.5` (roadmap: [specs PR #73](https://github.com/gergodrazsdik/blokky-specs/pull/73))
 
 ## Phase 5 — Runtime planning, spikes and incremental CLI (brief §8 steps 9–11)
 
