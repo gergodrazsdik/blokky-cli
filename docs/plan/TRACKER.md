@@ -8,7 +8,7 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0051 [both] Review the specs PRs that apply the council decisions ([#36](https://github.com/gergodrazsdik/blokky-specs/pull/36) features, [#37](https://github.com/gergodrazsdik/blokky-specs/pull/37) semantics, [#38](https://github.com/gergodrazsdik/blokky-specs/pull/38) corrections; stacked, merge in order)
+1. T-0051 [both] Review the specs PRs that apply the council decisions ([#36](https://github.com/gergodrazsdik/blokky-specs/pull/36) features, merged; [#39](https://github.com/gergodrazsdik/blokky-specs/pull/39) semantics, [#38](https://github.com/gergodrazsdik/blokky-specs/pull/38) corrections; stacked, merge in order)
 2. T-0059 [specs] Tag `v1.0.0-draft.4` after they merge
 
 ## Phase 0 — Bootstrap
@@ -91,7 +91,7 @@ The example suite is done: 45 basic examples, seven scenarios and an index, plus
 - [x] T-0050 [both] Agent council review: propose the council (lenses, prompts, output format), run it, verify and consolidate findings — 2026-11-06, [council report](../review/council-draft.3.md) (76 findings, 0 refuted)
 - [ ] T-0051 [both] Maintainer review; accepted findings as ADRs; next draft (`1.0.0-draft.N`), including features cut or kept
   - Review done 2026-11-07: every decision recorded in the [council report](../review/council-draft.3.md) §6 (D-1 to D-6, S-1 to S-14, C-1 to C-8, spikes).
-  - Applied 2026-11-07 as specs [ADR 0017](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0017-review-features.md) (features, specs PR #36), [ADR 0018](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0018-review-semantics.md) (semantics, #37) and [ADR 0019](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0019-review-corrections.md) (corrections, #38); spike input recorded in [spike-plan.md](../design/spike-plan.md).
+  - Applied 2026-11-07 as specs [ADR 0017](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0017-review-features.md) (features, specs PR #36), [ADR 0018](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0018-review-semantics.md) (semantics, #39) and [ADR 0019](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0019-review-corrections.md) (corrections, #38); spike input recorded in [spike-plan.md](../design/spike-plan.md).
 - [ ] T-0059 [specs] Maintainer tags `v1.0.0-draft.4`
 - [-] T-0036 [both] Consistency pass — dropped 2026-11-05: replaced by the review phase (cli ADR 0006)
 
