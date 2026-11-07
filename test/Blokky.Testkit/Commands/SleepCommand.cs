@@ -8,7 +8,7 @@ namespace Blokky.Testkit.Commands;
 internal static class SleepCommand
 {
     /// <summary>The handlers, once registered: by <see cref="RegisterEarly"/> or by <see cref="Run"/>.</summary>
-    private static List<PosixSignalRegistration>? s_registrations;
+    private static List<PosixSignalRegistration>? _registrations;
 
     private static CommandSpec Spec() => new CommandSpec("sleep")
         .Flag("--ignore-term")
@@ -43,7 +43,7 @@ internal static class SleepCommand
         // The common options (TK-7) after the handlers: a case that waits for --pid-file and then signals hits a handler.
         Testkit.ApplyCommon(parsed);
         Thread.Sleep(options.Duration);
-        GC.KeepAlive(s_registrations);
+        GC.KeepAlive(_registrations);
         return options.ExitCode;
     }
 
@@ -64,12 +64,12 @@ internal static class SleepCommand
 
     private static void Register(SleepOptions options)
     {
-        if (s_registrations is not null)
+        if (_registrations is not null)
         {
             return;
         }
 
-        s_registrations = [];
+        _registrations = [];
         if (options.IgnoreFor == TimeSpan.Zero && options.RecordTo is null)
         {
             return;
@@ -77,7 +77,7 @@ internal static class SleepCommand
 
         foreach (var (signal, name) in GracefulStopRequests())
         {
-            s_registrations.Add(PosixSignalRegistration.Create(signal, context =>
+            _registrations.Add(PosixSignalRegistration.Create(signal, context =>
             {
                 // Recorded before it's acted on or ignored (TK-14).
                 if (options.RecordTo is not null)
