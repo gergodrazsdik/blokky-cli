@@ -8,7 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0052 [specs] Conformance cases: propose the plan first (case areas, order, how agents split the work, the schema check of F-0007), then write the cases
+1. T-0060 [specs] Case checker and the first batch of cases
+2. T-0061 [specs] Wave A: validation cases
+3. T-0062 [specs] Wave B: execution-model core and results
 
 ## Phase 0 — Bootstrap
 
@@ -98,7 +100,15 @@ The review is done: an agent council of five lenses (76 findings, all verified),
 
 ## Phase 4 — Conformance suite (brief §8 step 8)
 
-- [ ] T-0052 [specs] Conformance cases for the features that survive the review, each citing its rule IDs (see F-0007 for schema checks)
+- [~] T-0052 [specs] Conformance cases for the features that survive the review, each citing its rule IDs (see F-0007 for schema checks)
+  - Plan agreed 2026-11-07: a static checker first, then validation cases before run semantics, in waves. Each area is its own PR from its own worktree, with a second agent checking every case against the spec text (cases can't run until the CLI has a runner). Spec gaps found while writing get a finding at once; blocking ones are fixed in a separate specs PR first.
+- [~] T-0060 [specs] Case checker (`scripts/check.py`, `conformance/case.schema.json`, `just check` and `just coverage`, in `just lint` and CI) and a first batch of 8 cases — [specs PR #42](https://github.com/gergodrazsdik/blokky-specs/pull/42)
+- [ ] T-0061 [specs] Wave A, validation: syntax and the static reference rules (SY, RF), the generated validity-matrix and sibling-table cases (CF-45, generator added to the checker), inputs and variables at validation (VA), errors (ER)
+- [ ] T-0062 [specs] Wave B, run semantics: node kinds, statuses, group errors, `return`, `when`, captures and outputs (EM core, RS)
+- [ ] T-0063 [specs] Wave C: conditions and shells (CO, SH)
+- [ ] T-0064 [specs] Wave D, timing and process control: `timeout` and grace, `finally`, `lock`, `services`, external stop and kill, repetition with `carry`, `collect` and `index` (EM)
+- [ ] T-0065 [specs] Wave E: modifier combinations (CF-46, CF-47) and containers (CP)
+- [ ] T-0066 [specs] Maintainer tags `v1.0.0-draft.5` with the spec fixes found while writing the cases
 
 ## Phase 5 — Runtime planning, spikes and incremental CLI (brief §8 steps 9–11)
 
@@ -180,13 +190,15 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - F-0004 [both] The `main` rulesets' pull-request rule came back with GitHub's default `require_extra_approval_for_unattributed_changes: true`. Harmless for signed, attributed commits; revisit if it ever blocks a merge.
 - F-0005 [both] `just lint-md` failed inside Claude Code's Bash sandbox (`EACCES` on placeholder files such as `.claude/loop.md`): `.markdownlint-cli2.yaml` globbed the whole work tree, and markdownlint-cli2 adds config `globs` to command-line files, so the pre-commit hook also linted every file instead of the staged ones. Fixed 2026-11-04 (branch `chore/lint-md-tracked-files` in both repos): no `globs` in the config; `lint-md` passes `git ls-files '*.md'`. Untracked Markdown is linted once staged.
 - F-0006 [both] A run budget at or below `cleanup_reserve` (default 30s), e.g. `--max-duration 20s`, would enter budget mode at once. Open: reject it as a usage error, shrink the reserve proportionally, or run without a reserve. Raised in cli ADR 0002's open items and `spec/execution-model.md` §9; decide before `cli.md`. Resolved 2026-11-05: run with no reserve (EM-54, [specs ADR 0010](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0010-variables-details.md)).
-- F-0007 [specs] Nothing checks the JSON Schemas in CI yet. While drafting T-0025 they were checked by hand (meta-schema plus good and bad sample plans), which caught an inconsistent `phase` in the output-contract example. Add a schema check (meta-validation, `examples/` validated against the plan schema, fixture reports/leaves) to `just lint` and CI, with the conformance setup.
+- F-0007 [specs] Nothing checks the JSON Schemas in CI yet. While drafting T-0025 they were checked by hand (meta-schema plus good and bad sample plans), which caught an inconsistent `phase` in the output-contract example. Add a schema check (meta-validation, `examples/` validated against the plan schema, fixture reports/leaves) to `just lint` and CI, with the conformance setup. Resolved 2026-11-07 by T-0060 (`just check`); fixture reports and leaves wait for the CLI's output-contract fixtures.
 - F-0008 [specs] Review: a `while` body can't see the previous iteration's captures (VA-33), so cursor pagination ("fetch the next page with the last cursor") can't be written. Decide in the review whether to allow it. Raised by the examples agent ([specs ADR 0016](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0016-fixes-from-examples.md)). Folded into [council report](../review/council-draft.3.md) D-4. Decided 2026-11-06: pagination in 1.0 through `carry`, `collect` and `index` on loops.
 - F-0009 [specs] Review: EM-22 stops every descendant at run end, so a plan can't start a long-lived daemon (for example Docker Desktop on Windows); `keep_descendants` only lasts until run end. Decide whether that is intended or needs an escape hatch ([specs ADR 0016](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0016-fixes-from-examples.md)). Folded into [council report](../review/council-draft.3.md) S-5. Decided 2026-11-07: `keep_descendants: detach`.
 - F-0010 [specs] Add rule IDs (`SY-n`) to `spec/syntax.md` and pin the conformance feature-id vocabulary used by `BK_PLAN_NOT_SUPPORTED`'s `detail.feature`; both needed before the conformance cases (T-0052). Folded into [council report](../review/council-draft.3.md) S-11. Decided 2026-11-07: `SY-n` IDs, `detail.rule` is a rule ID.
 - F-0011 [specs] Review (maintainer): no way to end a sequence early, so "nothing to do" checks wrap the rest of the plan in an `else` ([changed-files-lint](https://github.com/gergodrazsdik/blokky-specs/blob/main/examples/scenarios/changed-files-lint.blokky.yaml) lines 24–26). Decide whether to add an early-exit kind (`return`, ending the enclosing `do` list successfully; later siblings `skipped`) and its scope: plan, nearest `do` (which makes it `continue` in a `for` body), or a named node; `break` for loops; validity in `all`/`any`/`race`, `finally` and `while`/`until` bodies; effect on `outputs` and on the undefined-variable check (S-7). Decided 2026-11-06: add `return`, see [council report](../review/council-draft.3.md) D-6.
 - F-0012 [specs] Review (maintainer): `{ command: /bin/sh, exists: true }` is valid (CO-45 treats a name with a separator as a path), but CO-45 doesn't say whether a path that exists and isn't executable counts as found; align it with the spawn-error rule (reference.md §5, "not executable"). `NAME` stays a literal, like argv[0] (CO-46, RF-9). Decided 2026-11-06: it must also be executable, see [council report](../review/council-draft.3.md) C-8.
 - F-0013 [specs] Review features added in draft.4 without an example: `return` in a loop body and an `if` branch, `carry`/`index` on `while`, `max_items` on a non-`items` source, a JSON poll that survives a non-JSON response; the pagination example's README row didn't mention the cursor or `carry`. Fixed 2026-11-07 in [specs PR #41](https://github.com/gergodrazsdik/blokky-specs/pull/41).
+- F-0014 [specs] Gaps in `conformance/README.md` found while writing the case checker: `after_run` (CF-64) was missing from the closed key list (CF-9), and its entry shape was undefined; CF-64's example called `alive --pids` expecting 1, but TK-16 is `alive FILE`, exiting 0 when nothing is alive; the result document's `skip_reason` lacked `returned` and `pruned` (results.md); a validation example asserted `invocations`, which isn't a validation-outcome key. Fixed 2026-11-07 in [specs PR #42](https://github.com/gergodrazsdik/blokky-specs/pull/42) (T-0060).
+- F-0015 [specs] Spec gaps found while checking the first cases (T-0060); the cases avoid asserting on them until decided. (1) SY-1 and CF-24 define no position for an error about a missing key (RF-5's missing `max`/`timeout`, `if` without `then`): the triggering key (`until`), or no position. (2) `BK_INPUT_UNKNOWN`'s `detail.suggestion` has no closeness metric (variables.md §4.3 shows only case folding; SY-30 uses edit distance for keys), and isn't said to be required when a candidate exists. (3) EM-15 gives Windows leaves a console only as a SHOULD, so whether a timed-out leaf gets the grace period there (EM-26, `graceful: none`) is implementation-defined; cases allow both until EM-15 is a MUST or the cases branch on `graceful`.
 
 ## Decisions
 
