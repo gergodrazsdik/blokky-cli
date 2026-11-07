@@ -8,9 +8,8 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0065 [specs] Wave E: modifier combinations and containers (stack open)
-2. T-0066 [specs] Maintainer tags `v1.0.0-draft.5` (decide F-0022 and F-0023 first, or carry them)
-3. T-0053 [cli] Runtime planning session
+1. T-0066 [specs] Maintainer tags `v1.0.0-draft.5` (decide F-0022 and F-0023 first, or carry them)
+2. T-0053 [cli] Runtime planning session
 
 ## Phase 0 — Bootstrap
 
@@ -100,14 +99,16 @@ The review is done: an agent council of five lenses (76 findings, all verified),
 
 ## Phase 4 — Conformance suite (brief §8 step 8)
 
-- [~] T-0052 [specs] Conformance cases for the features that survive the review, each citing its rule IDs (see F-0007 for schema checks)
+Conformance suite complete 2026-11-07: 1,135 cases cover all 374 rules; F-0022 and F-0023 remain open.
+
+- [x] T-0052 [specs] Conformance cases for the features that survive the review, each citing its rule IDs (see F-0007 for schema checks) — 2026-11-07: waves A to E merged, 1,135 cases, rule coverage 374/374 (ADRs 0020 to 0025)
   - Plan agreed 2026-11-07: a static checker first, then validation cases before run semantics, in waves. Each area is its own PR from its own worktree, with a second agent checking every case against the spec text (cases can't run until the CLI has a runner). Spec gaps found while writing get a finding at once; blocking ones are fixed in a separate specs PR first.
 - [x] T-0060 [specs] Case checker (`scripts/check.py`, `conformance/case.schema.json`, `just check` and `just coverage`, in `just lint` and CI) and a first batch of 8 cases — 2026-11-07, [specs PR #42](https://github.com/gergodrazsdik/blokky-specs/pull/42)
 - [x] T-0061 [specs] Wave A, validation: syntax and the static reference rules (SY, RF), the generated validity-matrix and sibling-table cases (CF-45, `scripts/generate-matrix.py`), inputs and variables at validation (VA), errors (ER) — specs PRs [#45](https://github.com/gergodrazsdik/blokky-specs/pull/45), [#46](https://github.com/gergodrazsdik/blokky-specs/pull/46), [#47](https://github.com/gergodrazsdik/blokky-specs/pull/47), [#48](https://github.com/gergodrazsdik/blokky-specs/pull/48), [#49](https://github.com/gergodrazsdik/blokky-specs/pull/49) (301 hand-written cases in four areas, 398 generated matrix cases) — 2026-11-07; coverage 188/365 rules (syntax.md, reference.md and errors.md complete)
 - [x] T-0062 [specs] Wave B, run semantics: node kinds, statuses, group errors, `return`, `when` (EM core, RS); leaf processes (EM-14 to EM-24, EM-68, EM-69); captures, scopes, the environment and masking at run time (VA) — 2026-11-07, specs stack [#50](https://github.com/gergodrazsdik/blokky-specs/pull/50) to [#53](https://github.com/gergodrazsdik/blokky-specs/pull/53) (ADR 0022 and 127 cases); coverage 250/365 rules (variables.md and results.md complete)
 - [x] T-0063 [specs] Wave C: conditions and shells (CO, SH) — 2026-11-07, specs stack [#55](https://github.com/gergodrazsdik/blokky-specs/pull/55) to [#58](https://github.com/gergodrazsdik/blokky-specs/pull/58) (ADR 0023, checker position check, 166 cases); coverage 329/373 rules (shells.md complete, conditions.md 48/50)
 - [x] T-0064 [specs] Wave D, timing and process control: `timeout` and grace, `finally`, `lock`, `services`, external stop and kill, repetition with `carry`, `collect` and `index` (EM) — 2026-11-07, specs stack [#60](https://github.com/gergodrazsdik/blokky-specs/pull/60) to [#63](https://github.com/gergodrazsdik/blokky-specs/pull/63) (ADR 0024, 78 cases); coverage 350/374 (execution-model.md complete)
-- [~] T-0065 [specs] Wave E: modifier combinations (CF-46, CF-47) and containers (CP) — specs stack [#65](https://github.com/gergodrazsdik/blokky-specs/pull/65) to [#68](https://github.com/gergodrazsdik/blokky-specs/pull/68): ADR 0025, the ADR 0025 sweep, 36 container cases and 13 combination cases; with it coverage is 374/374 rules across 1,135 cases
+- [x] T-0065 [specs] Wave E: modifier combinations (CF-46, CF-47) and containers (CP) — specs stack [#65](https://github.com/gergodrazsdik/blokky-specs/pull/65) to [#68](https://github.com/gergodrazsdik/blokky-specs/pull/68): ADR 0025, the ADR 0025 sweep, 36 container cases and 13 combination cases; with it coverage is 374/374 rules across 1,135 cases — merged 2026-11-07
 - [ ] T-0066 [specs] Maintainer tags `v1.0.0-draft.5` with the spec fixes found while writing the cases
 
 ## Phase 5 — Runtime planning, spikes and incremental CLI (brief §8 steps 9–11)
