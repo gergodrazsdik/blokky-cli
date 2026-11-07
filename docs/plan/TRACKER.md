@@ -115,7 +115,7 @@ Conformance suite complete 2026-11-07: 1,147 cases cover all 380 rules (with spe
 ## Phase 5 — Runtime planning, spikes and incremental CLI (brief §8 steps 9–11)
 
 - [x] T-0053 [cli] Runtime planning session: MVP feature set, feature order, CLI versioning, when each CLI doc is needed — 2026-11-07, [ADR 0007](../adr/0007-runtime-plan.md) (questionnaire): full validator + sequential run on Linux in 0.1, value-first release order, test-first build
-- [ ] T-0027 [cli] `docs/design/spike-plan.md`: every "Provisional — verify in spike" item (brief §8 step 10), ordered by release: the MVP spikes (1, 3, 4, 5, 6, 7, 9) first, the rest before their release (ADR 0007)
+- [~] T-0027 [cli] `docs/design/spike-plan.md`: every "Provisional — verify in spike" item (brief §8 step 10), ordered by release: the MVP spikes (1, 3, 4, 5, 6, 7, 9) first, the rest before their release (ADR 0007) — proposed in [spike-plan.md](../design/spike-plan.md): adds 8L, 12 and 14 to the MVP set (0.1 needs drain on Linux and pwsh)
 - [ ] T-0028 [cli] Maintainer approves the spike plan
 - [ ] T-0029 [cli] Spikes on unmerged `spikes/*` branches; one task per spike is added once the plan is approved
 - [ ] T-0030 [both] Fold spike findings back into the draft
