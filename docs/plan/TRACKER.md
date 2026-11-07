@@ -205,6 +205,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
   - Overlaps D-1's precedence doesn't name: RF-16 vs RF-23, RF-6 vs RF-23, RF-27 vs RF-23 in `vars` values; `timeout: { var: X }` (RF-9 or a type mismatch); a regex that doesn't compile (RF-22 or its own rule); a root that is a list (VALUE or INVALID); the code of the targeted `secret:` on an input.
   - Positions: a scope error at the name inside `{ var: X }` or at the reference; a secret literal at `value` or `secret`; the depth error's column; content after `...`; an unset `from_env` in `vars` at its entry's key; an `env`/`export` name conflict; `for` without `as`.
   - Cases still missing: the 32 KiB total input limit; a valid RF-21 near-miss (`mounts: []` needs a container engine); the 8 valid `container` cells of the matrix (wave E).
+- F-0018 [specs] Spec gaps found by the wave B cases (T-0062): unrun `if` branches in the result, failures inside `then`/`else`/`finally` lists, capture checks on decoded text, compact JSON, result fields (RS-6, run id, `children`, `left_running`), leaf details, `stdin` bytes, the drain bound, conformance timing ([review notes](../review/conformance-wave-b.md)). Decided 2026-11-07 and applied in [specs ADR 0022](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0022-wave-b-gaps.md).
 
 ## Decisions
 
