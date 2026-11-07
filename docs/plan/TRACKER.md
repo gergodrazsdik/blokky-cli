@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0061 [specs] Wave A: validation cases
-2. T-0062 [specs] Wave B: execution-model core and results
-3. T-0063 [specs] Wave C: conditions and shells
+1. T-0063 [specs] Wave C: conditions and shells
+2. T-0064 [specs] Wave D: timing and process control
+3. T-0065 [specs] Wave E: modifier combinations and containers
 
 ## Phase 0 — Bootstrap
 
@@ -103,9 +103,9 @@ The review is done: an agent council of five lenses (76 findings, all verified),
 - [~] T-0052 [specs] Conformance cases for the features that survive the review, each citing its rule IDs (see F-0007 for schema checks)
   - Plan agreed 2026-11-07: a static checker first, then validation cases before run semantics, in waves. Each area is its own PR from its own worktree, with a second agent checking every case against the spec text (cases can't run until the CLI has a runner). Spec gaps found while writing get a finding at once; blocking ones are fixed in a separate specs PR first.
 - [x] T-0060 [specs] Case checker (`scripts/check.py`, `conformance/case.schema.json`, `just check` and `just coverage`, in `just lint` and CI) and a first batch of 8 cases — 2026-11-07, [specs PR #42](https://github.com/gergodrazsdik/blokky-specs/pull/42)
-- [~] T-0061 [specs] Wave A, validation: syntax and the static reference rules (SY, RF), the generated validity-matrix and sibling-table cases (CF-45, `scripts/generate-matrix.py`), inputs and variables at validation (VA), errors (ER) — specs PRs [#45](https://github.com/gergodrazsdik/blokky-specs/pull/45), [#46](https://github.com/gergodrazsdik/blokky-specs/pull/46), [#47](https://github.com/gergodrazsdik/blokky-specs/pull/47), [#48](https://github.com/gergodrazsdik/blokky-specs/pull/48), [#49](https://github.com/gergodrazsdik/blokky-specs/pull/49) (301 hand-written cases in four areas, 398 generated matrix cases)
-- [ ] T-0062 [specs] Wave B, run semantics: node kinds, statuses, group errors, `return`, `when`, captures and outputs (EM core, RS)
-- [ ] T-0063 [specs] Wave C: conditions and shells (CO, SH)
+- [x] T-0061 [specs] Wave A, validation: syntax and the static reference rules (SY, RF), the generated validity-matrix and sibling-table cases (CF-45, `scripts/generate-matrix.py`), inputs and variables at validation (VA), errors (ER) — specs PRs [#45](https://github.com/gergodrazsdik/blokky-specs/pull/45), [#46](https://github.com/gergodrazsdik/blokky-specs/pull/46), [#47](https://github.com/gergodrazsdik/blokky-specs/pull/47), [#48](https://github.com/gergodrazsdik/blokky-specs/pull/48), [#49](https://github.com/gergodrazsdik/blokky-specs/pull/49) (301 hand-written cases in four areas, 398 generated matrix cases) — 2026-11-07; coverage 188/365 rules (syntax.md, reference.md and errors.md complete)
+- [x] T-0062 [specs] Wave B, run semantics: node kinds, statuses, group errors, `return`, `when` (EM core, RS); leaf processes (EM-14 to EM-24, EM-68, EM-69); captures, scopes, the environment and masking at run time (VA) — 2026-11-07, specs stack [#50](https://github.com/gergodrazsdik/blokky-specs/pull/50) to [#53](https://github.com/gergodrazsdik/blokky-specs/pull/53) (ADR 0022 and 127 cases); coverage 250/365 rules (variables.md and results.md complete)
+- [~] T-0063 [specs] Wave C: conditions and shells (CO, SH)
 - [ ] T-0064 [specs] Wave D, timing and process control: `timeout` and grace, `finally`, `lock`, `services`, external stop and kill, repetition with `carry`, `collect` and `index` (EM)
 - [ ] T-0065 [specs] Wave E: modifier combinations (CF-46, CF-47) and containers (CP)
 - [ ] T-0066 [specs] Maintainer tags `v1.0.0-draft.5` with the spec fixes found while writing the cases
@@ -205,6 +205,8 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
   - Overlaps D-1's precedence doesn't name: RF-16 vs RF-23, RF-6 vs RF-23, RF-27 vs RF-23 in `vars` values; `timeout: { var: X }` (RF-9 or a type mismatch); a regex that doesn't compile (RF-22 or its own rule); a root that is a list (VALUE or INVALID); the code of the targeted `secret:` on an input.
   - Positions: a scope error at the name inside `{ var: X }` or at the reference; a secret literal at `value` or `secret`; the depth error's column; content after `...`; an unset `from_env` in `vars` at its entry's key; an `env`/`export` name conflict; `for` without `as`.
   - Cases still missing: the 32 KiB total input limit; a valid RF-21 near-miss (`mounts: []` needs a container engine); the 8 valid `container` cells of the matrix (wave E).
+- F-0018 [specs] Spec gaps found by the wave B cases (T-0062): unrun `if` branches in the result, failures inside `then`/`else`/`finally` lists, capture checks on decoded text, compact JSON, result fields (RS-6, run id, `children`, `left_running`), leaf details, `stdin` bytes, the drain bound, conformance timing ([review notes](../review/conformance-wave-b.md)). Decided 2026-11-07 and applied in [specs ADR 0022](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0022-wave-b-gaps.md).
+- F-0019 [specs] Spec gaps found by the wave C cases (T-0063): glob semantics, symlinks in resolution, overlapping rule IDs and codes in conditions, positions, condition-error reasons, probe details, `host:` pruning, `.bat`/`.cmd`, backslash escapes, Windows quoting and prologue, conformance configuration ([review notes](../review/conformance-wave-c.md)). Decided 2026-11-07 and applied in [specs ADR 0023](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0023-wave-c-gaps.md).
 
 ## Decisions
 
