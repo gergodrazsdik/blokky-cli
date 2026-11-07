@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0027 [cli] Spike plan, ordered by release (MVP spikes first)
-2. T-0028 [cli] Maintainer approves the spike plan
-3. T-0067 [cli] Refresh the design docs before code
+1. T-0030 [both] Fold the MVP spike findings back (spec and run-control changes; decide the open points)
+2. T-0068 [cli] `blokky-testkit` and the conformance runner
+3. T-0069 [cli] Validator
 
 ## Phase 0 — Bootstrap
 
@@ -115,11 +115,11 @@ Conformance suite complete 2026-11-07: 1,147 cases cover all 380 rules (with spe
 ## Phase 5 — Runtime planning, spikes and incremental CLI (brief §8 steps 9–11)
 
 - [x] T-0053 [cli] Runtime planning session: MVP feature set, feature order, CLI versioning, when each CLI doc is needed — 2026-11-07, [ADR 0007](../adr/0007-runtime-plan.md) (questionnaire): full validator + sequential run on Linux in 0.1, value-first release order, test-first build
-- [~] T-0027 [cli] `docs/design/spike-plan.md`: every "Provisional — verify in spike" item (brief §8 step 10), ordered by release: the MVP spikes (1, 3, 4, 5, 6, 7, 9) first, the rest before their release (ADR 0007) — proposed in [spike-plan.md](../design/spike-plan.md): adds 8L, 12 and 14 to the MVP set (0.1 needs drain on Linux and pwsh)
-- [ ] T-0028 [cli] Maintainer approves the spike plan
-- [ ] T-0029 [cli] Spikes on unmerged `spikes/*` branches; one task per spike is added once the plan is approved
+- [x] T-0027 [cli] `docs/design/spike-plan.md`: every "Provisional — verify in spike" item (brief §8 step 10), ordered by release: the MVP spikes (1, 3, 4, 5, 6, 7, 9) first, the rest before their release (ADR 0007) — proposed in [spike-plan.md](../design/spike-plan.md): adds 8L, 12 and 14 to the MVP set (0.1 needs drain on Linux and pwsh); approved 2026-11-07 (cli PR #48)
+- [x] T-0028 [cli] Maintainer approves the spike plan — 2026-11-07, by merging cli PR #48
+- [~] T-0029 [cli] Spikes on unmerged `spikes/*` branches; one task per spike is added once the plan is approved — MVP spikes 1, 5, 8L, 3, 4, 6, 7, 9, 12, 14 done 2026-11-07 on WSL (branches `spikes/{launcher,yaml-regex,paths-delete,pwsh,schema-editor}`, reports in [design/notes](../design/notes/)); CI runs and the later spikes pending
 - [ ] T-0030 [both] Fold spike findings back into the draft
-- [ ] T-0067 [cli] Refresh the design docs before code: architecture, process control (launcher abstraction designed for all three OSes), tech stack, testkit, validation strategy, CI/CD
+- [x] T-0067 [cli] Refresh the design docs before code: architecture, process control (launcher abstraction designed for all three OSes), tech stack, testkit, validation strategy, CI/CD — 2026-11-07: architecture, tech stack, testkit, validation strategy, CI/CD, and process control from the spikes
 - [ ] T-0068 [cli] `blokky-testkit` (Native AOT, testkit-interface.md) and the conformance runner with its adapter; CI runs the suite on Linux and reports the pass rate
 - [ ] T-0069 [cli] Validator: parse and validate until the suite's validation cases pass (unsupported features → `BK_PLAN_NOT_SUPPORTED`)
 - [ ] T-0070 [cli] Run engine: sequential execution on Linux until the 0.1 conformance subset passes
