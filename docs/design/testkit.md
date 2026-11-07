@@ -64,5 +64,5 @@ The conformance runner ([validation-strategy.md](validation-strategy.md)) prepar
 ## 6. Shipping
 
 - **Never in release archives.** The release workflow builds and packages only `blokky`, and checks the archive contents against an explicit list ([ci-cd.md](ci-cd.md)).
-- CI publishes the testkit per RID as a workflow artifact for the conformance jobs only.
+- CI builds the testkit per RID inside the conformance job (`just conformance` runs `just publish`); it is never uploaded as a release asset.
 - Other implementations of the language can build their own testkit from the interface; blokky-cli's is not published as a product.

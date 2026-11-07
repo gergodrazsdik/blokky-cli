@@ -1,0 +1,8 @@
+---
+title: t
+rules: [SY-1]
+features: [log]
+plan_base64: Ymxva2t5OiAxLjANCmxvZzogaGkNCg==
+expect:
+  plan_errors: [{code: BK_PLAN_CHARACTER, line: 1}]
+  exhaustive: true

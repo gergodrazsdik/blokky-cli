@@ -58,3 +58,65 @@ jobs:
           path: artifacts/publish/Blokky.Cli/release_linux-x64/blokky
           retention-days: 7
           if-no-files-found: error
+
+  conformance:
+    name: conformance (linux-x64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      JUST_VERSION: "1.59.0"
+      DOTNET_NOLOGO: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Read conformance.lock
+        id: lock
+        run: |
+          value() { awk -v key="$1:" '$1 == key { print $2 }' conformance.lock; }
+          repository="$(value repository)"
+          tag="$(value tag)"
+          commit="$(value commit)"
+          test -n "$repository" && test -n "$tag" && test -n "$commit"
+          {
+            echo "repository=$repository"
+            echo "tag=$tag"
+            echo "commit=$commit"
+          } >>"$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.lock.outputs.repository }}
+          ref: refs/tags/${{ steps.lock.outputs.tag }}
+          path: blokky-specs
+          persist-credentials: false
+      - name: Verify that the pinned tag is the locked commit
+        env:
+          EXPECTED: ${{ steps.lock.outputs.commit }}
+        run: |
+          actual="$(git -C blokky-specs rev-parse HEAD)"
+          echo "blokky-specs at $actual"
+          test "$actual" = "$EXPECTED"
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+      - name: Install just
+        run: pipx install "rust-just==${JUST_VERSION}"
+      - name: Restore (locked)
+        run: dotnet restore blokky.slnx
+      # Publishes blokky (AOT), builds the runner, runs the suite; fails on any fail or error.
+      # Totals and the pass rate go to the job summary.
+      - name: Conformance
+        run: just conformance blokky-specs linux-x64 --require-lock-match --require-testkit
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: conformance-linux-x64
+          path: artifacts/conformance/
+          retention-days: 7
+          if-no-files-found: ignore

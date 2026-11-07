@@ -1,0 +1,29 @@
+---
+title: The grace period follows a fired timeout
+rules: [EM-26]
+features: [all, exec, timeout]
+plan: |
+  blokky: 1.0
+  all:
+    - timeout: 2s
+      exec: [blokky-testkit, sleep, 1m, --ignore-term]
+inputs: [A=1, B]
+env: {CI: 'true', HOME: null}
+files:
+  data/x.txt: hello
+  bin.sh: {text: 'echo', executable: true}
+  empty: {dir: true}
+programs: {git: [print, --out, 'git version 2.0']}
+expect:
+  status: failed
+  nodes:
+    /all/0: {status: timed_out, signal: {$absent: true}, duration: {$min: 7s, $max: 14s}}
+platforms:
+  unix:
+    expect:
+      nodes:
+        /all/0: {signal: SIGKILL, duration: {$max: 20s}}
+  linux:
+    env: {CI: {$delete: true}}
+  windows:
+    skip: no signals

@@ -100,7 +100,7 @@ editorconfig:
 # nodes) and tests through `dotnet run` (no `dotnet test` sockets). CI runs them.
 solution := "blokky.slnx"
 rid := "linux-x64"
-test_projects := "test/Blokky.Core.Tests test/Blokky.Cli.Tests test/Blokky.Testkit.Tests"
+test_projects := "test/Blokky.Core.Tests test/Blokky.Cli.Tests test/Blokky.Testkit.Tests test/Blokky.Conformance.Tests"
 
 # Build the solution (warnings are errors; CI=true restores in locked mode)
 [group('dotnet')]
@@ -140,6 +140,14 @@ publish rid=rid:
 test-aot rid=rid: (publish rid)
     BLOKKY_BIN="{{ justfile_directory() }}/artifacts/publish/Blokky.Cli/release_{{ rid }}/blokky" \
       BLOKKY_TESTKIT="{{ justfile_directory() }}/artifacts/publish/Blokky.Testkit/release_{{ rid }}/blokky-testkit" just test
+
+# Run the blokky-specs conformance suite against the AOT binaries; non-zero on any fail or error
+[group('dotnet')]
+conformance specs="../blokky-specs" rid=rid *args: (publish rid) build
+    dotnet run --project test/Blokky.Conformance --no-build -- \
+      --specs "{{ specs }}" --lock conformance.lock \
+      --blokky "${BLOKKY_BIN:-artifacts/publish/Blokky.Cli/release_{{ rid }}/blokky}" \
+      --testkit "${BLOKKY_TESTKIT:-artifacts/publish/Blokky.Testkit/release_{{ rid }}/blokky-testkit}" {{ args }}
 
 # Check C# formatting (whitespace; style rules are enforced by the build)
 [group('lint')]
