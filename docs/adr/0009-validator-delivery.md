@@ -43,6 +43,7 @@ They apply to kinds already in 0.1, and the Linux spikes covered the process-con
 - Core keeps two tables: **validated** (features the validator fully checks) and **runnable** (features the run engine executes). Runnable is always a subset of validated.
 - `validate` gates on validated. `run` gates on runnable: a plan that validates but uses a feature that isn't runnable is rejected in validation with `BK_PLAN_NOT_SUPPORTED`, as CF-12 requires, and no process starts.
 - The conformance adapter declares validated for validation cases and runnable for run cases (CF-54). The runner's skips still come from the binary's own tables.
+- The adapter runs validation cases (and their not-supported check) through `blokky validate` and run cases through `blokky run`, with the same inputs and stdin, so each case meets the gate of the table it is judged against.
 - T-0069 grows validated to the 0.1 table. T-0070 grows runnable kind by kind. A release requires the two tables to be equal for its features.
 
 ### Later-feature validation

@@ -5,7 +5,7 @@ namespace Blokky.Core.Tests;
 
 public class CharacterLintTests
 {
-    private static IReadOnlyList<BlokkyError> Lint(string text) => CharacterLint.Check(text, new LineMap(text));
+    private static IReadOnlyList<BlokkyError> Lint(string text) => CharacterLint.Check(text);
 
     [Test]
     [Arguments(0x00, "NULL")]
@@ -49,6 +49,14 @@ public class CharacterLintTests
 
         await Assert.That(string.Join(" ", errors.Select(e => e.Pos))).IsEqualTo("1:6 3:5 3:7");
         await Assert.That(errors[0].Detail!["codepoint"]!.GetValue<string>()).IsEqualTo("U+000D");
+    }
+
+    [Test]
+    public async Task Positions_count_code_points_and_every_line_break()
+    {
+        var errors = Lint("\U0001F600\u0001\r\n\u0001\r\u0001\n\t\u202E");
+
+        await Assert.That(string.Join(" ", errors.Select(e => e.Pos))).IsEqualTo("1:2 2:1 2:2 3:1 4:2");
     }
 
     [Test]

@@ -49,6 +49,13 @@ public class PlanReaderTests
     [Arguments("a: [ : c ]\n", "BK_PLAN_YAML SY-17 1:6")]
     [Arguments("- : c\n", "BK_PLAN_YAML SY-17 1:3; BK_PLAN_VALUE SY-32 1:1")]
     [Arguments("x:\n  : a\n", "BK_PLAN_YAML SY-17 2:3")]
+    [Arguments("x:\n  : a\n  b: c\n  b: d\n", "BK_PLAN_YAML SY-17 2:3; BK_PLAN_DUPLICATE_KEY SY-18 4:3")]
+    [Arguments("x:\n  : a\n  b: v\n  c: v\n", "BK_PLAN_YAML SY-17 2:3")]
+    [Arguments("x:\n  : a\n  : b\n  b: c\n  b: d\n", "BK_PLAN_YAML SY-17 2:3; BK_PLAN_YAML SY-17 3:3; BK_PLAN_DUPLICATE_KEY SY-18 5:3")]
+    [Arguments("x:\n- : a\n  b: v\n  c: v\n  c: w\n", "BK_PLAN_YAML SY-17 2:3; BK_PLAN_DUPLICATE_KEY SY-18 5:3")]
+    [Arguments("a: 1\n: b\nb: c\nb: d\n", "BK_PLAN_YAML SY-17 2:1; BK_PLAN_DUPLICATE_KEY SY-18 4:1")]
+    [Arguments("x: {: a, b: c, b: d}\n", "BK_PLAN_YAML SY-17 1:5; BK_PLAN_DUPLICATE_KEY SY-18 1:16")]
+    [Arguments("x: {: a, b: v, c: v}\n", "BK_PLAN_YAML SY-17 1:5")]
     [Arguments("a: b\n[c]: d\n", "BK_PLAN_YAML SY-17 2:1")]
     [Arguments("a: b\n{c: d}: e\n", "BK_PLAN_YAML SY-17 2:1")]
     [Arguments("a: 1\nb: 2\na: 3\n", "BK_PLAN_DUPLICATE_KEY SY-18 3:1")]
@@ -73,6 +80,55 @@ public class PlanReaderTests
         await Assert.That(Summary(result)).IsEqualTo(
             "BK_PLAN_YAML SY-15 1:1; BK_PLAN_YAML SY-14 3:4; BK_PLAN_DUPLICATE_KEY SY-18 4:1; BK_PLAN_YAML SY-15 4:4; "
             + "BK_PLAN_YAML SY-14 5:4; BK_PLAN_YAML SY-89 6:4");
+    }
+
+    [Test]
+    public async Task A_key_too_long_to_be_a_key_is_a_syntax_error_without_a_root_error()
+    {
+        // YAML's implicit keys end at 1024 characters, so the key reads as a root scalar before the parser fails.
+        await Assert.That(Summary(Read(new string('k', 2000) + ": v\n"))).IsEqualTo("BK_PLAN_YAML  1:2001");
+    }
+
+    [Test]
+    [Arguments("a: 'x' b: c\n", "BK_PLAN_YAML  1:9")]
+    [Arguments("a: ['x' y]\n", "BK_PLAN_YAML  1:9")]
+    [Arguments("a: {k: \"x\" y}\n", "BK_PLAN_YAML  1:12")]
+    [Arguments("a: 'x'  # c\nb: [\n", "BK_PLAN_YAML  3:1")]
+    [Arguments("exec: 'a' b\n", "BK_PLAN_YAML SY-89 1:7")]
+    [Arguments("exec: \"a\"b c\n", "BK_PLAN_YAML SY-89 1:7")]
+    [Arguments("- 'a'\tb\n", "BK_PLAN_YAML SY-89 1:3")]
+    public async Task Only_text_right_after_a_quoted_scalar_is_the_sy89_quoting_pitfall(string plan, string expected)
+    {
+        await Assert.That(Summary(Read(plan))).IsEqualTo(expected);
+    }
+
+    [Test]
+    public async Task The_quoting_fix_uses_the_other_quote()
+    {
+        await Assert.That(Read("exec: \"a\" b\n").Errors.Single().Message).Contains("single quotes ('\"a\" b')");
+        await Assert.That(Read("exec: 'a' b\n").Errors.Single().Message).Contains("double quotes (\"'a' b\")");
+    }
+
+    [Test]
+    public async Task A_scan_failure_the_parser_does_not_share_is_an_error()
+    {
+        var at = new PlanPosition(2, 3);
+        YamlMarker[] markers = [new(YamlMarkerKind.ScanFailed, at, Text: "boom")];
+        YamlEvent Event(YamlEventKind kind, PlanPosition position) =>
+            new() { Kind = kind, Start = position, NodeStart = position, End = position };
+
+        var clean = YamlSubsetChecker.Check(markers, [Event(YamlEventKind.DocumentStart, PlanPosition.Start),
+            Event(YamlEventKind.MappingStart, PlanPosition.Start), Event(YamlEventKind.MappingEnd, at)], []);
+        var same = YamlSubsetChecker.Check(markers, [Event(YamlEventKind.DocumentStart, PlanPosition.Start),
+            Event(YamlEventKind.Error, at) with { Value = "invalid YAML: x" }], []);
+        var later = YamlSubsetChecker.Check(markers, [Event(YamlEventKind.DocumentStart, PlanPosition.Start),
+            Event(YamlEventKind.Error, new PlanPosition(3, 1)) with { Value = "invalid YAML: x" }], []);
+
+        await Assert.That(clean.Single().Code).IsEqualTo(ErrorCodes.PlanYaml);
+        await Assert.That(clean.Single().Pos).IsEqualTo("2:3");
+        await Assert.That(clean.Single().Message).Contains("scanner failed here, but the parser didn't (boom)");
+        await Assert.That(same.Single().Message).IsEqualTo("invalid YAML: x");
+        await Assert.That(later.Count).IsEqualTo(2);
     }
 
     [Test]

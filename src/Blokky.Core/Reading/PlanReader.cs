@@ -41,7 +41,7 @@ public sealed class PlanReader(IYamlFrontEnd? frontEnd = null)
         }
 
         var lines = new LineMap(text);
-        var characterErrors = CharacterLint.Check(text, lines);
+        var characterErrors = CharacterLint.Check(text);
         if (characterErrors.Count > 0)
         {
             return new PlanReadResult(text, lines, [], [], characterErrors);

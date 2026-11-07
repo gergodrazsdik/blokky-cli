@@ -1,6 +1,8 @@
 using System.Collections.Frozen;
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Blokky.Core.Errors;
 
 namespace Blokky.Core.Reading;
@@ -10,28 +12,56 @@ namespace Blokky.Core.Reading;
 /// rejected character is an error with its position, code point and Unicode name; any error ends processing, so the
 /// text isn't parsed as YAML.
 /// </summary>
+/// <remarks>
+/// SY-13 reports each rejected character, and nothing bounds their number (output-contract.md OC-12 lists every error),
+/// so a text full of them gives an error per character. The pass is linear: it tracks the line and column itself, and
+/// each error shares its message and a parsed <c>detail</c> with the other errors for the same character, so an error
+/// costs little more than its record and its <c>pos</c>.
+/// </remarks>
 public static class CharacterLint
 {
     /// <summary>Checks every character of <paramref name="text"/>; returns one error per rejected character.</summary>
-    public static IReadOnlyList<BlokkyError> Check(string text, LineMap lines)
+    public static IReadOnlyList<BlokkyError> Check(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        ArgumentNullException.ThrowIfNull(lines);
         var errors = new List<BlokkyError>();
+        Dictionary<int, Rejected>? seen = null;
+        var line = 1;
+        var column = 1;
         for (var i = 0; i < text.Length;)
         {
             Rune.DecodeFromUtf16(text.AsSpan(i), out var rune, out var used);
-            var crlf = rune.Value == '\r' && i + 1 < text.Length && text[i + 1] == '\n';
-            if (IsRejected(rune.Value) && !crlf)
+            var value = rune.Value;
+            var crlf = value == '\r' && i + 1 < text.Length && text[i + 1] == '\n';
+            if (IsRejected(value) && !crlf)
             {
-                var codepoint = string.Create(CultureInfo.InvariantCulture, $"U+{rune.Value:X4}");
-                errors.Add(ReaderErrors.Create(ErrorCodes.PlanCharacter, "SY-12", lines.At(i),
-                    $"the plan contains {codepoint} {Name(rune.Value)}, a character that is rejected anywhere in a plan, "
-                    + "comments included, because it can make the text read differently from what runs",
-                    "codepoint", codepoint));
+                seen ??= [];
+                if (!seen.TryGetValue(value, out var rejected))
+                {
+                    rejected = new Rejected(value);
+                    seen.Add(value, rejected);
+                }
+
+                errors.Add(new BlokkyError
+                {
+                    Code = ErrorCodes.PlanCharacter,
+                    Message = rejected.Message,
+                    Pos = BlokkyError.FormatPos(line, column),
+                    Detail = JsonObject.Create(rejected.Detail),
+                });
             }
 
             i += used;
+            if (value == '\n' || (value == '\r' && !crlf))
+            {
+                // SY-1: lines end at LF, CRLF (its CR is the LF's) or a lone CR.
+                line++;
+                column = 1;
+            }
+            else if (!crlf)
+            {
+                column++;
+            }
         }
 
         return errors;
@@ -78,6 +108,28 @@ public static class CharacterLint
         "SINGLE GRAPHIC CHARACTER INTRODUCER", "SINGLE CHARACTER INTRODUCER", "CONTROL SEQUENCE INTRODUCER", "STRING TERMINATOR",
         "OPERATING SYSTEM COMMAND", "PRIVACY MESSAGE", "APPLICATION PROGRAM COMMAND",
     ];
+
+    /// <summary>What every error for one rejected character shares: its message and its <c>detail</c>, parsed once.</summary>
+    private sealed class Rejected
+    {
+        public Rejected(int value)
+        {
+            var codepoint = string.Create(CultureInfo.InvariantCulture, $"U+{value:X4}");
+            Message = $"the plan contains {codepoint} {Name(value)}, a character that is rejected anywhere in a plan, "
+                + "comments included, because it can make the text read differently from what runs";
+            var detail = new JsonObject { ["rule"] = "SY-12", ["codepoint"] = codepoint };
+            using var document = JsonDocument.Parse(detail.ToJsonString());
+            Detail = document.RootElement.Clone();
+        }
+
+        public string Message { get; }
+
+        /// <summary>
+        /// <c>{"rule":"SY-12","codepoint":…}</c>. <see cref="JsonObject.Create(JsonElement, JsonNodeOptions?)"/> wraps it
+        /// without copying until the object is read or changed, and a serializer writes the element as it is.
+        /// </summary>
+        public JsonElement Detail { get; }
+    }
 
     private static readonly FrozenDictionary<int, string> OtherNames = new Dictionary<int, string>
     {

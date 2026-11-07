@@ -112,11 +112,17 @@ public enum YamlMarkerKind
 
     /// <summary>A comment; <see cref="YamlMarker.Inline"/> when it follows content on its line (SY-89).</summary>
     Comment,
+
+    /// <summary>
+    /// The token pass failed here, so no markers follow; <see cref="YamlMarker.Text"/> says why. The event pass reports a
+    /// syntax error at the same place; when it doesn't, the markers after it would be lost silently, so it is an error.
+    /// </summary>
+    ScanFailed,
 }
 
 /// <summary>A token-level fact with its position.</summary>
 /// <param name="Kind">What was found.</param>
 /// <param name="Position">Where its token starts.</param>
 /// <param name="Inline">For a comment: it follows other content on its line.</param>
-/// <param name="Text">For a comment: its text after <c>#</c>.</param>
+/// <param name="Text">For a comment: its text after <c>#</c>; for a failed scan: why.</param>
 public sealed record YamlMarker(YamlMarkerKind Kind, PlanPosition Position, bool Inline = false, string? Text = null);

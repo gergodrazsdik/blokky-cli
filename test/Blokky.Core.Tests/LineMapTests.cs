@@ -28,6 +28,19 @@ public class LineMapTests
     }
 
     [Test]
+    public async Task Surrogate_pairs_are_one_column_on_every_line()
+    {
+        var text = "\U0001F600a\n\U0001F600\U0001F600b\r\nc\U0001F600";
+        var map = new LineMap(text);
+
+        await Assert.That(map.At(text.IndexOf('a', StringComparison.Ordinal))).IsEqualTo(new PlanPosition(1, 2));
+        await Assert.That(map.At(text.IndexOf('b', StringComparison.Ordinal))).IsEqualTo(new PlanPosition(2, 3));
+        await Assert.That(map.At(text.IndexOf('c', StringComparison.Ordinal))).IsEqualTo(new PlanPosition(3, 1));
+        await Assert.That(map.At(text.Length)).IsEqualTo(new PlanPosition(3, 3));
+        await Assert.That(map.At(text.Length - 1)).IsEqualTo(new PlanPosition(3, 3)); // between the halves of a pair
+    }
+
+    [Test]
     public async Task Indexes_are_clamped_and_positions_format_as_line_colon_column()
     {
         var map = new LineMap("ab\ncd");

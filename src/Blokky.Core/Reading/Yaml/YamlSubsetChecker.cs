@@ -6,7 +6,8 @@ namespace Blokky.Core.Reading.Yaml;
 /// The YAML subset (syntax.md §3.1) and the caps checked before a tree is built (§2.3), on Blokky's event stream: anchors,
 /// aliases and merge keys (SY-14), tags and directives (SY-15), more than one document (SY-16), complex and empty keys
 /// (SY-17), duplicate keys (SY-18), the nesting depth (SY-9) and a root that isn't a mapping (SY-32). Errors are
-/// collected, not stop-at-first; a syntax error ends the stream, and the depth cap ends processing.
+/// collected, not stop-at-first; a syntax error ends the stream (and replaces SY-32: the root read so far is only a
+/// fragment), and the depth cap ends processing.
 /// </summary>
 /// <remarks>
 /// Empty values (SY-20), empty collections (SY-21, SY-22) and unknown keys (SY-19) need the field a value belongs to, so
@@ -28,6 +29,8 @@ public static class YamlSubsetChecker
         ArgumentNullException.ThrowIfNull(events);
         ArgumentNullException.ThrowIfNull(seen);
         var errors = new List<BlokkyError>();
+        YamlMarker? scanFailure = null;
+        var emptyKeys = new HashSet<PlanPosition>();
         foreach (var marker in markers)
         {
             switch (marker.Kind)
@@ -39,7 +42,11 @@ public static class YamlSubsetChecker
                     errors.Add(Yaml("SY-17", marker.Position, "complex keys (the ? indicator) aren't allowed: write the key as a string"));
                     break;
                 case YamlMarkerKind.EmptyKey:
+                    emptyKeys.Add(marker.Position);
                     errors.Add(Yaml("SY-17", marker.Position, "a key is missing before ':' (YAML would read it as a null key)"));
+                    break;
+                case YamlMarkerKind.ScanFailed:
+                    scanFailure = marker;
                     break;
             }
         }
@@ -48,13 +55,21 @@ public static class YamlSubsetChecker
         var frames = new Stack<Frame>();
         var documents = 0;
         var sawRoot = false;
+        BlokkyError? rootError = null;
         foreach (var e in events)
         {
             seen.Add(e);
             switch (e.Kind)
             {
                 case YamlEventKind.Error:
+                    // SY-32 isn't reported for a root that is only a fragment (a key over 1024 characters is a scalar, then
+                    // a syntax error); the syntax error is.
                     errors.Add(Yaml(e.Rule, e.Start, e.Value ?? "invalid YAML"));
+                    if (scanFailure is not null && IsBefore(scanFailure.Position, e.Start))
+                    {
+                        errors.Add(ScanFailedAlone(scanFailure));
+                    }
+
                     return errors;
                 case YamlEventKind.DocumentStart:
                     documents++;
@@ -83,13 +98,23 @@ public static class YamlSubsetChecker
             if (frames.Count == 0 && documents == 1 && !sawRoot)
             {
                 sawRoot = true;
-                CheckRoot(e, errors);
+                rootError = CheckRoot(e);
             }
 
             NodeProperties(e, errors);
             if (frames.TryPeek(out var parent) && parent.Keys is not null)
             {
-                if (parent.ExpectKey)
+                if (parent.ExpectKey
+                    && !parent.Flow
+                    && e is { Kind: YamlEventKind.Scalar, Style: YamlScalarStyle.Plain, Value: "" }
+                    && emptyKeys.Contains(e.Start with { Column = e.Start.Column - 1 }))
+                {
+                    // Defect 3: in a nested block mapping, `: value` is one event, located just after its ':', and the
+                    // value's event is missing, so the next event is a key again. Elsewhere (the root mapping, flow
+                    // mappings) an empty key keeps its value event, though not always its position.
+                    parent.ExpectKey = false;
+                }
+                else if (parent.ExpectKey)
                 {
                     Key(e, parent.Keys, explicitKeyLines, errors);
                 }
@@ -108,8 +133,14 @@ public static class YamlSubsetChecker
                     return errors;
                 }
 
-                frames.Push(new Frame(e.Kind == YamlEventKind.MappingStart ? new HashSet<string>(StringComparer.Ordinal) : null));
+                frames.Push(new Frame(e.Kind == YamlEventKind.MappingStart ? new HashSet<string>(StringComparer.Ordinal) : null,
+                    e.Flow));
             }
+        }
+
+        if (rootError is not null)
+        {
+            errors.Add(rootError);
         }
 
         if (documents == 0)
@@ -118,11 +149,26 @@ public static class YamlSubsetChecker
                 "the plan is empty: its root must be a mapping with blokky: and a root node"));
         }
 
+        if (scanFailure is not null)
+        {
+            errors.Add(ScanFailedAlone(scanFailure));
+        }
+
         return errors;
     }
 
+    /// <summary>
+    /// The token pass failed where the event pass didn't (defect 2): the markers after that point are unknown, so the plan
+    /// can't be checked; this looks like a defect of the front end, not of the plan.
+    /// </summary>
+    private static BlokkyError ScanFailedAlone(YamlMarker failure) =>
+        Yaml(null, failure.Position, $"invalid YAML: the YAML scanner failed here, but the parser didn't ({failure.Text}); this "
+            + "is probably a bug in blokky's YAML front end: please report it");
+
+    private static bool IsBefore(PlanPosition a, PlanPosition b) => a.Line < b.Line || (a.Line == b.Line && a.Column < b.Column);
+
     /// <summary>SY-32: the root is a single mapping. An alias root is already an SY-14 error.</summary>
-    private static void CheckRoot(YamlEvent root, List<BlokkyError> errors)
+    private static BlokkyError? CheckRoot(YamlEvent root)
     {
         var message = root.Kind switch
         {
@@ -132,11 +178,13 @@ public static class YamlSubsetChecker
             YamlEventKind.Scalar => "the root of a plan is a scalar; it must be a mapping with blokky: and a root node",
             _ => null,
         };
-        if (message is not null)
+        if (message is null)
         {
-            var at = root.Kind == YamlEventKind.Scalar && root.Value is "" ? PlanPosition.Start : root.Start;
-            errors.Add(ReaderErrors.Create(ErrorCodes.PlanValue, "SY-32", at, message));
+            return null;
         }
+
+        var at = root.Kind == YamlEventKind.Scalar && root.Value is "" ? PlanPosition.Start : root.Start;
+        return ReaderErrors.Create(ErrorCodes.PlanValue, "SY-32", at, message);
     }
 
     /// <summary>SY-14 anchors and aliases, SY-15 tags: located where the node's text begins.</summary>
@@ -197,9 +245,11 @@ public static class YamlSubsetChecker
         ReaderErrors.Create(ErrorCodes.PlanYaml, rule, at, message);
 
     /// <summary>An open collection; <see cref="Keys"/> is null for a sequence.</summary>
-    private sealed class Frame(HashSet<string>? keys)
+    private sealed class Frame(HashSet<string>? keys, bool flow)
     {
         public HashSet<string>? Keys { get; } = keys;
+
+        public bool Flow { get; } = flow;
 
         public bool ExpectKey { get; set; } = true;
     }

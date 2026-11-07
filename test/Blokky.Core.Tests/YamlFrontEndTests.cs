@@ -87,12 +87,40 @@ public class YamlFrontEndTests
     }
 
     [Test]
+    [Arguments("exec: [a, b\nname: x\n", "InvalidOperationException: Operation is not valid")]
+    [Arguments("log: !!st[r hello\n", "ArgumentException: Global tags must be valid URIs")]
+    public async Task Defect_2_a_failure_that_is_not_a_yaml_error_keeps_its_type_and_message(string text, string expected)
+    {
+        await Assert.That(Events(text)[^1].Value).Contains(expected);
+    }
+
+    [Test]
+    public async Task Defect_2_the_token_pass_records_where_it_failed()
+    {
+        var failure = Markers("exec: [a, b\nname: x\n")[^1];
+
+        await Assert.That(failure.Kind).IsEqualTo(YamlMarkerKind.ScanFailed);
+        await Assert.That(failure.Text).Contains("InvalidOperationException");
+    }
+
+    [Test]
+    public async Task The_token_pass_stops_past_the_depth_cap()
+    {
+        var markers = Markers(new string('[', YamlSubsetChecker.MaxDepth + 1) + " # deep\n");
+
+        await Assert.That(markers.Count).IsEqualTo(0);
+        await Assert.That(Markers(new string('[', YamlSubsetChecker.MaxDepth) + " # deep\n").Count).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task Defect_3_an_empty_nested_key_is_found_on_the_tokens()
     {
         var markers = Markers("x:\n  : a\n");
 
         await Assert.That(markers.Single().Kind).IsEqualTo(YamlMarkerKind.EmptyKey);
         await Assert.That(markers.Single().Position).IsEqualTo(new PlanPosition(2, 3));
+        await Assert.That(string.Join(" ", Markers("x:\n  : a\n  : b\n").Select(m => m.Position)))
+            .IsEqualTo("2:3 3:3");
     }
 
     [Test]

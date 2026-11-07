@@ -8,8 +8,9 @@ namespace Blokky.Core.Reading.Yaml;
 public interface IYamlFrontEnd
 {
     /// <summary>
-    /// Token-level facts: directives, explicit and empty keys, comments. Stops quietly at a syntax error, which
-    /// <see cref="ReadEvents"/> reports.
+    /// Token-level facts: directives, explicit and empty keys, comments. Stops at a syntax error with a
+    /// <see cref="YamlMarkerKind.ScanFailed"/> marker (<see cref="ReadEvents"/> reports the error), and once the nesting is
+    /// deeper than the depth cap (the event stream reaches the cap too).
     /// </summary>
     IReadOnlyList<YamlMarker> ScanMarkers(string text, LineMap lines);
 

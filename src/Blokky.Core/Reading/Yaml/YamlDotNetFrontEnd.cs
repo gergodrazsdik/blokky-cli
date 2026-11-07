@@ -37,6 +37,12 @@ public sealed class YamlDotNetFrontEnd : IYamlFrontEnd
     internal static long StepLimit(string text) => (8L * text.Length) + 64;
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// The pass stops once the collections open at a token are nested deeper than <see cref="YamlSubsetChecker.MaxDepth"/>:
+    /// every collection token is a collection event too, so the event pass reaches the depth cap (SY-9) by then, and the cap
+    /// ends processing with no other error. Without the stop, a text of <c>[</c> would be scanned to its end, and
+    /// YamlDotNet's scanner takes time quadratic in the flow depth.
+    /// </remarks>
     public IReadOnlyList<YamlMarker> ScanMarkers(string text, LineMap lines)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -45,12 +51,36 @@ public sealed class YamlDotNetFrontEnd : IYamlFrontEnd
         using var reader = new StringReader(text);
         var scanner = new Scanner(reader, skipComments: false);
         Token? previous = null;
+        var depth = 0;
+
+        // Per open collection, whether a key has begun (a Key token) and its ':' hasn't come yet; the outermost entry is the
+        // stream's. A ':' that ends no key has an empty key (SY-17), including one after a value in a block mapping.
+        var keyOpen = new Stack<bool>();
+        keyOpen.Push(false);
         var limit = StepLimit(text);
-        for (long steps = 0; steps < limit; steps++)
+        for (long steps = 0; ; steps++)
         {
-            var (token, failed) = NextToken(scanner);
-            if (token is null or YamlDotNet.Core.Tokens.Error || failed)
+            if (steps >= limit)
             {
+                markers.Add(ScanFailure(lines, previous, "the YAML scanner stopped making progress"));
+                break;
+            }
+
+            var (token, failure) = NextToken(scanner);
+            if (failure is not null)
+            {
+                markers.Add(ScanFailure(lines, previous, failure));
+                break;
+            }
+
+            if (token is null)
+            {
+                break;
+            }
+
+            if (token is YamlDotNet.Core.Tokens.Error error)
+            {
+                markers.Add(new YamlMarker(YamlMarkerKind.ScanFailed, lines.At(Index(token.Start)), Text: error.Value));
                 break;
             }
 
@@ -60,14 +90,42 @@ public sealed class YamlDotNetFrontEnd : IYamlFrontEnd
                 case VersionDirective or TagDirective:
                     markers.Add(new YamlMarker(YamlMarkerKind.Directive, at));
                     break;
-                case Key when CharAt(text, token.Start) == '?':
-                    markers.Add(new YamlMarker(YamlMarkerKind.ExplicitKey, at));
+                case Key:
+                    if (CharAt(text, token.Start) == '?')
+                    {
+                        markers.Add(new YamlMarker(YamlMarkerKind.ExplicitKey, at));
+                    }
+
+                    keyOpen.Pop();
+                    keyOpen.Push(true);
                     break;
-                case Value when !IsKeyEnd(previous, text):
-                    markers.Add(new YamlMarker(YamlMarkerKind.EmptyKey, at));
+                case Value:
+                    if (!keyOpen.Peek() || !IsKeyEnd(previous, text))
+                    {
+                        markers.Add(new YamlMarker(YamlMarkerKind.EmptyKey, at));
+                    }
+
+                    keyOpen.Pop();
+                    keyOpen.Push(false);
                     break;
                 case CommentToken comment:
                     markers.Add(new YamlMarker(YamlMarkerKind.Comment, at, comment.IsInline, comment.Value));
+                    break;
+                case FlowSequenceStart or FlowMappingStart or BlockSequenceStart or BlockMappingStart:
+                    if (++depth > YamlSubsetChecker.MaxDepth)
+                    {
+                        return markers;
+                    }
+
+                    keyOpen.Push(false);
+                    break;
+                case FlowSequenceEnd or FlowMappingEnd or BlockEnd:
+                    depth = Math.Max(depth - 1, 0);
+                    if (keyOpen.Count > 1)
+                    {
+                        keyOpen.Pop();
+                    }
+
                     break;
             }
 
@@ -79,6 +137,15 @@ public sealed class YamlDotNetFrontEnd : IYamlFrontEnd
 
         return markers;
     }
+
+    /// <summary>The marker for a scanner failure, located at the last good token (exceptions other than YAML's have no mark).</summary>
+    private static YamlMarker ScanFailure(LineMap lines, Token? previous, Exception failure) =>
+        failure is YamlException yaml
+            ? new YamlMarker(YamlMarkerKind.ScanFailed, lines.At(Index(yaml.Start)), Text: Describe(yaml))
+            : ScanFailure(lines, previous, $"the YAML scanner failed with {failure.GetType().Name}: {FirstLine(failure.Message)}");
+
+    private static YamlMarker ScanFailure(LineMap lines, Token? previous, string message) =>
+        new(YamlMarkerKind.ScanFailed, lines.At(previous is null ? 0 : Index(previous.End)), Text: message);
 
     /// <inheritdoc/>
     public IEnumerable<YamlEvent> ReadEvents(string text, LineMap lines)
@@ -93,19 +160,23 @@ public sealed class YamlDotNetFrontEnd : IYamlFrontEnd
         using var reader = new StringReader(text);
         var parser = new Parser(reader);
         ParsingEvent? last = null;
+
+        // Whether each open collection is in flow style; the flow ones are counted in `flow`.
+        var open = new Stack<bool>();
+        var flow = 0;
         var limit = StepLimit(text);
         for (long steps = 0; ; steps++)
         {
             if (steps >= limit)
             {
-                yield return Failure(text, lines, last, null, "the YAML parser stopped making progress");
+                yield return Failure(text, lines, last, flow > 0, null, "the YAML parser stopped making progress");
                 yield break;
             }
 
             var (next, failure) = NextEvent(parser);
             if (failure is not null)
             {
-                yield return Failure(text, lines, last, failure, null);
+                yield return Failure(text, lines, last, flow > 0, failure, null);
                 yield break;
             }
 
@@ -115,6 +186,18 @@ public sealed class YamlDotNetFrontEnd : IYamlFrontEnd
             }
 
             last = next;
+            switch (next)
+            {
+                case MappingStart or SequenceStart:
+                    var isFlow = next is MappingStart { Style: MappingStyle.Flow } or SequenceStart { Style: SequenceStyle.Flow };
+                    open.Push(isFlow);
+                    flow += isFlow ? 1 : 0;
+                    break;
+                case MappingEnd or SequenceEnd when open.Count > 0:
+                    flow -= open.Pop() ? 1 : 0;
+                    break;
+            }
+
             if (Convert(next, text, lines) is { } converted)
             {
                 yield return converted;
@@ -124,15 +207,15 @@ public sealed class YamlDotNetFrontEnd : IYamlFrontEnd
 
     // Defect 2: YamlDotNet throws YamlException, but also InvalidOperationException, ArgumentException and others.
 #pragma warning disable CA1031 // Every library failure is a YAML error of the plan, never a crash.
-    private static (Token? Token, bool Failed) NextToken(Scanner scanner)
+    private static (Token? Token, Exception? Failure) NextToken(Scanner scanner)
     {
         try
         {
-            return scanner.MoveNext() ? (scanner.Current, false) : (null, false);
+            return scanner.MoveNext() ? (scanner.Current, null) : (null, null);
         }
         catch (Exception ex) when (ex is not OutOfMemoryException)
         {
-            return (null, true);
+            return (null, ex);
         }
     }
 
@@ -198,10 +281,11 @@ public sealed class YamlDotNetFrontEnd : IYamlFrontEnd
     };
 
     /// <summary>
-    /// The error event for a library failure. A quoted scalar followed by more text on its line (<c>exec: "a" b</c>) is
-    /// located at its opening quote (SY-1, SY-89), not where the parser gave up.
+    /// The error event for a library failure. A quoted scalar followed by more text on its line (<c>exec: "a" b</c>), where
+    /// the parser gave up at that text, outside flow collections, is located at its opening quote (SY-1, SY-89).
     /// </summary>
-    private static YamlEvent Failure(string text, LineMap lines, ParsingEvent? last, Exception? failure, string? message)
+    private static YamlEvent Failure(string text, LineMap lines, ParsingEvent? last, bool inFlow, Exception? failure,
+        string? message)
     {
         int index;
         if (failure is YamlException yaml)
@@ -211,18 +295,24 @@ public sealed class YamlDotNetFrontEnd : IYamlFrontEnd
         }
         else
         {
+            // Defect 2: not a YAML error, so no mark; the type and message say what failed.
             index = last is null ? 0 : Index(last.End);
-            message ??= $"invalid YAML (the parser failed with {failure!.GetType().Name})";
+            message ??= $"invalid YAML (the parser failed with {failure!.GetType().Name}: {FirstLine(failure.Message)})";
         }
 
         string? rule = null;
         if (last is YamlDotNet.Core.Events.Scalar { Style: ScalarStyle.SingleQuoted or ScalarStyle.DoubleQuoted } quoted
-            && lines.At(Index(quoted.Start)).Line == lines.At(index).Line)
+            && !inFlow
+            && failure is YamlException
+            && index == TextAfter(text, Index(quoted.End)))
         {
             index = Index(quoted.Start);
             rule = "SY-89";
-            message = "a quoted scalar is followed by more text: YAML reads the quotes as the whole value; quote the whole "
-                + "value ('\"a\" b'), or use the list form";
+            message = quoted.Style == ScalarStyle.DoubleQuoted
+                ? "a quoted scalar is followed by more text: YAML reads the quotes as the whole value; quote the whole value in "
+                    + "single quotes ('\"a\" b'), or use the list form"
+                : "a quoted scalar is followed by more text: YAML reads the quotes as the whole value; quote the whole value in "
+                    + "double quotes (\"'a' b\"), or use the list form";
         }
         else if (CharAt(text, index) == '"' && failure is YamlException && message.Contains("escape", StringComparison.Ordinal))
         {
@@ -234,12 +324,31 @@ public sealed class YamlDotNetFrontEnd : IYamlFrontEnd
         return new YamlEvent { Kind = YamlEventKind.Error, Start = at, NodeStart = at, End = at, Value = message, Rule = rule };
     }
 
+    /// <summary>
+    /// The index of the first character after <paramref name="end"/> that isn't a space or tab, if it is more text on the
+    /// same line (not a comment or a line break); else -1.
+    /// </summary>
+    private static int TextAfter(string text, int end)
+    {
+        var i = end;
+        while (i < text.Length && text[i] is (' ' or '\t'))
+        {
+            i++;
+        }
+
+        return i < text.Length && text[i] is not ('#' or '\n' or '\r') ? i : -1;
+    }
+
     /// <summary>YamlDotNet's message without its own <c>(Line: …)</c> prefix, whose positions aren't SY-1's.</summary>
     private static string Describe(YamlException ex)
     {
         var message = ex.Message;
         var cut = message.StartsWith("(Line:", StringComparison.Ordinal) ? message.IndexOf("): ", StringComparison.Ordinal) : -1;
-        message = cut < 0 ? message : message[(cut + 3)..];
+        return FirstLine(cut < 0 ? message : message[(cut + 3)..]);
+    }
+
+    private static string FirstLine(string message)
+    {
         var newline = message.IndexOf('\n', StringComparison.Ordinal);
         return newline < 0 ? message : message[..newline];
     }

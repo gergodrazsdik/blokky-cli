@@ -11,7 +11,10 @@ namespace Blokky.Core.Reading;
 /// </summary>
 public static class PlanText
 {
-    /// <summary>The plan size cap, 4 MiB counted on the raw bytes (SY-9).</summary>
+    /// <summary>
+    /// The plan size cap, 4 MiB counted on the raw bytes (SY-9). Hosts read at most one byte more, so the error doesn't
+    /// state the plan's size.
+    /// </summary>
     public const int MaxBytes = 4 * 1024 * 1024;
 
     private static ReadOnlySpan<byte> Utf8Bom => [0xEF, 0xBB, 0xBF];
@@ -25,7 +28,7 @@ public static class PlanText
         if (raw.Length > MaxBytes)
         {
             return (null, ReaderErrors.Create(ErrorCodes.PlanTooLarge, "SY-9", PlanPosition.Start,
-                $"the plan is {raw.Length} bytes, over the 4 MiB cap ({MaxBytes} bytes)"));
+                $"the plan is larger than the 4 MiB cap ({MaxBytes} bytes)"));
         }
 
         if (WideBom(raw) is { } encoding)

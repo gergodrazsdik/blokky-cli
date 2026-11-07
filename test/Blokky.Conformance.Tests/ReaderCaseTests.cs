@@ -53,11 +53,12 @@ public class ReaderCaseTests
     }
 
     /// <summary>
-    /// A fixed-seed mutation fuzz over the suite's plans (spike 3): edits with YAML punctuation must never make the reader
-    /// throw or hang, and every error it reports carries a code and a position inside the text.
+    /// A fixed-seed mutation fuzz over the suite's plans (spike 3), plus generated stress plans: edits with YAML punctuation
+    /// must never make the reader throw or hang (each plan has a timeout), and every error it reports carries a code and a
+    /// position inside the text.
     /// </summary>
     [Test]
-    public async Task Mutated_plans_never_crash_or_hang_the_reader()
+    public async Task Mutated_and_stress_plans_never_crash_or_hang_the_reader()
     {
         if (CasesDir() is not { } dir)
         {
@@ -68,7 +69,6 @@ public class ReaderCaseTests
         var plans = CaseLoader.FindCaseFiles(dir).Select(f => TryLoad(dir, f)).OfType<ConformanceCase>().Select(c => c.Plan).ToList();
         var random = new Random(20261107);
         byte[] punctuation = "[]{}:,-?&*!|>'\"#%@`\t\r\n \\"u8.ToArray();
-        var reader = new PlanReader();
         var problems = new List<string>();
         var clock = System.Diagnostics.Stopwatch.StartNew();
         for (var i = 0; i < 4000; i++)
@@ -92,24 +92,94 @@ public class ReaderCaseTests
                 }
             }
 
-            try
-            {
-                var result = reader.Read([.. plan]);
-                if (result.Errors.Any(e => e.Pos is null || e.Code.Length == 0))
-                {
-                    problems.Add($"#{i}: an error without a position");
-                }
-            }
-#pragma warning disable CA1031 // Any exception is the finding.
-            catch (Exception ex)
-#pragma warning restore CA1031
-            {
-                problems.Add($"#{i}: {ex.GetType().Name}: {ex.Message}");
-            }
+            await CheckReadAsync($"#{i}", [.. plan], TimeSpan.FromSeconds(10), problems);
+        }
+
+        foreach (var (name, plan) in StressPlans())
+        {
+            await CheckReadAsync(name, plan, TimeSpan.FromSeconds(30), problems);
         }
 
         await Assert.That(string.Join("\n", problems.Take(5))).IsEqualTo("");
-        await Assert.That(clock.Elapsed).IsLessThan(TimeSpan.FromSeconds(60));
+        await Assert.That(clock.Elapsed).IsLessThan(TimeSpan.FromSeconds(120));
+    }
+
+    /// <summary>Large plans, near the 4 MiB cap, of the shapes that once took quadratic time or memory.</summary>
+    private static IEnumerable<(string Name, byte[] Plan)> StressPlans()
+    {
+        const int Size = 1024 * 1024;
+        static byte[] Utf8(string text) => System.Text.Encoding.UTF8.GetBytes(text);
+        yield return ("long flow line", Utf8("blokky: 1.0\nlog: x\nvars: {" + string.Join(", ", Enumerable.Range(0, Size / 10)
+            .Select(i => $"K{i}: v")) + "}\n"));
+        yield return ("deep [", Utf8(new string('[', Size)));
+        yield return ("deep [ on lines", Utf8("a:\n" + string.Concat(Enumerable.Repeat(" [\n", Size / 3))));
+        yield return ("many rejected characters", Utf8("log: '" + new string('\u0001', Size / 2) + "\u202E'\n# \u200B\n"));
+        yield return ("long plain key", Utf8(new string('k', Size) + ": v\n"));
+        yield return ("long plain key on line 2", Utf8("blokky: 1.0\n" + new string('k', 2000) + "\U0001F600: v\n"));
+    }
+
+    /// <summary>Reads <paramref name="plan"/> within <paramref name="timeout"/>; records a throw, a hang or a bad error.</summary>
+    private static async Task CheckReadAsync(string name, byte[] plan, TimeSpan timeout, List<string> problems)
+    {
+        try
+        {
+            var result = await Task.Run(() => new PlanReader().Read(plan)).WaitAsync(timeout);
+            foreach (var error in result.Errors)
+            {
+                if (OutsideText(plan, result, error) is { } problem)
+                {
+                    problems.Add($"{name}: {error.Code} at {error.Pos ?? "(none)"}: {problem}");
+                    break;
+                }
+            }
+        }
+        catch (TimeoutException)
+        {
+            problems.Add($"{name}: no result within {timeout.TotalSeconds:0}s");
+        }
+#pragma warning disable CA1031 // Any exception is the finding.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            problems.Add($"{name}: {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Why <paramref name="error"/>'s position isn't in the text, or null: a code, a <c>line:column</c> with the line at most
+    /// the line count and the column at most the line's length in code points plus one (its end).
+    /// </summary>
+    private static string? OutsideText(byte[] plan, PlanReadResult result, BlokkyError error)
+    {
+        if (error.Code.Length == 0 || error.Pos is not { } pos)
+        {
+            return "no code or position";
+        }
+
+        var parts = pos.Split(':');
+        if (parts.Length != 2 || !int.TryParse(parts[0], out var line) || !int.TryParse(parts[1], out var column)
+            || line < 1 || column < 1)
+        {
+            return "not line:column";
+        }
+
+        // Undecodable text (an encoding error) is checked on its lossy decoding, which agrees up to the first bad byte.
+        var text = result.Text ?? System.Text.Encoding.UTF8.GetString(plan.AsSpan(plan.AsSpan().StartsWith("\uFEFF"u8) ? 3 : 0));
+        var lines = result.Lines ?? new LineMap(text);
+        if (line > lines.LineCount)
+        {
+            return $"line {line} of {lines.LineCount}";
+        }
+
+        var start = lines.LineStart(line);
+        var end = line < lines.LineCount ? lines.LineStart(line + 1) : text.Length;
+        while (end > start && text[end - 1] is ('\n' or '\r'))
+        {
+            end--;
+        }
+
+        var length = lines.At(end).Column - 1;
+        return column <= length + 1 ? null : $"column {column} on a line of {length}";
     }
 
     /// <summary>The reader's errors as the adapter sees them in a pre-run envelope (exit 3, phase plan).</summary>

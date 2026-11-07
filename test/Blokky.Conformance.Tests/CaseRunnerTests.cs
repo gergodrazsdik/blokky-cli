@@ -184,4 +184,76 @@ public class CaseRunnerEndToEndTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    /// <summary>
+    /// A blokky whose tables differ, validated {exec} and runnable {}: <c>validate</c> rejects only what isn't validated and
+    /// <c>run</c> anything. Validation cases must go through <c>validate</c>, or they meet the runnable gate while being
+    /// judged against the validated table (ADR 0009).
+    /// </summary>
+    [Test]
+    [Arguments("[exec, log]", "log: hi", "Skip")]
+    [Arguments("[exec]", "exec: [blokky-testkit, exit, '0']", "Pass")]
+    public async Task Validation_cases_run_through_validate_and_are_judged_on_the_validated_table(string features, string node,
+        string expected)
+    {
+        if (OperatingSystem.IsWindows() || !File.Exists("/usr/bin/true"))
+        {
+            Skip.Test("needs /usr/bin/true");
+        }
+
+        var root = Directory.CreateTempSubdirectory("conformance-tables-").FullName;
+        try
+        {
+            var cases = Path.Combine(root, "cases", "area");
+            Directory.CreateDirectory(cases);
+            var file = Path.Combine(cases, "one.yaml");
+            await File.WriteAllTextAsync(file, $$"""
+                ---
+                title: t
+                rules: [SY-1]
+                features: {{features}}
+                plan: |
+                    blokky: 1.0
+                    {{node}}
+                expect:
+                    plan_errors: [{code: BK_PLAN_VALUE, line: 2, column: 1}]
+                    exhaustive: true
+                """);
+            var binary = new TwoTableBinary();
+            var caps = new AdapterCapabilities(new HashSet<string> { "exec" }, new HashSet<string>(), ["real"], true, false);
+            var host = new HostInfo("linux", new Dictionary<string, string>(), new Dictionary<string, string>(), "/usr/bin/true", false);
+            var settings = new RunnerSettings(Path.Combine(root, "run"), 1, 10, false);
+            var runner = new CaseRunner(new BlokkyAdapter("/fake/blokky", binary, caps), host, settings);
+
+            var result = await runner.RunAsync(Path.Combine(root, "cases"), file, CancellationToken.None);
+
+            await Assert.That(binary.Commands).IsEquivalentTo(["validate"]);
+            await Assert.That(result.Outcome.ToString()).IsEqualTo(expected);
+            await Assert.That(result.Reason ?? "").DoesNotContain("not-supported check");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>The fake binary: <c>validate</c> lacks only <c>log</c>; <c>run</c> lacks <c>exec</c> too.</summary>
+    private sealed class TwoTableBinary : IProcessRunner
+    {
+        public List<string> Commands { get; } = [];
+
+        public Task<ProcessOutcome> RunAsync(ProcessSpec spec, CancellationToken cancellationToken)
+        {
+            Commands.Add(spec.Args[0]);
+            var plan = System.Text.Encoding.UTF8.GetString(spec.Stdin);
+            var missing = spec.Args[0] == "validate" ? (plan.Contains("log:", StringComparison.Ordinal) ? "log" : null) : "exec";
+            var json = missing is null
+                ? """{"status":"invalid","phase":"plan","errors":[{"code":"BK_PLAN_VALUE","message":"m","pos":"2:1"}]}"""
+                : $$$"""
+                    {"status":"invalid","phase":"plan","errors":[
+                        {"code":"BK_PLAN_NOT_SUPPORTED","message":"m","detail":{"feature":"{{{missing}}}"}}]}
+                    """;
+            return Task.FromResult(AdapterTests.Exited(3, json));
+        }
+    }
 }
