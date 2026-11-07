@@ -1,0 +1,2 @@
+Write-Output a
+if ( {

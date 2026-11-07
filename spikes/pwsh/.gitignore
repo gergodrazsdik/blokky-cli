@@ -1,0 +1,6 @@
+tools/
+out/
+scanner/bin/
+scanner/obj/
+conf/*.ps1
+!conf/*.src.ps1
