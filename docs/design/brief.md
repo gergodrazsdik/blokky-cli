@@ -1485,7 +1485,7 @@ Steps 1–3 are done (2026-11-05). The order from step 4 on was revised on 2026-
 
    Findings are verified, consolidated and decided by me; accepted ones become ADRs and a new draft (`1.0.0-draft.N`). This step replaces the former consistency pass.
 8. **Conformance suite** (`blokky-specs/conformance/cases/`), each case citing the rule IDs it tests (`EM-n`, `VA-n`, …), for the features that survive the review. Its pass rate guides the CLI implementation.
-9. **Runtime planning session:** the CLI's MVP feature set, the order in which features follow, CLI versioning, and which CLI docs (configuration, validation and permissions, threat model, agent docs, design docs) are needed when.
+9. **Runtime planning session:** the CLI's MVP feature set, the order in which features follow, CLI versioning, and which CLI docs (configuration, validation and permissions, threat model, agent docs, design docs) are needed when. *(Done 2026-11-07: [ADR 0007](../adr/0007-runtime-plan.md). Before MVP code only the spikes the MVP depends on run (1, 3, 4, 5, 6, 7, 9); the others run before the release that brings their feature.)*
 10. **Spike plan and spikes** (`blokky-cli/docs/design/spike-plan.md`): every item marked **"Provisional — verify in spike"**. Expected items:
     1. the process launcher (`posix_spawn` + `setsid` vs trampoline vs .NET 11 APIs), the **lifeline**, and tree kill per OS. Acceptance: no leaf survives a SIGKILL of blokky;
     2. Windows: graceful termination, hidden console per leaf, race-free job assignment;
