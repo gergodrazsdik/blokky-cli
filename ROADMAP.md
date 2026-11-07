@@ -23,9 +23,9 @@ Coding agents keep writing fragile ad-hoc shell for timeouts, retries, polling, 
 | 0.3 | `all`, `any`, `race`, `tempdir`, `lock` |
 | 0.4 | The Claude Code hook and approval |
 | 0.5 | `services` |
-| 0.6 | macOS and Windows |
+| 0.6 | Windows |
 | 0.7 | `container` |
-| later | The MCP host |
+| later | macOS (verified on CI macOS runners); the MCP host |
 
 Features a release doesn't support fail validation with "not supported by this blokky version" (`BK_PLAN_NOT_SUPPORTED`). Each release lists the spec version it implements, its feature matrix and its conformance pass rate.
 
@@ -35,7 +35,7 @@ Features a release doesn't support fail validation with "not supported by this b
 
 ## Distribution
 
-- GitHub Releases with per-RID Native AOT binaries (`linux-x64` and `linux-arm64` from 0.1; `osx-arm64` and `win-x64` from 0.6), SHA-256 checksums, artifact attestations and an SBOM attestation (`gh attestation verify` as the primary check).
+- GitHub Releases with per-RID Native AOT binaries (`linux-x64` and `linux-arm64` from 0.1, `win-x64` from 0.6, `osx-arm64` later), SHA-256 checksums, artifact attestations and an SBOM attestation (`gh attestation verify` as the primary check).
 - Unsigned binaries in 0.x; no `self-update` command.
 - Install docs per platform, including macOS quarantine handling.
 

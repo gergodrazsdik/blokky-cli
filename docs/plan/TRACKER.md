@@ -129,7 +129,8 @@ Conformance suite complete 2026-11-07: 1,147 cases cover all 380 rules (with spe
 - [ ] T-0074 [cli] 0.3: `all`, `any`, `race`, `tempdir`, `lock`
 - [ ] T-0075 [cli] 0.4: Claude Code hook and approval (after `validation-and-permissions.md` and the threat model, T-0032)
 - [ ] T-0076 [cli] 0.5: `services`
-- [ ] T-0077 [cli] 0.6: macOS and Windows (Windows spikes first)
+- [ ] T-0077 [cli] 0.6: Windows (Windows spikes first; tested locally from WSL and in CI)
+- [ ] T-0079 [cli] macOS port, verified on CI macOS runners (no local Mac)
 - [ ] T-0078 [cli] 0.7: `container` (container and engine spikes first)
 - [ ] T-0032 [cli] (b) `configuration.md`, config schema (main agent owns; subagent proposes), `validation-and-permissions.md`, `security/threat-model.md`
 - [ ] T-0033 [cli] (c) agent docs: `agent-guide.md`, `skill/SKILL.md`, `mcp-tool-description.md`

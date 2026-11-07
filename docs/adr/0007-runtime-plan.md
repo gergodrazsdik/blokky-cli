@@ -41,7 +41,7 @@ The maintainer answered them as a questionnaire on 2026-11-07, with a recommenda
   - `capture` and field captures, `inputs`, `vars`, `outputs`;
   - conditions without probes.
 - **Not in 0.1:** `all`, `any` and `race`; repetition; probes; `services`; `lock`; `tempdir`; `container`. These fail validation with `BK_PLAN_NOT_SUPPORTED`.
-- **Platform:** Linux only (x64 and arm64). macOS and Windows follow in 0.6. The launcher abstraction is still designed for them, so the port doesn't reshape it.
+- **Platform:** Linux only (x64 and arm64), tested locally under WSL. Windows follows in 0.6, tested locally (Windows programs run from WSL) and in CI. macOS comes later and is tested only through CI's macOS runners, since no Mac is available locally. The launcher abstraction is still designed for them, so the port doesn't reshape it.
 - **Host:** the CLI (`validate`, `run`, the JSON report and exit codes), with the agent docs (agent guide, skill) so agents call it through their shell tool.
 
 ### Release order
@@ -55,9 +55,9 @@ Each step is a 0.x minor release, published once the conformance subset for its 
 | 0.3 | `all`, `any`, `race`, `tempdir`, `lock` |
 | 0.4 | The Claude Code hook and approval |
 | 0.5 | `services` |
-| 0.6 | macOS and Windows (process-control port, `powershell`) |
+| 0.6 | Windows (process-control port, `powershell`) |
 | 0.7 | `container` |
-| later | The MCP host |
+| later | macOS (POSIX port, verified on CI macOS runners); the MCP host |
 
 A platform port moves earlier if a user needs it.
 
@@ -101,11 +101,13 @@ Every other spike runs before the release that brings its feature:
 
 The first CLI work is `blokky-testkit` (Native AOT) and the conformance runner with its adapter, all in blokky-cli and run in CI on Linux. Then the validator is built until the suite's validation cases pass, and then the run engine until the 0.1 subset passes.
 
+Amended on 2026-11-07, before merge: no Mac is available for testing, so macOS moves out of 0.6 to a later release verified on CI runners.
+
 ### Consequences
 
 - **Good:** 0.1 is small, fully tested against the suite, and useful to agents on Linux at once. Every later release has a clear conformance target.
 - **Good:** the spikes that only matter later don't hold up the MVP.
-- **Neutral:** macOS and Windows users wait until 0.6, unless the order changes.
+- **Neutral:** Windows users wait until 0.6, and macOS users longer, unless the order changes. macOS support depends on CI runners, because there is no Mac to test on locally.
 - **Bad:** POSIX-only process control first carries a risk that the Windows port reshapes the launcher. Designing the launcher abstraction for all three OSes up front, and the spike 2 design review, contain that risk.
 
 ## More information
