@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0063 [specs] Wave C: conditions and shells
-2. T-0064 [specs] Wave D: timing and process control
-3. T-0065 [specs] Wave E: modifier combinations and containers
+1. T-0064 [specs] Wave D: timing and process control
+2. T-0065 [specs] Wave E: modifier combinations and containers
+3. T-0066 [specs] Maintainer tags `v1.0.0-draft.5`
 
 ## Phase 0 — Bootstrap
 
@@ -105,8 +105,8 @@ The review is done: an agent council of five lenses (76 findings, all verified),
 - [x] T-0060 [specs] Case checker (`scripts/check.py`, `conformance/case.schema.json`, `just check` and `just coverage`, in `just lint` and CI) and a first batch of 8 cases — 2026-11-07, [specs PR #42](https://github.com/gergodrazsdik/blokky-specs/pull/42)
 - [x] T-0061 [specs] Wave A, validation: syntax and the static reference rules (SY, RF), the generated validity-matrix and sibling-table cases (CF-45, `scripts/generate-matrix.py`), inputs and variables at validation (VA), errors (ER) — specs PRs [#45](https://github.com/gergodrazsdik/blokky-specs/pull/45), [#46](https://github.com/gergodrazsdik/blokky-specs/pull/46), [#47](https://github.com/gergodrazsdik/blokky-specs/pull/47), [#48](https://github.com/gergodrazsdik/blokky-specs/pull/48), [#49](https://github.com/gergodrazsdik/blokky-specs/pull/49) (301 hand-written cases in four areas, 398 generated matrix cases) — 2026-11-07; coverage 188/365 rules (syntax.md, reference.md and errors.md complete)
 - [x] T-0062 [specs] Wave B, run semantics: node kinds, statuses, group errors, `return`, `when` (EM core, RS); leaf processes (EM-14 to EM-24, EM-68, EM-69); captures, scopes, the environment and masking at run time (VA) — 2026-11-07, specs stack [#50](https://github.com/gergodrazsdik/blokky-specs/pull/50) to [#53](https://github.com/gergodrazsdik/blokky-specs/pull/53) (ADR 0022 and 127 cases); coverage 250/365 rules (variables.md and results.md complete)
-- [~] T-0063 [specs] Wave C: conditions and shells (CO, SH)
-- [ ] T-0064 [specs] Wave D, timing and process control: `timeout` and grace, `finally`, `lock`, `services`, external stop and kill, repetition with `carry`, `collect` and `index` (EM)
+- [x] T-0063 [specs] Wave C: conditions and shells (CO, SH) — 2026-11-07, specs stack [#55](https://github.com/gergodrazsdik/blokky-specs/pull/55) to [#58](https://github.com/gergodrazsdik/blokky-specs/pull/58) (ADR 0023, checker position check, 166 cases); coverage 329/373 rules (shells.md complete, conditions.md 48/50)
+- [~] T-0064 [specs] Wave D, timing and process control: `timeout` and grace, `finally`, `lock`, `services`, external stop and kill, repetition with `carry`, `collect` and `index` (EM)
 - [ ] T-0065 [specs] Wave E: modifier combinations (CF-46, CF-47) and containers (CP)
 - [ ] T-0066 [specs] Maintainer tags `v1.0.0-draft.5` with the spec fixes found while writing the cases
 
@@ -207,6 +207,8 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
   - Cases still missing: the 32 KiB total input limit; a valid RF-21 near-miss (`mounts: []` needs a container engine); the 8 valid `container` cells of the matrix (wave E).
 - F-0018 [specs] Spec gaps found by the wave B cases (T-0062): unrun `if` branches in the result, failures inside `then`/`else`/`finally` lists, capture checks on decoded text, compact JSON, result fields (RS-6, run id, `children`, `left_running`), leaf details, `stdin` bytes, the drain bound, conformance timing ([review notes](../review/conformance-wave-b.md)). Decided 2026-11-07 and applied in [specs ADR 0022](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0022-wave-b-gaps.md).
 - F-0019 [specs] Spec gaps found by the wave C cases (T-0063): glob semantics, symlinks in resolution, overlapping rule IDs and codes in conditions, positions, condition-error reasons, probe details, `host:` pruning, `.bat`/`.cmd`, backslash escapes, Windows quoting and prologue, conformance configuration ([review notes](../review/conformance-wave-c.md)). Decided 2026-11-07 and applied in [specs ADR 0023](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0023-wave-c-gaps.md).
+- F-0020 [specs] Spec gaps found by the wave D cases (T-0064): the status after an own `attempt_timeout`, `finally_timeout` results, timeout codes for per-attempt `leaf_timeout`, `ended_by` and nesting on cancellation, the stopped run's error, node durations, `while` timing, services results, lock contention inside one run, and kill cases that couldn't be written ([review notes](../review/conformance-wave-d.md)). Decided 2026-11-07 and applied in [specs ADR 0024](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0024-wave-d-gaps.md).
+- F-0021 [specs] Points left open after waves C and D; cases don't assert them. Decide with F-0017 before draft.5 (T-0066): when an external stop arrives during `finally` after the body already failed, is the root's error the body's error (EM-51) or `BK_CANCELLED` (EM-57); whether `?` in a glob can match a leading dot (SY-100 names only `*` and `**`); CO-46 has no observable case (only its `container` warning remains).
 
 ## Decisions
 
