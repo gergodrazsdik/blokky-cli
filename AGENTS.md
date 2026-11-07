@@ -18,7 +18,16 @@ blokky-cli holds the .NET implementation of Blokky (CLI host, later an MCP host)
 - Push branches and open PRs with `gh`. The PR description gives a summary, the decisions it applies (link ADRs), tracker IDs and open items. **Never merge PRs**; the maintainer reviews and merges.
 - Conventional Commits (`docs: …`, `chore: …`); small, logical commits.
 - **DCO and signatures:** always `git commit -s`, with commit signing enabled; never disable signing or pass `--no-verify`. Tags are annotated and signed (`git tag -s`), and release tags are the maintainer's. Write the commit message to a file outside the repo and pass it with `git commit -s -F <file>`.
-- After a PR merges, rebase remaining branches onto `main`.
+- After a PR merges, rebase remaining branches onto `main` (for a stack: `gh stack sync`, below).
+
+## Stacked PRs
+
+When one change builds on another that isn't merged yet, open the PRs as a native GitHub stack with the `gh stack` extension ([about stacked PRs](https://docs.github.com/en/pull-requests/get-started/about-stacked-prs), [commands](https://docs.github.com/en/pull-requests/reference/stacked-prs-cli-commands)), not as PRs based on each other's branches. GitHub then retargets and rebases the rest of the stack itself when a PR merges, so a PR is never closed because its base branch was deleted.
+
+- Create the branches with `gh stack init <branch>…` (or `gh stack add <branch>` on the top branch), and commit to each as usual.
+- Publish with `gh stack submit --auto --open` (without `--auto` it opens an interactive editor), then give each PR its real title and description with `gh pr edit`.
+- The maintainer merges bottom-up (merging a PR also merges the ones below it). Afterwards, `gh stack sync --prune` updates trunk and the remaining branches locally and deletes the merged ones.
+- `sync` and `rebase` may force-push the stack's branches (with lease); `link`, `merge` and `unstack` write to GitHub. Ask before those, as for any force push or GitHub write. Never `gh stack merge`.
 
 ## Commands
 
