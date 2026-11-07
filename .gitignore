@@ -31,3 +31,6 @@ TestResults/
 *.snupkg
 coverage*.json
 coverage*.xml
+
+# Agent worktrees
+.claude/worktrees/
