@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **draft** (T-0067, 2026-11-07). Decisions: [ADR 0001](../adr/0001-baseline.md) (baseline), [ADR 0006](../adr/0006-phase-order-and-incremental-cli.md) (incremental CLI), [ADR 0007](../adr/0007-runtime-plan.md) (runtime plan). Platform process control is in [process-control.md](process-control.md), written after the launcher spikes ([spike-plan.md](spike-plan.md)).
+Status: **draft** (T-0067, 2026-11-07). Decisions: [ADR 0001](../adr/0001-baseline.md) (baseline), [ADR 0006](../adr/0006-phase-order-and-incremental-cli.md) (incremental CLI), [ADR 0007](../adr/0007-runtime-plan.md) (runtime plan), [ADR 0008](../adr/0008-spike-findings.md) (MVP spike findings). Platform process control is in [process-control.md](process-control.md), written after the launcher spikes ([spike-plan.md](spike-plan.md)).
 
 ## 1. Components
 
@@ -16,7 +16,7 @@ Inside `Blokky.Core`:
 
 | Part | Does |
 |---|---|
-| Plan reader | Bytes in, encoding pass and character lint (BOM, UTF-8, control characters), then the YAML front end: an event stream with positions (pending spike 3), every scalar a string. |
+| Plan reader | Bytes in, encoding pass and character lint (BOM, UTF-8, control characters), then the YAML front end: YamlDotNet's scanner and parser behind one adapter, an event stream with positions computed by Blokky's own line map, every scalar a string ([ADR 0008](../adr/0008-spike-findings.md)). |
 | AST builder | Builds typed nodes from the events. Every node keeps line and column; nothing is deserialized by reflection. |
 | Validator | Schema-level checks, static rules (the spec's `RF` rules), the feature gate (§3), lint and strict mode. Collects every error instead of stopping at the first. |
 | Input binder | Binds `--input` values (or MCP `inputs`) to the plan's `inputs`, applies defaults, computes `inputs_sha256`. |
@@ -69,7 +69,7 @@ Shape (names indicative; final in [process-control.md](process-control.md)):
 - **Lifeline:** a per-run component that guarantees no leaf tree outlives `blokky`, including after SIGKILL (RC-6).
 - **Implementations:** POSIX (Linux in 0.1, macOS later) and Windows (0.6). Every OS-specific call goes through `LibraryImport` ([tech-stack.md](tech-stack.md#6-platform-calls)).
 
-The mechanism is decided by the spikes: `posix_spawn` with `POSIX_SPAWN_SETSID`, a `blokky __exec` trampoline, or .NET 11 `Process` APIs (pending spike 1); the lifeline (pending spike 5); drain and completion order (pending spike 8L); Windows jobs and consoles (pending spike 2); macOS (pending spike M). The executor tests use a fake launcher, so the executor doesn't depend on the outcome.
+On Linux the spikes settled the mechanism ([ADR 0008](../adr/0008-spike-findings.md), [process-control.md](process-control.md)): `posix_spawn` with `POSIX_SPAWN_SETSID` (no trampoline, no .NET `Process` for leaves), a per-run watchdog as the lifeline, and drain before the tree stop. Windows jobs and consoles (spike 2) and macOS (spike M) are pending. The executor tests use a fake launcher, so the executor doesn't depend on the OS mechanism.
 
 ## 5. Errors and results
 
@@ -86,4 +86,4 @@ The mechanism is decided by the spikes: `posix_spawn` with `POSIX_SPAWN_SETSID`,
 - Core depends on no host. Hosts depend on Core and add only I/O.
 - The executor depends on interfaces (`IProcessLauncher`, `TimeProvider`, the run registry), so unit tests run it with fakes.
 - The invocation builder depends only on the bound plan and the resolved environment; it starts nothing.
-- Platform code is isolated behind `IProcessLauncher` and a small set of file-system helpers (safe deletion, pending spike 7; the advisory lock).
+- Platform code is isolated behind `IProcessLauncher` and a small set of file-system helpers (fd-relative creation and safe deletion of run-owned files, from spike 7; the advisory lock).

@@ -1,6 +1,6 @@
 # Testkit
 
-Status: **draft** (T-0067, 2026-11-07); built in T-0068. Normative interface: blokky-specs [`conformance/testkit-interface.md`](https://github.com/gergodrazsdik/blokky-specs/blob/main/conformance/testkit-interface.md) (`TK-n`). Runner contract: blokky-specs [`conformance/README.md`](https://github.com/gergodrazsdik/blokky-specs/blob/main/conformance/README.md) §8 (`CF-n`). Test-first order: [ADR 0007](../adr/0007-runtime-plan.md).
+Status: **draft** (T-0067, 2026-11-07); built in T-0068. Normative interface: blokky-specs [`conformance/testkit-interface.md`](https://github.com/gergodrazsdik/blokky-specs/blob/main/conformance/testkit-interface.md) (`TK-n`). Runner contract: blokky-specs [`conformance/README.md`](https://github.com/gergodrazsdik/blokky-specs/blob/main/conformance/README.md) §8 (`CF-n`). Test-first order: [ADR 0007](../adr/0007-runtime-plan.md). Decisions after the spikes: [ADR 0008](../adr/0008-spike-findings.md).
 
 `blokky-testkit` is the fake program conformance cases run instead of real tools (CF-4). This doc covers how blokky-cli implements it and how the conformance runner sets it up.
 
@@ -26,7 +26,7 @@ Status: **draft** (T-0067, 2026-11-07); built in T-0068. Normative interface: bl
 | `count`, `flaky` | Read, increment and write the state file under an exclusive lock (TK-19). |
 | `listen` | Binds `127.0.0.1` and, where available, `::1`; accepts and closes connections (TK-20). |
 
-Open: `spawn --escape` needs an intermediate process (the child that calls `setsid()` and starts the grandchild). TK-5 asks for a log line per invocation; whether that intermediate logs, or only processes that run `COMMAND` do, needs checking against the cases that count invocations.
+`spawn --escape` needs an intermediate process (the child that calls `setsid()` and starts the grandchild). The testkit logs **every process it starts**, the intermediates included, each with its own TK-5 line ([ADR 0008](../adr/0008-spike-findings.md)); cases that count invocations are checked against that when the testkit is built.
 
 ## 3. Unit tests
 
@@ -56,7 +56,7 @@ The conformance runner ([validation-strategy.md](validation-strategy.md)) prepar
 | `virtual` | unchanged (cases opt in only when no process waits) | jumps to the next deadline while no process runs |
 
 - The runner uses the fastest mode both the case and the adapter support. *k* is a runner setting (proposed default 10 on Linux, 1 on Windows) and stays at most 20; cases with `script`, `spawn`, `actions` or `after_run` default to `real` (CF-40).
-- How the adapter tells `blokky` which mode to use is open ([tech-stack.md](tech-stack.md#9-open-points)). The adapter declares only the modes the binary implements (CF-54); `virtual` may come after 0.1.
+- The clock mode can be selected only in test builds of `blokky`; release binaries always use the system clock ([ADR 0008](../adr/0008-spike-findings.md), [tech-stack.md](tech-stack.md#4-time)). So the release gate, which runs the binaries about to be released ([ci-cd.md](ci-cd.md#3-release)), uses `real`; the faster modes run against test builds. The adapter declares only the modes the binary implements (CF-54); `virtual` may come after 0.1.
 
 ## 6. Shipping
 

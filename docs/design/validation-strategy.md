@@ -1,6 +1,6 @@
 # Validation strategy
 
-Status: **draft** (T-0067, 2026-11-07). Source: brief §6, [ADR 0004](../adr/0004-platform-invocation-conformance.md) (conformance checkout), [ADR 0007](../adr/0007-runtime-plan.md) (test-first, conformance-gated releases). Suite format: blokky-specs [`conformance/README.md`](https://github.com/gergodrazsdik/blokky-specs/blob/main/conformance/README.md) (`CF-n`).
+Status: **draft** (T-0067, 2026-11-07). Source: brief §6, [ADR 0004](../adr/0004-platform-invocation-conformance.md) (conformance checkout), [ADR 0007](../adr/0007-runtime-plan.md) (test-first, conformance-gated releases), [ADR 0008](../adr/0008-spike-findings.md) (release gate, fuzzing, pwsh versions). Suite format: blokky-specs [`conformance/README.md`](https://github.com/gergodrazsdik/blokky-specs/blob/main/conformance/README.md) (`CF-n`).
 
 How blokky-cli shows that a build implements the language and its own contracts. The conformance suite measures the language; the other layers cover what the suite can't see (messages, the JSON contracts, CLI behaviour, robustness, AOT).
 
@@ -29,15 +29,15 @@ The CI wiring is in [ci-cd.md](ci-cd.md); the testkit and per-case setup in [tes
 
 ### Release gate
 
-A release is published once the conformance subset for its features passes (ADR 0007):
+A release is published only when **100% of its in-scope cases pass on each RID** it ships (ADR 0007, [ADR 0008](../adr/0008-spike-findings.md)):
 
 - every case that isn't skipped passes, on every RID the release ships;
 - every not-supported check passes;
 - no case ends as `error`.
 
-The release notes and the ROADMAP feature matrix state the spec version, the supported features, and the pass rate per OS. Bumping `conformance.lock` to a newer spec draft is a PR like any other, and must keep the gate green for the features already released.
+The release notes and the ROADMAP feature matrix state the spec version, the supported features, and the pass rate per OS. Bumping `conformance.lock` to a newer spec draft is done by hand, in a PR like any other, and must keep the gate green for the features already released.
 
-Open: whether a release may ship with a known failing case recorded against a spec issue (with a tracker ID), or a spec fix always comes first.
+There is no known-failures allowance: a case that fails because of a spec problem is fixed in the spec first ([ADR 0008](../adr/0008-spike-findings.md)).
 
 ## 3. Unit and golden tests
 
@@ -59,7 +59,7 @@ Against the published AOT binary, using the testkit:
 - signals to `blokky`: SIGINT, SIGTERM, SIGHUP give 130, 143, 129 and an `interrupted` report (RC-13);
 - run dir layout and modes, `report --last`, `clean`, `gc`, `BK_RUN_IN_PROGRESS`;
 - the argv parser's rejections (`--opt=v`, response files, unknown flags);
-- shells: `script` with real `bash`, `sh` and `pwsh` (installed versions pinned in CI; minimum pwsh from spike 14).
+- shells: `script` with real `bash`, `sh` and `pwsh` (installed versions pinned in CI; pwsh 7.4, the supported minimum, and the current release, [ADR 0008](../adr/0008-spike-findings.md)).
 
 ## 6. Fuzzing
 
@@ -69,7 +69,7 @@ Target: the plan reader up to the validated AST, since it takes untrusted bytes.
 - every rejection is a `BK_PLAN_*` error with a position inside the input;
 - the same input gives the same errors.
 
-Seeds: every case plan and example from blokky-specs. Short runs on PRs, longer runs on a schedule, crashes become unit tests. The engine (SharpFuzz with libFuzzer, or property-based generation) is open.
+Seeds: every case plan and example from blokky-specs. Short runs on PRs, longer runs on a schedule, crashes become unit tests. The engine is **SharpFuzz** with libFuzzer ([ADR 0008](../adr/0008-spike-findings.md)). Spike 3's mutation fuzzer (45,880 mutants, no hang or crash after the adapter's guards) shows the properties to keep, and YamlDotNet upgrades rerun it.
 
 ## 7. AOT smoke tests
 
