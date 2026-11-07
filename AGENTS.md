@@ -40,7 +40,7 @@ Use `just` (`just --list`):
 | `just lint` | All linters: `lint-md`, `lint-yaml`, `lint-actions`, `lint-sh`, `typos`, `editorconfig`. |
 | `just build` | Build the .NET solution (`dotnet build -m:1`, warnings as errors). |
 | `just test` | Build, then run every test project (TUnit on Microsoft.Testing.Platform). |
-| `just publish` | Native AOT publish of `blokky` (default `linux-x64`) to `artifacts/publish/`; fails on any trim/AOT warning. |
+| `just publish` | Native AOT publish of `blokky` and `blokky-testkit` (default `linux-x64`) to `artifacts/publish/`; fails on any trim/AOT warning. |
 | `just test-aot` | `publish`, then the tests including those against the published binary (what CI runs). |
 | `just format-check` | C# whitespace formatting (style rules are enforced by the build). |
 | `just conformance` | Run the blokky-specs conformance suite against the AOT binary (added with the runner, T-0068). |

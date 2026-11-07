@@ -38,7 +38,7 @@ internal static unsafe partial class Libc
     public static partial int IsAtty(int fd);
 
     [LibraryImport(Lib, EntryPoint = "flock", SetLastError = true)]
-    public static partial int Flock(nint fd, int operation);
+    public static partial int Flock(int fd, int operation);
 
     [LibraryImport(Lib, EntryPoint = "kill", SetLastError = true)]
     public static partial int Kill(int pid, int signal);

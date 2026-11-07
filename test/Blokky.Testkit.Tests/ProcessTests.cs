@@ -86,6 +86,38 @@ public class ProcessTests
     }
 
     [Test]
+    [Arguments("pid")]
+    [Arguments("log")]
+    public async Task TK14_a_request_right_after_the_pid_file_or_log_line_is_already_ignored(string waitFor)
+    {
+        SkipUnlessLinux();
+
+        // No grace delay: the handlers are registered before the log line and the pid file are written.
+        for (var round = 0; round < 5; round++)
+        {
+            using var dir = new TempDir();
+            var options = dir.Options();
+            options.Env["TESTKIT_LOG"] = dir.File("log");
+            using var process = Tk.Start(options, "sleep", "1m", "--ignore-term", "--record-signals", "sig.txt", "--pid-file", "pid");
+            try
+            {
+                await Tk.EventuallyAsync(() => File.Exists(dir.File(waitFor)) && new FileInfo(dir.File(waitFor)).Length > 0);
+                Tk.Signal(process.Id, SigTerm);
+                await Tk.EventuallyAsync(() => File.Exists(dir.File("sig.txt")));
+                await Task.Delay(50);
+
+                await Assert.That(process.HasExited).IsFalse();
+                await Assert.That(File.ReadAllText(dir.File("sig.txt"))).IsEqualTo("SIGTERM\n");
+            }
+            finally
+            {
+                process.Kill();
+                await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+            }
+        }
+    }
+
+    [Test]
     public async Task TK14_record_signals_without_ignore_records_then_ends()
     {
         SkipUnlessLinux();
@@ -238,10 +270,44 @@ public class ProcessTests
         SkipUnlessLinux();
         using var dir = new TempDir();
 
-        // The shell's background child exits but isn't reaped while the shell sleeps.
-        var result = await Tk.ShellAsync("\"$TK\" exit 0 & echo $! > pids.txt; sleep 0.5; \"$TK\" alive pids.txt", dir.Path);
+        // The shell execs sleep, which never reaps the shell's background child: once it exits it stays a zombie.
+        var options = new TkOptions { Program = "/bin/sh", WorkingDirectory = dir.Path };
+        options.Env["TK"] = Tk.Path;
+        using var parent = Tk.Start(options, "-c", "\"$TK\" exit 0 & echo $! > pids.txt; exec sleep 10");
+        try
+        {
+            await Tk.EventuallyAsync(() => File.Exists(dir.File("pids.txt")) && File.ReadAllText(dir.File("pids.txt")).EndsWith('\n'));
+            var pid = File.ReadAllText(dir.File("pids.txt")).Trim();
+            var zombie = await Tk.EventuallyAsync(() => ProcState(pid) == 'Z');
 
-        await Assert.That(result.Stdout).IsEqualTo("[]\n");
+            // The premise: the pid is a zombie, not gone (then the test would prove nothing).
+            await Assert.That(zombie).IsTrue();
+
+            var result = await Tk.RunAsync(dir.Options(), "alive", "pids.txt");
+
+            await Assert.That(ProcState(pid)).IsEqualTo('Z');
+            await Assert.That(result.Stdout).IsEqualTo("[]\n");
+            await Assert.That(result.ExitCode).IsEqualTo(0);
+        }
+        finally
+        {
+            parent.Kill();
+            await parent.WaitForExitAsync();
+        }
+    }
+
+    /// <summary>The state letter in <c>/proc/&lt;pid&gt;/stat</c> (after the parenthesised name), or null if it's gone.</summary>
+    private static char? ProcState(string pid)
+    {
+        try
+        {
+            var stat = File.ReadAllText($"/proc/{pid}/stat");
+            return stat[(stat.LastIndexOf(')') + 2)..][0];
+        }
+        catch (IOException)
+        {
+            return null;
+        }
     }
 
     [Test]

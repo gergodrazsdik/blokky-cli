@@ -36,6 +36,18 @@ public class MatcherTests
     }
 
     [Test]
+    public async Task Numbers_beyond_the_decimal_range_are_unequal_not_a_crash()
+    {
+        const string Huge = "100000000000000000000000000000000";
+
+        await Assert.That(Matcher.Match(3L, Huge, "")).IsNotNull();
+        await Assert.That(Matcher.Match(Huge, 3L, "")).IsNotNull();
+        await Assert.That(Matcher.Match(1e300, 1e300, "")).IsNotNull();
+        await Assert.That(Matcher.Match(3L, -1e300, "")).IsNotNull();
+        await Assert.That(Matcher.ScalarEquals(Huge, 3L)).IsFalse();
+    }
+
+    [Test]
     public async Task Null_matches_only_a_present_null()
     {
         await Assert.That(Matcher.Match(null, null, "error")).IsNull();

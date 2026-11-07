@@ -21,7 +21,8 @@ internal sealed record Selection(SkipKind? Skip, string? Reason, IReadOnlyList<s
         new(kind, reason, unsupported ?? [], null);
 }
 
-/// <summary>Applies CF-60's order: platform skips (CF-33), requirements (CF-13), features (CF-12), then the clock (CF-39).</summary>
+/// <summary>Applies CF-60's order: platform skips (CF-33), requirements (CF-13) with the testkit, features (CF-12), the
+/// adapter's external stop (CF-55), then the clock (CF-39).</summary>
 internal static partial class CaseSelector
 {
     /// <summary>Fastest first (CF-39).</summary>
@@ -52,22 +53,28 @@ internal static partial class CaseSelector
             return Selection.Skipped(SkipKind.Requirement, "requirement: container-engine");
         }
 
+        // The testkit is what cases run (CF-4, CF-58), and the not-supported check reads its log to see that no process
+        // started (CF-12): without it, neither a run nor that check can be checked.
+        if (host.Testkit is null)
+        {
+            return Selection.Skipped(SkipKind.Requirement,
+                "requirement: testkit (blokky-testkit isn't built; set --testkit or BLOKKY_TESTKIT)");
+        }
+
         var unsupported = c.Features.Where(f => !capabilities.Features.Contains(f)).ToList();
         if (unsupported.Count > 0)
         {
             return Selection.Skipped(SkipKind.NotSupported, $"not supported: {string.Join(", ", unsupported)}", unsupported);
         }
 
-        var clock = ClockPreference.FirstOrDefault(m => ClockModes(c).Contains(m) && capabilities.ClockModes.Contains(m));
-        if (clock is null)
+        // CF-22, CF-54: `stop` actions need an adapter that can stop a run from outside (CF-55).
+        if (c.Actions.Any(a => !a.Kill) && !capabilities.ExternalStop)
         {
-            return Selection.Skipped(SkipKind.Requirement, "requirement: clock");
+            return Selection.Skipped(SkipKind.Requirement, "requirement: external stop (the adapter can't stop a run, CF-55)");
         }
 
-        // The testkit is what cases run (CF-4, CF-58); without it no run can be checked.
-        return host.Testkit is null
-            ? Selection.Skipped(SkipKind.Requirement, "requirement: testkit (blokky-testkit isn't built; set --testkit or BLOKKY_TESTKIT)")
-            : Selection.Run(clock);
+        var clock = ClockPreference.FirstOrDefault(m => ClockModes(c).Contains(m) && capabilities.ClockModes.Contains(m));
+        return clock is null ? Selection.Skipped(SkipKind.Requirement, "requirement: clock") : Selection.Run(clock);
     }
 
     /// <summary>

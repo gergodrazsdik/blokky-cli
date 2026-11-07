@@ -31,9 +31,16 @@ internal interface IProcessRunner
 /// <summary>Runs a process with an environment built from nothing (CF-57), its stdin, a deadline and timed actions.</summary>
 internal sealed class ProcessRunner : IProcessRunner
 {
+    /// <summary>util-linux <c>setsid</c>, where it exists (Linux).</summary>
+    private static readonly string? Setsid = OperatingSystem.IsLinux()
+        ? new[] { "/usr/bin/setsid", "/bin/setsid" }.FirstOrDefault(File.Exists)
+        : null;
+
     public async Task<ProcessOutcome> RunAsync(ProcessSpec spec, CancellationToken cancellationToken)
     {
-        var psi = new ProcessStartInfo(spec.FileName)
+        // Its own session (and so process group) on Linux: util-linux setsid(1) calls setsid() and execs in place, since a
+        // child of the runner never leads a group, so the pid stays the program's. Terminal and runner group signals miss it.
+        var psi = new ProcessStartInfo(Setsid ?? spec.FileName)
         {
             WorkingDirectory = spec.Cwd,
             RedirectStandardInput = true,
@@ -41,6 +48,11 @@ internal sealed class ProcessRunner : IProcessRunner
             RedirectStandardError = true,
             UseShellExecute = false,
         };
+        if (Setsid is not null)
+        {
+            psi.ArgumentList.Add(spec.FileName);
+        }
+
         foreach (var arg in spec.Args)
         {
             psi.ArgumentList.Add(arg);

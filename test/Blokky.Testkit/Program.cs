@@ -30,8 +30,15 @@ namespace Blokky.Testkit
             ["chmod"] = FileCommands.Chmod,
         };
 
+        /// <summary>
+        /// When the process entered managed code (<see cref="System.Diagnostics.Stopwatch.GetTimestamp"/>):
+        /// <c>sleep --ignore-term-for</c> counts from here (TK-14).
+        /// </summary>
+        public static long Started { get; private set; }
+
         public static int Run(string[] args)
         {
+            Started = System.Diagnostics.Stopwatch.GetTimestamp();
             try
             {
                 var name = Invocation.InvokedName();
@@ -39,6 +46,12 @@ namespace Blokky.Testkit
                 if (name != Invocation.ProgramName)
                 {
                     argv = [.. Invocation.AliasArgs(name), .. argv];
+                }
+
+                // sleep's signal handlers come first, since writing the log line can wait for its lock (TK-14).
+                if (argv.Count > 0 && argv[0].Text == "sleep")
+                {
+                    SleepCommand.RegisterEarly([.. argv.Skip(1)]);
                 }
 
                 // The log line comes before anything else, usage errors included (TK-5).

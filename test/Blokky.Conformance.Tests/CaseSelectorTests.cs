@@ -61,6 +61,28 @@ public class CaseSelectorTests
     }
 
     [Test]
+    public async Task A_missing_testkit_also_skips_the_not_supported_check()
+    {
+        // Without the testkit the log stays empty, so "no process started" would pass vacuously (CF-12).
+        var s = CaseSelector.Select(Case("[exec, timeout]"), Linux with { Testkit = null }, Supporting("exec"));
+
+        await Assert.That(s.Skip).IsEqualTo(SkipKind.Requirement);
+        await Assert.That(s.Reason).StartsWith("requirement: testkit");
+    }
+
+    [Test]
+    public async Task Stop_actions_need_an_adapter_that_can_stop_a_run()
+    {
+        var stop = Case("[exec, external-stop]", "actions: [{ after: 1s, stop: true }]");
+        var kill = Case("[exec, kill]", "actions: [{ after: 1s, kill: true }]");
+        var noStop = Supporting("exec", "external-stop", "kill") with { ExternalStop = false };
+
+        await Assert.That(CaseSelector.Select(stop, Linux, noStop).Reason).StartsWith("requirement: external stop");
+        await Assert.That(CaseSelector.Select(stop, Linux, noStop with { ExternalStop = true }).Skip).IsNull();
+        await Assert.That(CaseSelector.Select(kill, Linux, noStop).Skip).IsNull();
+    }
+
+    [Test]
     public async Task The_fastest_clock_both_sides_support_is_used()
     {
         var caps = Supporting("exec") with { ClockModes = ["real", "scaled"] };

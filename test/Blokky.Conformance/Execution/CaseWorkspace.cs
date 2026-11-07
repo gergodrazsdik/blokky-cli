@@ -80,9 +80,24 @@ internal sealed class CaseWorkspace : IDisposable
         foreach (var (alias, args) in c.Programs)
         {
             LinkOrCopy(testkit, Path.Combine(BinDir, alias + exe));
-            // TK-6: one argument per line, LF-separated, no trailing empty argument.
-            File.WriteAllText(Path.Combine(BinDir, alias + ".testkit-args"), string.Join('\n', args), new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(BinDir, alias + ".testkit-args"), AliasFile(args), new UTF8Encoding(false));
         }
+    }
+
+    /// <summary>
+    /// A <c>.testkit-args</c> file (TK-6): every argument followed by an LF. The testkit drops one final LF and splits at the
+    /// rest, so an empty argument (also a trailing one) round-trips, and no arguments is an empty file.
+    /// </summary>
+    internal static string AliasFile(IReadOnlyList<string> args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        var text = new StringBuilder();
+        foreach (var arg in args)
+        {
+            text.Append(arg).Append('\n');
+        }
+
+        return text.ToString();
     }
 
     /// <summary>The base environment (CF-57), then the case's <c>env</c> (CF-19).</summary>
@@ -148,22 +163,15 @@ internal sealed class CaseWorkspace : IDisposable
         return env;
     }
 
+    /// <summary>The environment entry that marks this case's processes (<see cref="Survivors"/>).</summary>
+    public string Marker => Survivors.Marker(LogPath);
+
     /// <summary>The invocation log's entries (TK-5), from line <paramref name="skip"/> on.</summary>
     public List<object?> ReadLog(int skip = 0)
     {
         var entries = new List<object?>();
-        if (!File.Exists(LogPath))
+        foreach (var line in LogLines().Skip(skip))
         {
-            return entries;
-        }
-
-        foreach (var line in File.ReadAllLines(LogPath, Encoding.UTF8).Skip(skip))
-        {
-            if (line.Length == 0)
-            {
-                continue;
-            }
-
             using var doc = JsonDocument.Parse(line);
             entries.Add(JsonValues.From(doc.RootElement));
         }
@@ -171,7 +179,48 @@ internal sealed class CaseWorkspace : IDisposable
         return entries;
     }
 
-    public int LogCount() => File.Exists(LogPath) ? File.ReadAllLines(LogPath).Count(l => l.Length > 0) : 0;
+    public int LogCount() => LogLines().Count;
+
+    /// <summary>
+    /// The log's non-empty lines, read under a shared <c>flock</c>: the testkit appends each line in one write under an
+    /// exclusive one (TK-5), so a reader waits for it and never sees half a line. .NET's own lock on open is off
+    /// (<c>System.IO.DisableFileLocking</c> in the project), or opening would fail while a testkit holds the lock.
+    /// </summary>
+    internal List<string> LogLines()
+    {
+        string text;
+        try
+        {
+            using var stream = new FileStream(LogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            if (!OperatingSystem.IsWindows())
+            {
+                LockShared(stream);
+            }
+
+            using var reader = new StreamReader(stream, new UTF8Encoding(false));
+            text = reader.ReadToEnd();
+        }
+        catch (FileNotFoundException)
+        {
+            return [];
+        }
+
+        return [.. text.Split('\n').Where(l => l.Length > 0)];
+    }
+
+    /// <summary>Blocks until the shared lock is held; closing the stream releases it.</summary>
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    private static void LockShared(FileStream stream)
+    {
+        var fd = (int)stream.SafeFileHandle.DangerousGetHandle();
+        while (Interop.Flock(fd, Interop.LockSh) != 0)
+        {
+            if (System.Runtime.InteropServices.Marshal.GetLastPInvokeError() != Interop.EINTR)
+            {
+                throw new IOException($"flock(LOCK_SH) on {stream.Name} failed");
+            }
+        }
+    }
 
     public void Dispose()
     {

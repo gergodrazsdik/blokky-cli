@@ -86,7 +86,7 @@ internal static class Files
     {
         if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
         {
-            var fd = stream.SafeFileHandle.DangerousGetHandle();
+            var fd = (int)stream.SafeFileHandle.DangerousGetHandle();
             while (Libc.Flock(fd, Libc.LockEx) != 0)
             {
                 if (System.Runtime.InteropServices.Marshal.GetLastPInvokeError() != Libc.EINTR)
@@ -120,7 +120,7 @@ internal static class Files
 
     [SupportedOSPlatform("linux")]
     [SupportedOSPlatform("macos")]
-    private static Unlocker UnixUnlocker(nint fd) => new(() => Libc.Flock(fd, Libc.LockUn));
+    private static Unlocker UnixUnlocker(int fd) => new(() => Libc.Flock(fd, Libc.LockUn));
 
     [SupportedOSPlatform("windows")]
     private static Unlocker WindowsUnlocker(FileStream stream) => new(() => stream.Unlock(0, long.MaxValue));

@@ -343,17 +343,24 @@ internal sealed partial class Matcher(MatchOptions options)
         return x is not null && y is not null && x == y;
     }
 
-    /// <summary>A number, or a decimal integer string when <paramref name="strictText"/> (CF-30: <c>3</c> matches <c>'3'</c>).</summary>
+    /// <summary>
+    /// A number, or a decimal integer string when <paramref name="strictText"/> (CF-30: <c>3</c> matches <c>'3'</c>);
+    /// null when it isn't one or doesn't fit a decimal, so an out-of-range value never equals anything.
+    /// </summary>
     private static decimal? AsNumber(object? value, bool strictText = false) => value switch
     {
         long l => l,
         int i => i,
-        double d when !double.IsNaN(d) && !double.IsInfinity(d) => (decimal)d,
+        double d when Math.Abs(d) < DecimalLimit => (decimal)d,
         decimal m => m,
-        string s when IntegerText().IsMatch(s) => decimal.Parse(s, CultureInfo.InvariantCulture),
+        string s when IntegerText().IsMatch(s) => decimal.TryParse(s, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture,
+            out var m) ? m : null,
         string s when !strictText && decimal.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var m) => m,
         _ => null,
     };
+
+    /// <summary>Doubles at or above this don't convert to decimal (the cast throws OverflowException); NaN fails the test.</summary>
+    private const double DecimalLimit = 7.9e28;
 
     private static TimeSpan AsDuration(object? bound) => bound switch
     {

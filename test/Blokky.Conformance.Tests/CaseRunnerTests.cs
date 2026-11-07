@@ -1,3 +1,4 @@
+using Blokky.Conformance.Cases;
 using Blokky.Conformance.Execution;
 using Blokky.Conformance.Matching;
 
@@ -40,6 +41,37 @@ public class CaseRunnerTests
         await Assert.That(Problem(Rejected(Yaml))).Contains("no BK_PLAN_NOT_SUPPORTED");
         await Assert.That(Problem(Rejected(Warp))).Contains("not a feature id");
         await Assert.That(Problem(Rejected("""{"status":"succeeded","nodes":[]}""", 0))).Contains("Result");
+    }
+
+    [Test]
+    public async Task A_process_that_outlived_blokky_fails_the_no_process_checks()
+    {
+        var notSupported = Rejected(AdapterTests.NotSupportedEnvelope);
+        var yaml = Rejected("""{"status":"invalid","phase":"plan","errors":[{"code":"BK_PLAN_YAML","message":"m"}]}""");
+
+        await Assert.That(CaseRunner.NotSupportedProblem(notSupported, 0, ["log"], survivors: 1).Problem).Contains("outlived blokky");
+        await Assert.That(CaseRunner.MatchValidation(Values.Map("plan_errors: [{ code: BK_PLAN_YAML }]"), yaml, 0, Matcher, survivors: 2))
+            .Contains("CF-23");
+    }
+
+    [Test]
+    public async Task The_own_errors_fallback_needs_a_plan_rejection_with_exit_3()
+    {
+        const string Yaml = """{"status":"invalid","phase":"plan","errors":[{"code":"BK_PLAN_YAML","message":"m"}]}""";
+        const string UsageYaml = """{"status":"invalid","phase":"usage","errors":[{"code":"BK_PLAN_YAML","message":"m"}]}""";
+        var expect = Values.Map("plan_errors: [{ code: BK_PLAN_YAML }]");
+        bool Fallback(AdapterOutcome outcome, string? expectYaml = null, int log = 0, int survivors = 0) =>
+            CaseRunner.RejectedWithOwnErrors(ExpectKind.Validation, expectYaml is null ? expect : Values.Map(expectYaml), outcome, log,
+                survivors, Matcher);
+
+        await Assert.That(Fallback(Rejected(Yaml))).IsTrue();
+        await Assert.That(Fallback(Rejected(Yaml, 2))).IsFalse();
+        await Assert.That(Fallback(Rejected(Yaml, 0))).IsFalse();
+        await Assert.That(Fallback(Rejected(UsageYaml))).IsFalse();
+        await Assert.That(Fallback(Rejected(Yaml), log: 1)).IsFalse();
+        await Assert.That(Fallback(Rejected(Yaml), survivors: 1)).IsFalse();
+        await Assert.That(Fallback(Rejected(Yaml), "input_errors: [{ code: BK_INPUT_SYNTAX }]")).IsFalse();
+        await Assert.That(CaseRunner.RejectedWithOwnErrors(ExpectKind.Run, expect, Rejected(Yaml), 0, 0, Matcher)).IsFalse();
     }
 
     [Test]

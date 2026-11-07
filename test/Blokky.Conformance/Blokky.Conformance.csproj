@@ -20,6 +20,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The testkit appends to the log under flock (TK-5); .NET's own LOCK_SH|LOCK_NB on open would make the runner's -->
+    <!-- reads fail while a testkit holds it. The runner takes a blocking shared flock itself (CaseWorkspace.LogLines). -->
+    <RuntimeHostConfigurationOption Include="System.IO.DisableFileLocking" Value="true" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Blokky.Conformance.Tests" />
   </ItemGroup>
 </Project>

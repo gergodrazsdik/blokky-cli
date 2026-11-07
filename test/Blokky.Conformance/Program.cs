@@ -58,6 +58,14 @@ var files = CaseLoader.FindCaseFiles(casesDir)
     .Where(f => options.Filters.Count == 0 || options.Filters.Any(p => CaseLoader.IdOf(casesDir, f).StartsWith(p,
         StringComparison.Ordinal)))
     .ToList();
+if (files.Count == 0)
+{
+    // A --filter typo or an empty checkout would otherwise report 0 fail and 0 error, which reads as a pass.
+    var filters = options.Filters.Count == 0 ? "" : $" matching --filter {string.Join(", ", options.Filters)}";
+    Console.Error.WriteLine($"blokky-conformance: no cases{filters} under {casesDir}");
+    return 2;
+}
+
 // Under artifacts/, on the same file system as the published testkit, so case bin/ dirs get hard links (testkit.md §4).
 var runRoot = Path.GetFullPath(Path.Combine(options.RunRoot, $"run-{Guid.NewGuid():N}"));
 Directory.CreateDirectory(runRoot);
