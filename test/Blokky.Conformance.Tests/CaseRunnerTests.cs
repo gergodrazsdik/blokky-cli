@@ -8,21 +8,32 @@ public class CaseRunnerTests
 {
     private static readonly Matcher Matcher = new();
 
+    private static readonly HashSet<string> None = [];
+
     private static AdapterOutcome Rejected(string json, int code = 3) => BlokkyAdapter.Interpret(AdapterTests.Exited(code, json));
 
     [Test]
     public async Task A_well_formed_not_supported_rejection_passes_the_check()
     {
-        var (problem, note) = CaseRunner.NotSupportedProblem(Rejected(AdapterTests.NotSupportedEnvelope), 0, ["log"]);
+        var (problem, note) = CaseRunner.NotSupportedProblem(Rejected(AdapterTests.NotSupportedEnvelope), 0, ["log"], None);
 
         await Assert.That(problem).IsNull();
         await Assert.That(note).IsNull();
     }
 
     [Test]
+    public async Task The_check_fails_when_the_named_feature_is_declared_for_the_case()
+    {
+        var problem = CaseRunner.NotSupportedProblem(Rejected(AdapterTests.NotSupportedEnvelope), 0, ["log"],
+            new HashSet<string> { "log" }).Problem;
+
+        await Assert.That(problem).Contains("declares supported");
+    }
+
+    [Test]
     public async Task A_feature_the_case_does_not_list_is_noted_not_failed()
     {
-        var (problem, note) = CaseRunner.NotSupportedProblem(Rejected(AdapterTests.NotSupportedEnvelope), 0, ["exec"]);
+        var (problem, note) = CaseRunner.NotSupportedProblem(Rejected(AdapterTests.NotSupportedEnvelope), 0, ["exec"], None);
 
         await Assert.That(problem).IsNull();
         await Assert.That(note).Contains("'log'");
@@ -34,7 +45,7 @@ public class CaseRunnerTests
         const string Yaml = """{"status":"invalid","phase":"plan","errors":[{"code":"BK_PLAN_YAML","message":"m"}]}""";
         const string Warp =
             """{"status":"invalid","phase":"plan","errors":[{"code":"BK_PLAN_NOT_SUPPORTED","message":"m","detail":{"feature":"warp"}}]}""";
-        string? Problem(AdapterOutcome outcome, int log = 0) => CaseRunner.NotSupportedProblem(outcome, log, ["log"]).Problem;
+        string? Problem(AdapterOutcome outcome, int log = 0) => CaseRunner.NotSupportedProblem(outcome, log, ["log"], None).Problem;
 
         await Assert.That(Problem(Rejected(AdapterTests.NotSupportedEnvelope), log: 1)).Contains("a process started");
         await Assert.That(Problem(Rejected(AdapterTests.NotSupportedEnvelope, 2))).Contains("exit 2");
@@ -49,7 +60,7 @@ public class CaseRunnerTests
         var notSupported = Rejected(AdapterTests.NotSupportedEnvelope);
         var yaml = Rejected("""{"status":"invalid","phase":"plan","errors":[{"code":"BK_PLAN_YAML","message":"m"}]}""");
 
-        await Assert.That(CaseRunner.NotSupportedProblem(notSupported, 0, ["log"], survivors: 1).Problem).Contains("outlived blokky");
+        await Assert.That(CaseRunner.NotSupportedProblem(notSupported, 0, ["log"], None, survivors: 1).Problem).Contains("outlived blokky");
         await Assert.That(CaseRunner.MatchValidation(Values.Map("plan_errors: [{ code: BK_PLAN_YAML }]"), yaml, 0, Matcher, survivors: 2))
             .Contains("CF-23");
     }
@@ -154,7 +165,7 @@ public class CaseRunnerEndToEndTests
             await File.WriteAllTextAsync(file, Case);
             var fake = new FakeRunner(AdapterTests.Exited(0,
                 """{"status":"succeeded","error":null,"nodes":[{"id":"/","kind":"exec","status":"succeeded","exit_code":0}]}"""));
-            var caps = new AdapterCapabilities(new HashSet<string> { "exec" }, ["real"], true, false);
+            var caps = new AdapterCapabilities(new HashSet<string> { "exec" }, new HashSet<string> { "exec" }, ["real"], true, false);
             var host = new HostInfo("linux", new Dictionary<string, string>(), new Dictionary<string, string>(), "/usr/bin/true", false);
             var settings = new RunnerSettings(Path.Combine(root, "run"), 1, 10, false);
             var runner = new CaseRunner(new BlokkyAdapter("/fake/blokky", fake, caps), host, settings);
@@ -171,6 +182,78 @@ public class CaseRunnerEndToEndTests
         finally
         {
             Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// A blokky whose tables differ, validated {exec} and runnable {}: <c>validate</c> rejects only what isn't validated and
+    /// <c>run</c> anything. Validation cases must go through <c>validate</c>, or they meet the runnable gate while being
+    /// judged against the validated table (ADR 0009).
+    /// </summary>
+    [Test]
+    [Arguments("[exec, log]", "log: hi", "Skip")]
+    [Arguments("[exec]", "exec: [blokky-testkit, exit, '0']", "Pass")]
+    public async Task Validation_cases_run_through_validate_and_are_judged_on_the_validated_table(string features, string node,
+        string expected)
+    {
+        if (OperatingSystem.IsWindows() || !File.Exists("/usr/bin/true"))
+        {
+            Skip.Test("needs /usr/bin/true");
+        }
+
+        var root = Directory.CreateTempSubdirectory("conformance-tables-").FullName;
+        try
+        {
+            var cases = Path.Combine(root, "cases", "area");
+            Directory.CreateDirectory(cases);
+            var file = Path.Combine(cases, "one.yaml");
+            await File.WriteAllTextAsync(file, $$"""
+                ---
+                title: t
+                rules: [SY-1]
+                features: {{features}}
+                plan: |
+                    blokky: 1.0
+                    {{node}}
+                expect:
+                    plan_errors: [{code: BK_PLAN_VALUE, line: 2, column: 1}]
+                    exhaustive: true
+                """);
+            var binary = new TwoTableBinary();
+            var caps = new AdapterCapabilities(new HashSet<string> { "exec" }, new HashSet<string>(), ["real"], true, false);
+            var host = new HostInfo("linux", new Dictionary<string, string>(), new Dictionary<string, string>(), "/usr/bin/true", false);
+            var settings = new RunnerSettings(Path.Combine(root, "run"), 1, 10, false);
+            var runner = new CaseRunner(new BlokkyAdapter("/fake/blokky", binary, caps), host, settings);
+
+            var result = await runner.RunAsync(Path.Combine(root, "cases"), file, CancellationToken.None);
+
+            await Assert.That(binary.Commands).IsEquivalentTo(["validate"]);
+            await Assert.That(result.Outcome.ToString()).IsEqualTo(expected);
+            await Assert.That(result.Reason ?? "").DoesNotContain("not-supported check");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>The fake binary: <c>validate</c> lacks only <c>log</c>; <c>run</c> lacks <c>exec</c> too.</summary>
+    private sealed class TwoTableBinary : IProcessRunner
+    {
+        public List<string> Commands { get; } = [];
+
+        public Task<ProcessOutcome> RunAsync(ProcessSpec spec, CancellationToken cancellationToken)
+        {
+            Commands.Add(spec.Args[0]);
+            var plan = System.Text.Encoding.UTF8.GetString(spec.Stdin);
+            var missing = spec.Args[0] == "validate" ? (plan.Contains("log:", StringComparison.Ordinal) ? "log" : null) : "exec";
+            var json = missing is null
+                ? """{"status":"invalid","phase":"plan","errors":[{"code":"BK_PLAN_VALUE","message":"m","pos":"2:1"}]}"""
+                : $$$"""
+                    {"status":"invalid","phase":"plan","errors":[
+                        {"code":"BK_PLAN_NOT_SUPPORTED","message":"m","detail":{"feature":"{{{missing}}}"}}]}
+                    """;
+            return Task.FromResult(AdapterTests.Exited(3, json));
         }
     }
 }

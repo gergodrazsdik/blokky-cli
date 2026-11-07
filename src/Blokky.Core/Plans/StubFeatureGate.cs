@@ -5,24 +5,30 @@ using Blokky.Core.Features;
 namespace Blokky.Core.Plans;
 
 /// <summary>
-/// Stand-in for the validator until T-0069: with an empty <see cref="FeatureSupport"/> table every plan is
-/// not supported. It reports one <c>BK_PLAN_NOT_SUPPORTED</c> naming the root node's kind, found by a
-/// line scan for the first top-level kind key (no YAML parsing). If no kind key is found, it names
-/// <see cref="FallbackFeature"/>. It never claims a plan is valid, and nothing runs.
+/// Stand-in for the feature gate until the AST lands (T-0081): with empty <see cref="FeatureSupport"/> tables every plan
+/// that reads cleanly is not supported. It reports one <c>BK_PLAN_NOT_SUPPORTED</c> naming the root node's kind, found by
+/// a line scan for the first top-level kind key. If no kind key is found, it names <see cref="FallbackFeature"/>. It never
+/// claims a plan is valid, and nothing runs.
 /// </summary>
 public static class StubFeatureGate
 {
     /// <summary>The feature named when the scan finds no top-level kind key.</summary>
     public const string FallbackFeature = "exec";
 
-    /// <summary>Checks <paramref name="plan"/>; returns the plan errors (never empty while nothing is supported).</summary>
-    public static IReadOnlyList<BlokkyError> Check(PlanSource plan)
+    /// <summary>
+    /// Checks <paramref name="plan"/> against <paramref name="table"/>: <see cref="FeatureTable.Validated"/> for
+    /// <c>validate</c>; <see cref="FeatureTable.Runnable"/> for <c>run</c>, which gates on validated first (ADR 0009).
+    /// Returns the plan errors (never empty while nothing is supported).
+    /// </summary>
+    public static IReadOnlyList<BlokkyError> Check(PlanSource plan, FeatureTable table)
     {
         ArgumentNullException.ThrowIfNull(plan);
         var (feature, line) = FindRootKind(plan.Bytes.Span);
-        if (FeatureSupport.IsSupported(feature))
+        var unsupported = !FeatureSupport.IsValidated(feature)
+            || (table == FeatureTable.Runnable && !FeatureSupport.IsRunnable(feature));
+        if (!unsupported)
         {
-            // Unreachable while the table is empty; the real validator replaces this class first.
+            // Unreachable while the tables are empty; the real gate replaces this class first.
             throw new InvalidOperationException("the stub gate can't validate supported features");
         }
 

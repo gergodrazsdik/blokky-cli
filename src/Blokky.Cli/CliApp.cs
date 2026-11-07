@@ -2,13 +2,16 @@ using System.Reflection;
 using System.Text;
 using Blokky.Core.Contracts;
 using Blokky.Core.Errors;
+using Blokky.Core.Features;
 using Blokky.Core.Plans;
+using Blokky.Core.Reading;
 
 namespace Blokky.Cli;
 
 /// <summary>
 /// The CLI host: parses argv, reads the plan and reports. Streams are passed in so tests drive it in-process.
-/// This build executes nothing: every plan stops at the feature gate (<see cref="StubFeatureGate"/>).
+/// This build executes nothing: a plan is read (<see cref="PlanReader"/>), and one that reads cleanly stops at the feature
+/// gate (<see cref="StubFeatureGate"/>).
 /// </summary>
 internal static class CliApp
 {
@@ -55,28 +58,38 @@ internal static class CliApp
             return Fail(new PreRunEnvelope(Phase.Usage, [readError!]), stdout, stderr);
         }
 
-        // validate and run share the static front half; nothing past it exists yet.
-        var planErrors = StubFeatureGate.Check(plan);
+        // validate and run share the static front half: the plan reader, then (until the AST lands) the stub gate.
+        var read = new PlanReader().Read(plan.Bytes.Span);
+        if (!read.Ok)
+        {
+            return Fail(new PreRunEnvelope(Phase.Plan, read.Errors), stdout, stderr);
+        }
+
+        var table = command.Kind == CommandKind.Validate ? FeatureTable.Validated : FeatureTable.Runnable;
+        var planErrors = StubFeatureGate.Check(plan, table);
         return Fail(new PreRunEnvelope(Phase.Plan, planErrors), stdout, stderr);
     }
 
     internal static string Version { get; } =
         typeof(CliApp).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 
+    /// <summary>
+    /// Reads the plan, but never more than one byte over the size cap (SY-9): that byte is enough for the reader to reject
+    /// the plan, and a huge input (or <c>/dev/zero</c>) isn't buffered in full.
+    /// </summary>
     private static (PlanSource?, BlokkyError?) ReadPlan(string path, Stream stdin)
     {
         if (path == "-")
         {
-            using var buffer = new MemoryStream();
-            stdin.CopyTo(buffer);
-            return (new PlanSource(buffer.ToArray(), PlanSource.Stdin), null);
+            return (new PlanSource(ReadCapped(stdin), PlanSource.Stdin), null);
         }
 
         string fullPath = path;
         try
         {
             fullPath = Path.GetFullPath(path);
-            return (new PlanSource(File.ReadAllBytes(fullPath), fullPath), null);
+            using var file = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return (new PlanSource(ReadCapped(file), fullPath), null);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
@@ -94,6 +107,21 @@ internal static class CliApp
         }
     }
 
+    /// <summary>At most <see cref="PlanText.MaxBytes"/> + 1 bytes of <paramref name="stream"/>.</summary>
+    internal static byte[] ReadCapped(Stream stream)
+    {
+        const int Limit = PlanText.MaxBytes + 1;
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while (buffer.Length < Limit && (read = stream.Read(chunk, 0, (int)Math.Min(chunk.Length, Limit - buffer.Length))) > 0)
+        {
+            buffer.Write(chunk, 0, read);
+        }
+
+        return buffer.ToArray();
+    }
+
     /// <summary>Writes the envelope to stdout and one error line per error to stderr (OC-1, OC-2).</summary>
     private static int Fail(PreRunEnvelope envelope, Stream stdout, Stream stderr)
     {
@@ -108,6 +136,12 @@ internal static class CliApp
             }
 
             lines.Append(": ").Append(DisplayText.Escape(error.Message)).Append('\n');
+            if (lines.Length >= 64 * 1024)
+            {
+                // Written in chunks: a plan can have an error per character (SY-13).
+                WriteText(stderr, lines.ToString());
+                lines.Clear();
+            }
         }
 
         WriteText(stderr, lines.ToString());

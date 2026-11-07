@@ -23,9 +23,10 @@ public class PublishedBinaryTests
             var env = new Dictionary<string, string> { ["HOME"] = dir, ["PATH"] = "/usr/bin:/bin" };
             var plan = "blokky: 1.0\ndo:\n  - exec: [blokky-testkit, exit, '0']\n"u8.ToArray();
 
-            var outcome = await adapter.RunAsync(new RunRequest(plan, [], env, dir, TimeSpan.FromSeconds(30), []), CancellationToken.None);
+            var request = new RunRequest(AdapterCommand.Run, plan, [], env, dir, TimeSpan.FromSeconds(30), []);
+            var outcome = await adapter.RunAsync(request, CancellationToken.None);
 
-            await Assert.That(CaseRunner.NotSupportedProblem(outcome, 0, ["do", "exec"]).Problem).IsNull();
+            await Assert.That(CaseRunner.NotSupportedProblem(outcome, 0, ["do", "exec"], new HashSet<string>()).Problem).IsNull();
         }
         finally
         {

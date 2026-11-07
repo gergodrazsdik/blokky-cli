@@ -101,11 +101,13 @@ internal sealed class CaseRunner(BlokkyAdapter adapter, HostInfo host, RunnerSet
         try
         {
             ws.Populate(c, host.Testkit);
-            var request = new RunRequest(c.Plan, [], ws.Environment(c, host, 1.0), ws.WorkDir, Deadline(1), []);
+            var request = new RunRequest(BlokkyAdapter.CommandFor(c.ExpectKind), c.Plan, [], ws.Environment(c, host, 1.0), ws.WorkDir,
+                Deadline(1), []);
             var outcome = await adapter.RunAsync(request, ct).ConfigureAwait(false);
             var survivors = (await Survivors.SettleAsync(ws.Marker, settings.Settle, ct).ConfigureAwait(false)).Count;
             var logCount = ws.LogCount();
-            var (problem, note) = NotSupportedProblem(outcome, logCount, c.Features, survivors);
+            var (problem, note) = NotSupportedProblem(outcome, logCount, c.Features, adapter.Capabilities.FeaturesFor(c.ExpectKind),
+                survivors);
             if (problem is not null && RejectedWithOwnErrors(c.ExpectKind, c.Expect, outcome, logCount, survivors, _matcher))
             {
                 (problem, note) = (null, "rejected with the case's own validation errors instead of BK_PLAN_NOT_SUPPORTED");
@@ -142,12 +144,14 @@ internal sealed class CaseRunner(BlokkyAdapter adapter, HostInfo host, RunnerSet
 
     /// <summary>Why the not-supported check fails, or null; and a note on a <c>detail.feature</c> the case doesn't list.</summary>
     /// <param name="logCount">Testkit invocations in the case's log.</param>
+    /// <param name="declared">The features the adapter declares for this case (validated or runnable, ADR 0009).</param>
     /// <param name="survivors">The case's processes still alive after <c>blokky</c> exited and the settle time.</param>
     internal static (string? Problem, string? Note) NotSupportedProblem(AdapterOutcome outcome, int logCount,
-        IReadOnlyList<string> caseFeatures, int survivors = 0)
+        IReadOnlyList<string> caseFeatures, IReadOnlySet<string> declared, int survivors = 0)
     {
         ArgumentNullException.ThrowIfNull(outcome);
         ArgumentNullException.ThrowIfNull(caseFeatures);
+        ArgumentNullException.ThrowIfNull(declared);
         if (logCount > 0)
         {
             return ($"a process started: {logCount} testkit invocation(s) (EM-1)", null);
@@ -184,7 +188,7 @@ internal sealed class CaseRunner(BlokkyAdapter adapter, HostInfo host, RunnerSet
             return ($"BK_PLAN_NOT_SUPPORTED's detail.feature is {YamlValues.Show(feature)}, not a feature id (errors.md)", null);
         }
 
-        if (FeatureSupport.IsSupported(feature))
+        if (declared.Contains(feature))
         {
             return ($"BK_PLAN_NOT_SUPPORTED names '{feature}', which this build declares supported", null);
         }
@@ -201,8 +205,9 @@ internal sealed class CaseRunner(BlokkyAdapter adapter, HostInfo host, RunnerSet
             ws.Populate(c, host.Testkit);
             var env = ws.Environment(c, host, 1.0 / k);
             var actions = c.Actions.Select(a => new TimedAction(a.After / k, a.Kill)).ToList();
-            var outcome = await adapter.RunAsync(new RunRequest(c.Plan, c.Inputs, env, ws.WorkDir, Deadline(k), actions),
-                ct).ConfigureAwait(false);
+            var request = new RunRequest(BlokkyAdapter.CommandFor(c.ExpectKind), c.Plan, c.Inputs, env, ws.WorkDir, Deadline(k),
+                actions);
+            var outcome = await adapter.RunAsync(request, ct).ConfigureAwait(false);
 
             // Processes the run left behind (expected ones too: after_run checks them) get the settle time to log.
             var survivors = (await Survivors.SettleAsync(ws.Marker, settings.Settle, ct).ConfigureAwait(false)).Count;
@@ -247,8 +252,9 @@ internal sealed class CaseRunner(BlokkyAdapter adapter, HostInfo host, RunnerSet
         }
 
         var before = ws.LogCount();
-        var outcome = await adapter.RunAsync(new RunRequest(check.Plan!, check.Inputs, env, ws.WorkDir, Deadline(k), []),
-            ct).ConfigureAwait(false);
+        var request = new RunRequest(BlokkyAdapter.CommandFor(check.ExpectKind), check.Plan!, check.Inputs, env, ws.WorkDir,
+            Deadline(k), []);
+        var outcome = await adapter.RunAsync(request, ct).ConfigureAwait(false);
         await Survivors.SettleAsync(ws.Marker, settings.Settle, ct).ConfigureAwait(false);
         return check.ExpectKind == ExpectKind.Validation
             ? MatchValidation(check.Expect!, outcome, ws.LogCount() - before, _matcher)

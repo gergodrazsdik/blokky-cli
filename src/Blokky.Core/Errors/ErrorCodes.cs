@@ -12,6 +12,24 @@ public static class ErrorCodes
     /// <summary>A malformed <c>--input</c> (language).</summary>
     public const string InputSyntax = "BK_INPUT_SYNTAX";
 
+    /// <summary>Not UTF-8: a UTF-16/32 BOM or invalid UTF-8 (language, SY-6, SY-7).</summary>
+    public const string PlanEncoding = "BK_PLAN_ENCODING";
+
+    /// <summary>A character the character lint rejects (language, SY-12).</summary>
+    public const string PlanCharacter = "BK_PLAN_CHARACTER";
+
+    /// <summary>Over 4 MiB, or nested deeper than 128 levels (language, SY-9).</summary>
+    public const string PlanTooLarge = "BK_PLAN_TOO_LARGE";
+
+    /// <summary>Not valid YAML, or a rejected YAML feature (language, SY-14 to SY-17).</summary>
+    public const string PlanYaml = "BK_PLAN_YAML";
+
+    /// <summary>A key repeated in a mapping (language, SY-18).</summary>
+    public const string PlanDuplicateKey = "BK_PLAN_DUPLICATE_KEY";
+
+    /// <summary>A value that doesn't match its field's type or grammar (language).</summary>
+    public const string PlanValue = "BK_PLAN_VALUE";
+
     /// <summary>A feature the implementation doesn't support yet (language).</summary>
     public const string PlanNotSupported = "BK_PLAN_NOT_SUPPORTED";
 

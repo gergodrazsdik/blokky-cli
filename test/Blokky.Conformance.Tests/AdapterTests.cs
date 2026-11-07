@@ -1,4 +1,5 @@
 using System.Text;
+using Blokky.Conformance.Cases;
 using Blokky.Conformance.Execution;
 using Blokky.Conformance.Matching;
 
@@ -35,13 +36,22 @@ public class AdapterTests
         var plan = "blokky: 1.0\nlog: hi\n"u8.ToArray();
 
         var env = new Dictionary<string, string>();
-        var request = new RunRequest(plan, ["A=1", "NOEQUALS", "B=x=y"], env, "/w", TimeSpan.FromSeconds(60), []);
+        var request = new RunRequest(AdapterCommand.Run, plan, ["A=1", "NOEQUALS", "B=x=y"], env, "/w", TimeSpan.FromSeconds(60), []);
 
         await adapter.RunAsync(request, CancellationToken.None);
 
         await Assert.That(fake.Last!.Args).IsEquivalentTo(["run", "--input", "A=1", "--input", "NOEQUALS", "--input", "B=x=y", "-"]);
         await Assert.That(fake.Last.Stdin).IsEquivalentTo(plan);
         await Assert.That(fake.Last.Cwd).IsEqualTo("/w");
+    }
+
+    [Test]
+    public async Task Validation_cases_use_validate_and_the_others_run()
+    {
+        await Assert.That(BlokkyAdapter.CommandFor(ExpectKind.Validation)).IsEqualTo(AdapterCommand.Validate);
+        await Assert.That(BlokkyAdapter.CommandFor(ExpectKind.Run)).IsEqualTo(AdapterCommand.Run);
+        await Assert.That(BlokkyAdapter.CommandFor(ExpectKind.NoResult)).IsEqualTo(AdapterCommand.Run);
+        await Assert.That(BlokkyAdapter.Arguments(AdapterCommand.Validate, ["A=1"])).IsEquivalentTo(["validate", "--input", "A=1", "-"]);
     }
 
     [Test]

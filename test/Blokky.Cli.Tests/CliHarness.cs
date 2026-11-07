@@ -12,9 +12,11 @@ internal sealed record CliResult(int ExitCode, string Stdout, string Stderr)
 /// <summary>Runs the CLI in-process with captured streams.</summary>
 internal static class CliHarness
 {
-    public static CliResult Run(string stdin, params string[] args)
+    public static CliResult Run(string stdin, params string[] args) => Run(Encoding.UTF8.GetBytes(stdin), args);
+
+    public static CliResult Run(byte[] stdin, params string[] args)
     {
-        using var input = new MemoryStream(Encoding.UTF8.GetBytes(stdin));
+        using var input = new MemoryStream(stdin);
         using var stdout = new MemoryStream();
         using var stderr = new MemoryStream();
         var code = CliApp.Run(args, input, stdout, stderr);

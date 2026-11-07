@@ -61,7 +61,9 @@ internal static partial class CaseSelector
                 "requirement: testkit (blokky-testkit isn't built; set --testkit or BLOKKY_TESTKIT)");
         }
 
-        var unsupported = c.Features.Where(f => !capabilities.Features.Contains(f)).ToList();
+        // ADR 0009: a validation case needs its features validated, a run case needs them runnable.
+        var declared = capabilities.FeaturesFor(c.ExpectKind);
+        var unsupported = c.Features.Where(f => !declared.Contains(f)).ToList();
         if (unsupported.Count > 0)
         {
             return Selection.Skipped(SkipKind.NotSupported, $"not supported: {string.Join(", ", unsupported)}", unsupported);

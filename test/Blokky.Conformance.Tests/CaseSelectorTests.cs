@@ -13,7 +13,8 @@ public class CaseSelectorTests
         false);
 
     private static AdapterCapabilities Supporting(params string[] features) =>
-        new(features.ToHashSet(StringComparer.Ordinal), ["real"], ExternalStop: true, Seed: false);
+        new(features.ToHashSet(StringComparer.Ordinal), features.ToHashSet(StringComparer.Ordinal), ["real"], ExternalStop: true,
+            Seed: false);
 
     private static ConformanceCase Case(string features, string extra = "") =>
         CaseLoader.Parse("a/b", $"title: t\nrules: [EM-1]\nfeatures: {features}\n{Plan}expect: {{ status: succeeded }}\n{extra}", "linux");
@@ -28,6 +29,28 @@ public class CaseSelectorTests
         await Assert.That(s.Skip).IsEqualTo(SkipKind.NotSupported);
         await Assert.That(s.Reason).IsEqualTo("not supported: timeout, when");
         await Assert.That(s.Unsupported).IsEquivalentTo(["timeout", "when"]);
+    }
+
+    [Test]
+    public async Task Validation_cases_use_the_validated_table_and_run_cases_the_runnable_one()
+    {
+        // ADR 0009: `exec` is validated but not runnable yet.
+        var caps = new AdapterCapabilities(new HashSet<string> { "exec" }, new HashSet<string>(), ["real"], true, false);
+        var validation = CaseLoader.Parse("a/v",
+            $"title: t\nrules: [EM-1]\nfeatures: [exec]\n{Plan}expect: {{ plan_errors: [{{ code: BK_PLAN_VALUE }}] }}\n", "linux");
+
+        await Assert.That(CaseSelector.Select(validation, Linux, caps).Skip).IsNull();
+        var run = CaseSelector.Select(Case("[exec]"), Linux, caps);
+        await Assert.That(run.Skip).IsEqualTo(SkipKind.NotSupported);
+        await Assert.That(run.Reason).IsEqualTo("not supported: exec");
+        await Assert.That(caps.FeaturesFor(ExpectKind.NoResult)).IsSameReferenceAs(caps.Runnable);
+    }
+
+    [Test]
+    public async Task This_builds_adapter_declares_cores_tables()
+    {
+        await Assert.That(AdapterCapabilities.Current.Validated).IsSameReferenceAs(Blokky.Core.Features.FeatureSupport.Validated);
+        await Assert.That(AdapterCapabilities.Current.Runnable).IsSameReferenceAs(Blokky.Core.Features.FeatureSupport.Runnable);
     }
 
     [Test]

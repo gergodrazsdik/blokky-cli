@@ -18,7 +18,7 @@ Coding agents keep writing fragile ad-hoc shell for timeouts, retries, polling, 
 
 | Release | Adds |
 |---|---|
-| 0.1 | The full validator and sequential execution (`exec`, `script` with bash/sh/pwsh, `do`, `if`, `log`, `fail`, `assert`, `set`, `return`, `when`, `timeout`, `cwd`, `env`, `export`, `finally`, `ignore_errors`, captures, inputs, vars, outputs, conditions without probes) on Linux; the CLI with agent docs |
+| 0.1 | The full validator and sequential execution (`exec`, `script` with bash/sh/pwsh, `do`, `if`, `log`, `fail`, `assert`, `set`, `return`, `when`, `timeout`, `cwd`, `env`, `export`, `finally`, `ignore_errors`, captures, inputs, vars, outputs, conditions without probes; plus the conformance feature ids `stdin`, `ok-exit`, `stderr-merge`, `encoding`, `keep-descendants`, `keep-descendants-detach`, `capture-file`, `secret`, `sleep`, `shell-zsh`, `interpolation`, `from-env`, `secret-ref`, `defaults`, `external-stop`, `kill`: [ADR 0009](docs/adr/0009-validator-delivery.md)) on Linux; the CLI with agent docs |
 | 0.2 | Repetition (`retry`, `while`, `until`, `for`, `collect`, `carry`, `index`) and probes |
 | 0.3 | `all`, `any`, `race`, `tempdir`, `lock` |
 | 0.4 | The Claude Code hook and approval |

@@ -29,6 +29,21 @@ public class PublishedBinaryTests
 
     [Test]
     [RequiresPublishedBinary]
+    public async Task Aot_binary_reports_reader_errors_with_positions_and_rules()
+    {
+        var (code, stdout, _) = await RunAsync("blokky: 1.0\nname: &t x\nlog: *t\nlog: y\n", "run", "-");
+        using var json = JsonDocument.Parse(stdout);
+        var errors = json.RootElement.GetProperty("errors").EnumerateArray()
+            .Select(e => $"{e.GetProperty("code").GetString()} {e.GetProperty("pos").GetString()} "
+                + e.GetProperty("detail").GetProperty("rule").GetString());
+
+        await Assert.That(code).IsEqualTo(3);
+        await Assert.That(string.Join("; ", errors))
+            .IsEqualTo("BK_PLAN_YAML 2:7 SY-14; BK_PLAN_YAML 3:6 SY-14; BK_PLAN_DUPLICATE_KEY 4:1 SY-18");
+    }
+
+    [Test]
+    [RequiresPublishedBinary]
     public async Task Aot_binary_prints_its_version()
     {
         var (code, stdout, _) = await RunAsync("", "--version");

@@ -49,11 +49,11 @@ The static commands share the front half: `validate`, `lint`, `plan` and `leaves
 
 ## 3. Feature-support gate
 
-Each release supports a subset of the language ([ROADMAP.md](../../ROADMAP.md)). Core holds one table of supported feature ids, using the pinned vocabulary of the conformance suite (blokky-specs `conformance/README.md`, CF-12).
+Each release supports a subset of the language ([ROADMAP.md](../../ROADMAP.md)). Core holds two tables of feature ids, using the pinned vocabulary of the conformance suite (blokky-specs `conformance/README.md`, CF-12): **validated** (the validator fully checks the feature) and **runnable** (the run engine executes it), runnable always a subset of validated ([ADR 0009](../adr/0009-validator-delivery.md)). `validate` gates on validated, `run` on runnable; a release requires both to be equal for its features.
 
 - The validator derives the feature ids a plan uses from the AST. Any unsupported id is a plan error `BK_PLAN_NOT_SUPPORTED` with `detail.feature` and the node's position, reported with every other plan error (exit 3). No process starts.
 - The check runs after schema and static rules, so a plan that is invalid for other reasons gets those errors too.
-- The conformance adapter declares support from the same table (CF-54), so the runner's skips and the binary's behaviour can't drift.
+- The conformance adapter declares support from the same tables (CF-54): validated for validation cases, runnable for run cases, so the runner's skips and the binary's behaviour can't drift.
 - The table is per build, not per config: no flag or config key enables an unsupported feature.
 
 0.1's table is ADR 0007's MVP: the full validator; `exec`, `exec-string`, `script` with `shell-bash`, `shell-sh`, `shell-pwsh`; the sequential kinds, modifiers and plan-level features it lists; conditions without probes.
