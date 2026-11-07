@@ -13,7 +13,7 @@ The [council report](../review/council-draft.3.md) §4 mapped the proposed spike
 | Cancelled group children in joins: confirmation waits for `finally` | EM-31, EM-32, EM-58 | new spike |
 | Leaf completion order: drain, stop the tree, captures, next sibling | EM-18, EM-20, EM-21, EM-68 | merge into brief spike 8 |
 | Tree kill and lifeline per OS; `keep_descendants: detach` | EM-15, EM-21, EM-22 | merge into brief spikes 1 and 5 |
-| Windows graceful stop: hidden console per leaf, `graceful: none` | EM-15, EM-26, EM-30 | merge into brief spike 2 |
+| Windows graceful stop: hidden console per leaf (a MUST since [specs ADR 0020](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0020-conformance-gaps.md); confirm it works with Job Objects), `graceful: none` | EM-15, EM-26, EM-30 | merge into brief spike 2 |
 | Containers with compatible images (`sh`, `sleep`, `kill`): idle process, in-container kill | CP-4, CP-8, CP-36 | merge into brief spikes 11 and 13 (no helper) |
 | Engine matrix: Docker and Podman, SELinux without relabelling, rootless, desktop VMs; invoking-user mapping for non-root build images; `exec --env-file` | CP-9 to CP-11, CP-16, CP-17, CP-37, CP-38 | new spike |
 | Portable regex subset translated to .NET NonBacktracking under AOT | SY-61, SY-62, CO-13, RF-22 | merge into brief spike 9 |
