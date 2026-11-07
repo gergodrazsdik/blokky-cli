@@ -8,7 +8,8 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0051 [both] Apply the maintainer's decisions ([council report](../review/council-draft.3.md) §6) as specs ADRs and `1.0.0-draft.4`, with the spike-plan changes in blokky-cli
+1. T-0051 [both] Review the specs PRs that apply the council decisions ([#36](https://github.com/gergodrazsdik/blokky-specs/pull/36) features, [#37](https://github.com/gergodrazsdik/blokky-specs/pull/37) semantics, [#38](https://github.com/gergodrazsdik/blokky-specs/pull/38) corrections; stacked, merge in order)
+2. T-0059 [specs] Tag `v1.0.0-draft.4` after they merge
 
 ## Phase 0 — Bootstrap
 
@@ -90,6 +91,7 @@ The example suite is done: 45 basic examples, seven scenarios and an index, plus
 - [x] T-0050 [both] Agent council review: propose the council (lenses, prompts, output format), run it, verify and consolidate findings — 2026-11-06, [council report](../review/council-draft.3.md) (76 findings, 0 refuted)
 - [ ] T-0051 [both] Maintainer review; accepted findings as ADRs; next draft (`1.0.0-draft.N`), including features cut or kept
   - Review done 2026-11-07: every decision recorded in the [council report](../review/council-draft.3.md) §6 (D-1 to D-6, S-1 to S-14, C-1 to C-8, spikes).
+  - Applied 2026-11-07 as specs [ADR 0017](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0017-review-features.md) (features, specs PR #36), [ADR 0018](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0018-review-semantics.md) (semantics, #37) and [ADR 0019](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0019-review-corrections.md) (corrections, #38); spike input recorded in [spike-plan.md](../design/spike-plan.md).
 - [ ] T-0059 [specs] Maintainer tags `v1.0.0-draft.4`
 - [-] T-0036 [both] Consistency pass — dropped 2026-11-05: replaced by the review phase (cli ADR 0006)
 
@@ -209,3 +211,6 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - 2026-11-05 [specs] Remaining features, batch 7 (T-0047): `race` like `do`/`any`; `lines` drops blank lines (`keep_blank`); plain `matrix`; `items` with `fields`; `collect` as a JSON array; per-user exclusive locks waiting within `timeout`; `services` in parallel with `depends_on`, required `ready:` (30s/250ms), per-service `on_exit`, status only; `consent` dropped; `zsh`/`fish` rows: [specs ADR 0014](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0014-remaining-features.md)
 - 2026-11-06 [specs] Setting variables: a `set` node kind, root `vars:` constants, `${}` templates allowed only in `set`/`vars` values (no functions), single assignment with definite assignment through branches: [specs ADR 0015](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0015-set-and-vars.md)
 - 2026-11-06 [specs] Fixes from the example suite: a failed group carries its child's error, ordered `any` skips `when`-skipped children, new `command:` condition subject, `${` allowed in script text, fixed `race` example: [specs ADR 0016](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0016-fixes-from-examples.md)
+- 2026-11-07 [specs] Council review, features: `become` and `fish` cut, smaller `container`, `services` in list order, `return`, `carry`/`index`/`collect` on loops (pagination), `keep_descendants: detach`, `tempdir.remove`: [specs ADR 0017](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0017-review-features.md)
+- 2026-11-07 [specs] Council review, semantics S-1 to S-14 (JSON polls, retry by origin, joins wait for `finally`, leaf completion order, EM-22 split, syntactic scope check, portable regex and glob, `from_env` like inputs, `SY-n` IDs): [specs ADR 0018](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0018-review-semantics.md)
+- 2026-11-07 [specs] Council review, corrections C-1 to C-8 (schema errors at their key, canonical forms, security wording, conformance kill action, `command:` requires an executable): [specs ADR 0019](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0019-review-corrections.md)
