@@ -1,0 +1,3 @@
+blokky: 1.0
+name: { a: b }
+exec: [make]

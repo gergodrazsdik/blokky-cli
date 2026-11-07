@@ -1,0 +1,4 @@
+blokky: 1.0
+do:
+  - exec: [make]
+    ignore_errors: 1

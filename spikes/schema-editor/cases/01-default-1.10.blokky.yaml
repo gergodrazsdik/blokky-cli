@@ -1,0 +1,5 @@
+blokky: 1.0
+inputs:
+  VERSION:
+    default: 1.10
+exec: [echo, { var: VERSION }]

@@ -1,0 +1,4 @@
+blokky: 1.0
+concurrency: 08
+all:
+  - exec: [make]

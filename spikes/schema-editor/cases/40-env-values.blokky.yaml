@@ -1,0 +1,6 @@
+blokky: 1.0
+env:
+  A: 1.10
+  B: on
+  C: ~
+exec: [make]

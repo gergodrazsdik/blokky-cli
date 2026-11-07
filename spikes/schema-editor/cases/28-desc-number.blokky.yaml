@@ -1,0 +1,6 @@
+blokky: 1.0
+inputs:
+  A:
+    description: 1.0
+    default: x
+exec: [make]

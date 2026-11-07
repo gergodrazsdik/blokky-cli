@@ -1,0 +1,3 @@
+blokky: 1.0
+ok_exit: [0, 0x1]
+exec: [make]

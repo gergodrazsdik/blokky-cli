@@ -1,0 +1,6 @@
+blokky: 1.0
+inputs:
+  A:
+    default: none
+    in: [none, null, ~]
+exec: [echo, null, ~]

@@ -1,0 +1,9 @@
+blokky: 1.0
+name: completion probe
+fail_fast: 
+shell: 
+all:
+  - exec: [make]
+    timeout: 30s
+    level: 
+

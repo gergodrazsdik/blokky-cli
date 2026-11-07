@@ -1,0 +1,4 @@
+blokky: 1.0
+do:
+  - &a { exec: [make] }
+  - *a

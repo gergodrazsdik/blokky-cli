@@ -1,0 +1,5 @@
+blokky: 1.0
+inputs:
+  A: { default: "1.10" }
+when: { var: A, equals: 1.10 }
+exec: [make]

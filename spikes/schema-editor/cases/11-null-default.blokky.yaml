@@ -1,0 +1,9 @@
+blokky: 1.0
+inputs:
+  A:
+    default: ~
+  B:
+    default: null
+  C:
+    default: Null
+exec: [echo, { var: A }]

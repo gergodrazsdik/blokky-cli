@@ -1,0 +1,3 @@
+blokky: 1.0
+timeout: 30s
+exec: [make]

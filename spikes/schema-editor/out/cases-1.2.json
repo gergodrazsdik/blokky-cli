@@ -1,0 +1,871 @@
+{
+ "log": [
+  "workspace/configuration {\"items\": [{\"section\": \"yaml\"}, {\"section\": \"http\"}, {\"section\": \"[yaml]\"}, {\"section\": \"editor\"}]}",
+  "workspace/configuration {\"items\": [{\"section\": \"yaml\"}, {\"section\": \"http\"}, {\"section\": \"[yaml]\"}, {\"section\": \"editor\"}]}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/01-default-1.10.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/01-default-1.10.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/02-default-on-yes-no.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/02-default-on-yes-no.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/03-bool-yes.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/03-bool-yes.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 11}, \"end\": {\"line\": 1, \"character\": 14}}, \"message\": \"Incorrect type. Expected \\\"boolean\\\".\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-schema: Blokky plan\", \"",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/04-bool-on.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/04-bool-on.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 11}, \"end\": {\"line\": 1, \"character\": 13}}, \"message\": \"Incorrect type. Expected \\\"boolean\\\".\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-schema: Blokky plan\", \"d",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/05-bool-True.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/05-bool-True.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/06-int-010.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/06-int-010.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/07-int-0x10.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/07-int-0x10.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/08-int-1e3.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/08-int-1e3.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/09-int-3.0.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/09-int-3.0.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/10-int-08.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/10-int-08.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/11-null-default.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/11-null-default.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 7, \"character\": 13}, \"end\": {\"line\": 7, \"character\": 17}}, \"message\": \"Incorrect type. Expected one of string, number, boolean.\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/12-null-in-list.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/12-null-in-list.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 4, \"character\": 15}, \"end\": {\"line\": 4, \"character\": 22}}, \"message\": \"Incorrect type. Expected one of string, number, boolean.\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/13-exec-bracket.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/13-exec-bracket.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/14-script-bracket.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/14-script-bracket.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 8}, \"end\": {\"line\": 1, \"character\": 16}}, \"message\": \"Incorrect type. Expected \\\"string\\\".\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-schema: Blokky plan",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/15-duration-30.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/15-duration-30.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 9}, \"end\": {\"line\": 1, \"character\": 11}}, \"message\": \"Incorrect type. Expected \\\"string\\\".\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-schema: Blokky plan\", ",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/16-duration-30s.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/16-duration-30s.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/17-duration-1.5s.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/17-duration-1.5s.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 9}, \"end\": {\"line\": 1, \"character\": 13}}, \"message\": \"String does not match the pattern of \\\"^(?=[0-9])((0|[1-9][0-9]*)h)?((0|[1-9][0-9]*)m(?!s))?((0|[1-9]",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/18-blokky-1.0.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/18-blokky-1.0.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/19-blokky-1.10.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/19-blokky-1.10.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/20-blokky-2.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/20-blokky-2.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/21-blokky-1.0.0.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/21-blokky-1.0.0.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 0, \"character\": 8}, \"end\": {\"line\": 0, \"character\": 13}}, \"message\": \"String does not match the pattern of \\\"^(0|[1-9][0-9]*)\\\\.(0|[1-9][0-9]*)$\\\".\", \"severity\": 1, \"code\":",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/22-blokky-1e0.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/22-blokky-1e0.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/23-empty-timeout.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/23-empty-timeout.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 8}, \"end\": {\"line\": 1, \"character\": 8}}, \"message\": \"Incorrect type. Expected \\\"string\\\".\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-schema: Blokky plan\",",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/24-empty-input.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/24-empty-input.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 2, \"character\": 4}, \"end\": {\"line\": 2, \"character\": 4}}, \"message\": \"Incorrect type. Expected \\\"input\\\".\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-schema: Blokky plan\", \"d",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/25-empty-exec.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/25-empty-exec.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 5}, \"end\": {\"line\": 1, \"character\": 5}}, \"message\": \"Incorrect type. Expected \\\"string | array\\\".\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-schema: Blokky p",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/26-map-for-name.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/26-map-for-name.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 6}, \"end\": {\"line\": 1, \"character\": 14}}, \"message\": \"Incorrect type. Expected one of string, number, boolean.\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-s",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/27-map-for-exec.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/27-map-for-exec.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 6}, \"end\": {\"line\": 1, \"character\": 32}}, \"message\": \"Incorrect type. Expected \\\"string | array\\\".\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-schema: Blokk",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/28-desc-number.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/28-desc-number.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 3, \"character\": 17}, \"end\": {\"line\": 3, \"character\": 20}}, \"message\": \"Incorrect type. Expected \\\"string\\\".\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-schema: Blokky plan\",",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/29-desc-yes.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/29-desc-yes.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/30-lock-number.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/30-lock-number.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 6}, \"end\": {\"line\": 1, \"character\": 10}}, \"message\": \"Incorrect type. Expected \\\"string | object(Blokky plan)\\\".\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/31-comment-after-exec.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/31-comment-after-exec.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/32-matches-dquote.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/32-matches-dquote.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 4, \"character\": 15}, \"end\": {\"line\": 4, \"character\": 21}}, \"message\": \"Invalid escape sequence \\\\d\", \"severity\": 1, \"code\": 0, \"source\": \"YAML\"}]}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/33-leading-dquote.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/33-leading-dquote.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 10}, \"end\": {\"line\": 1, \"character\": 12}}, \"message\": \"Unexpected scalar at node end\", \"severity\": 1, \"code\": 0, \"source\": \"YAML\"}]}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/34-retry-3.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/34-retry-3.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 1, \"character\": 7}, \"end\": {\"line\": 1, \"character\": 8}}, \"message\": \"Value must be true | \\\"true\\\".\", \"severity\": 1, \"code\": 1, \"source\": \"yaml-schema: Blokky plan\", \"data\": {\"s",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/35-dup-key.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/35-dup-key.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 2, \"character\": 0}, \"end\": {\"line\": 2, \"character\": 19}}, \"message\": \"Map keys must be unique\", \"severity\": 1, \"code\": 0, \"source\": \"YAML\"}]}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/36-anchor.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/36-anchor.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/37-tag.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/37-tag.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/38-ok-exit-hex.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/38-ok-exit-hex.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/39-exec-array-numbers.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/39-exec-array-numbers.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/40-env-values.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/40-env-values.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 4, \"character\": 5}, \"end\": {\"line\": 4, \"character\": 6}}, \"message\": \"Incorrect type. Expected one of string, number, boolean.\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-sche",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/41-set-values.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/41-set-values.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 4, \"character\": 5}, \"end\": {\"line\": 4, \"character\": 6}}, \"message\": \"Incorrect type. Expected one of string, number, boolean.\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-sche",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/42-cond-equals.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/42-cond-equals.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/43-backoff-factor.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/43-backoff-factor.blokky.yaml\", \"diagnostics\": []}",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/44-ignore-errors-1.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/44-ignore-errors-1.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 3, \"character\": 19}, \"end\": {\"line\": 3, \"character\": 20}}, \"message\": \"Incorrect type. Expected \\\"boolean | string\\\".\", \"severity\": 1, \"code\": 0, \"source\": \"yaml-schema:",
+  "workspace/configuration {\"items\": [{\"section\": \"[yaml]\", \"scopeUri\": \"file:///tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml\"}]}",
+  "textDocument/publishDiagnostics {\"uri\": \"file:///tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml\", \"diagnostics\": [{\"range\": {\"start\": {\"line\": 7, \"character\": 11}, \"end\": {\"line\": 7, \"character\": 11}}, \"message\": \"Value is not accepted. Valid values: \\\"debug\\\", \\\"info\\\", \\\"warn\\\".\", \"severity\": 1, \"code\": 1, \"source"
+ ],
+ "yamlVersion": "1.2",
+ "diagnostics": {
+  "01-default-1.10.blokky.yaml": [],
+  "02-default-on-yes-no.blokky.yaml": [],
+  "03-bool-yes.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 12,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"boolean\"."
+   }
+  ],
+  "04-bool-on.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 12,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"boolean\"."
+   }
+  ],
+  "05-bool-True.blokky.yaml": [],
+  "06-int-010.blokky.yaml": [],
+  "07-int-0x10.blokky.yaml": [],
+  "08-int-1e3.blokky.yaml": [],
+  "09-int-3.0.blokky.yaml": [],
+  "10-int-08.blokky.yaml": [],
+  "11-null-default.blokky.yaml": [
+   {
+    "line": 8,
+    "col": 14,
+    "sev": 1,
+    "msg": "Incorrect type. Expected one of string, number, boolean."
+   },
+   {
+    "line": 6,
+    "col": 14,
+    "sev": 1,
+    "msg": "Incorrect type. Expected one of string, number, boolean."
+   },
+   {
+    "line": 4,
+    "col": 14,
+    "sev": 1,
+    "msg": "Incorrect type. Expected one of string, number, boolean."
+   }
+  ],
+  "12-null-in-list.blokky.yaml": [
+   {
+    "line": 5,
+    "col": 16,
+    "sev": 1,
+    "msg": "Incorrect type. Expected one of string, number, boolean."
+   },
+   {
+    "line": 6,
+    "col": 14,
+    "sev": 1,
+    "msg": "Incorrect type. Expected one of string, number, boolean."
+   }
+  ],
+  "13-exec-bracket.blokky.yaml": [],
+  "14-script-bracket.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 9,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"string\"."
+   }
+  ],
+  "15-duration-30.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 10,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"string\"."
+   }
+  ],
+  "16-duration-30s.blokky.yaml": [],
+  "17-duration-1.5s.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 10,
+    "sev": 1,
+    "msg": "String does not match the pattern of \"^(?=[0-9])((0|[1-9][0-9]*)h)?((0|[1-9][0-9]*)m(?!s))?((0|[1-9][0-9]*)s)?((0|[1-9][0-9]*)ms)?$\"."
+   }
+  ],
+  "18-blokky-1.0.blokky.yaml": [],
+  "19-blokky-1.10.blokky.yaml": [],
+  "20-blokky-2.blokky.yaml": [],
+  "21-blokky-1.0.0.blokky.yaml": [
+   {
+    "line": 1,
+    "col": 9,
+    "sev": 1,
+    "msg": "String does not match the pattern of \"^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$\"."
+   }
+  ],
+  "22-blokky-1e0.blokky.yaml": [],
+  "23-empty-timeout.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 9,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"string\"."
+   }
+  ],
+  "24-empty-input.blokky.yaml": [
+   {
+    "line": 3,
+    "col": 5,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"input\"."
+   },
+   {
+    "line": 3,
+    "col": 5,
+    "sev": 1,
+    "msg": "Matches a schema that is not allowed."
+   }
+  ],
+  "25-empty-exec.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 6,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"string | array\"."
+   }
+  ],
+  "26-map-for-name.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 7,
+    "sev": 1,
+    "msg": "Incorrect type. Expected one of string, number, boolean."
+   }
+  ],
+  "27-map-for-exec.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 7,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"string | array\"."
+   }
+  ],
+  "28-desc-number.blokky.yaml": [
+   {
+    "line": 4,
+    "col": 18,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"string\"."
+   }
+  ],
+  "29-desc-yes.blokky.yaml": [],
+  "30-lock-number.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 7,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"string | object(Blokky plan)\"."
+   }
+  ],
+  "31-comment-after-exec.blokky.yaml": [],
+  "32-matches-dquote.blokky.yaml": [
+   {
+    "line": 5,
+    "col": 16,
+    "sev": 1,
+    "msg": "Invalid escape sequence \\d"
+   }
+  ],
+  "33-leading-dquote.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 11,
+    "sev": 1,
+    "msg": "Unexpected scalar at node end"
+   }
+  ],
+  "34-retry-3.blokky.yaml": [
+   {
+    "line": 2,
+    "col": 8,
+    "sev": 1,
+    "msg": "Value must be true | \"true\"."
+   }
+  ],
+  "35-dup-key.blokky.yaml": [
+   {
+    "line": 3,
+    "col": 1,
+    "sev": 1,
+    "msg": "Map keys must be unique"
+   }
+  ],
+  "36-anchor.blokky.yaml": [],
+  "37-tag.blokky.yaml": [],
+  "38-ok-exit-hex.blokky.yaml": [],
+  "39-exec-array-numbers.blokky.yaml": [],
+  "40-env-values.blokky.yaml": [
+   {
+    "line": 5,
+    "col": 6,
+    "sev": 1,
+    "msg": "Incorrect type. Expected one of string, number, boolean."
+   }
+  ],
+  "41-set-values.blokky.yaml": [
+   {
+    "line": 5,
+    "col": 6,
+    "sev": 1,
+    "msg": "Incorrect type. Expected one of string, number, boolean."
+   }
+  ],
+  "42-cond-equals.blokky.yaml": [],
+  "43-backoff-factor.blokky.yaml": [],
+  "44-ignore-errors-1.blokky.yaml": [
+   {
+    "line": 4,
+    "col": 20,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"boolean | string\"."
+   }
+  ],
+  "90-completion.blokky.yaml": [
+   {
+    "line": 8,
+    "col": 12,
+    "sev": 1,
+    "msg": "Value is not accepted. Valid values: \"debug\", \"info\", \"warn\"."
+   },
+   {
+    "line": 6,
+    "col": 5,
+    "sev": 1,
+    "msg": "Object is missing property log required by property level."
+   },
+   {
+    "line": 4,
+    "col": 8,
+    "sev": 1,
+    "msg": "Value is not accepted. Valid values: \"bash\", \"sh\", \"pwsh\", \"powershell\", \"zsh\"."
+   },
+   {
+    "line": 3,
+    "col": 12,
+    "sev": 1,
+    "msg": "Incorrect type. Expected \"boolean | string\"."
+   },
+   {
+    "line": 1,
+    "col": 1,
+    "sev": 1,
+    "msg": "Object is missing property script required by property shell."
+   }
+  ]
+ },
+ "completion": {
+  "/tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml:3:12": [
+   {
+    "label": "\"true\"",
+    "doc": null
+   },
+   {
+    "label": "\"false\"",
+    "doc": null
+   },
+   {
+    "label": "true",
+    "doc": ""
+   },
+   {
+    "label": "false",
+    "doc": ""
+   }
+  ],
+  "/tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml:4:8": [
+   {
+    "label": "bash",
+    "doc": null
+   },
+   {
+    "label": "sh",
+    "doc": null
+   },
+   {
+    "label": "pwsh",
+    "doc": null
+   },
+   {
+    "label": "powershell",
+    "doc": null
+   },
+   {
+    "label": "zsh",
+    "doc": null
+   }
+  ],
+  "/tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml:8:12": [
+   {
+    "label": "debug",
+    "doc": null
+   },
+   {
+    "label": "info",
+    "doc": null
+   },
+   {
+    "label": "warn",
+    "doc": null
+   }
+  ],
+  "/tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml:9:1": [
+   {
+    "label": "inputs",
+    "doc": ""
+   },
+   {
+    "label": "vars",
+    "doc": "set and vars values: a literal or template (strings with ${X} placeholders), or a whole-value reference."
+   },
+   {
+    "label": "outputs",
+    "doc": ""
+   },
+   {
+    "label": "defaults",
+    "doc": ""
+   },
+   {
+    "label": "exec",
+    "doc": ""
+   },
+   {
+    "label": "script",
+    "doc": ""
+   },
+   {
+    "label": "do",
+    "doc": ""
+   },
+   {
+    "label": "any",
+    "doc": ""
+   },
+   {
+    "label": "race",
+    "doc": ""
+   },
+   {
+    "label": "if",
+    "doc": "One subject plus one operator (with optional json and ignore_case), a bare probe, or a composite. The one-subject/one-operator rule is enforced by implementations (spec/conditions.md)."
+   },
+   {
+    "label": "sleep",
+    "doc": "<integer><unit> parts with units h, m, s, ms in descending order (500ms, 10s, 1h30m). No bare numbers."
+   },
+   {
+    "label": "log",
+    "doc": "Any scalar; Blokky reads it as a string."
+   },
+   {
+    "label": "fail",
+    "doc": "Any scalar; Blokky reads it as a string."
+   },
+   {
+    "label": "assert",
+    "doc": "One subject plus one operator (with optional json and ignore_case), a bare probe, or a composite. The one-subject/one-operator rule is enforced by implementations (spec/conditions.md)."
+   },
+   {
+    "label": "set",
+    "doc": "set and vars values: a literal or template (strings with ${X} placeholders), or a whole-value reference."
+   },
+   {
+    "label": "return",
+    "doc": "Any scalar; Blokky reads it as a string."
+   },
+   {
+    "label": "then",
+    "doc": ""
+   },
+   {
+    "label": "else",
+    "doc": ""
+   },
+   {
+    "label": "level",
+    "doc": ""
+   },
+   {
+    "label": "message",
+    "doc": "Any scalar; Blokky reads it as a string."
+   },
+   {
+    "label": "code",
+    "doc": ""
+   },
+   {
+    "label": "concurrency",
+    "doc": ""
+   },
+   {
+    "label": "stdin",
+    "doc": ""
+   },
+   {
+    "label": "ok_exit",
+    "doc": ""
+   },
+   {
+    "label": "stderr",
+    "doc": ""
+   },
+   {
+    "label": "encoding",
+    "doc": ""
+   },
+   {
+    "label": "keep_descendants",
+    "doc": ""
+   },
+   {
+    "label": "capture",
+    "doc": ""
+   },
+   {
+    "label": "capture_file",
+    "doc": ""
+   },
+   {
+    "label": "secret",
+    "doc": ""
+   },
+   {
+    "label": "when",
+    "doc": "One subject plus one operator (with optional json and ignore_case), a bare probe, or a composite. The one-subject/one-operator rule is enforced by implementations (spec/conditions.md)."
+   },
+   {
+    "label": "timeout",
+    "doc": "<integer><unit> parts with units h, m, s, ms in descending order (500ms, 10s, 1h30m). No bare numbers."
+   },
+   {
+    "label": "lock",
+    "doc": ""
+   },
+   {
+    "label": "tempdir",
+    "doc": ""
+   },
+   {
+    "label": "cwd",
+    "doc": ""
+   },
+   {
+    "label": "env",
+    "doc": ""
+   },
+   {
+    "label": "export",
+    "doc": ""
+   },
+   {
+    "label": "container",
+    "doc": ""
+   },
+   {
+    "label": "services",
+    "doc": ""
+   },
+   {
+    "label": "finally",
+    "doc": ""
+   },
+   {
+    "label": "finally_timeout",
+    "doc": "<integer><unit> parts with units h, m, s, ms in descending order (500ms, 10s, 1h30m). No bare numbers."
+   },
+   {
+    "label": "ignore_errors",
+    "doc": ""
+   },
+   {
+    "label": "retry",
+    "doc": ""
+   },
+   {
+    "label": "while",
+    "doc": "One subject plus one operator (with optional json and ignore_case), a bare probe, or a composite. The one-subject/one-operator rule is enforced by implementations (spec/conditions.md)."
+   },
+   {
+    "label": "until",
+    "doc": "One subject plus one operator (with optional json and ignore_case), a bare probe, or a composite. The one-subject/one-operator rule is enforced by implementations (spec/conditions.md)."
+   },
+   {
+    "label": "for",
+    "doc": ""
+   },
+   {
+    "label": "attempt_timeout",
+    "doc": "<integer><unit> parts with units h, m, s, ms in descending order (500ms, 10s, 1h30m). No bare numbers."
+   },
+   {
+    "label": "max",
+    "doc": ""
+   },
+   {
+    "label": "every",
+    "doc": "<integer><unit> parts with units h, m, s, ms in descending order (500ms, 10s, 1h30m). No bare numbers."
+   },
+   {
+    "label": "backoff",
+    "doc": ""
+   },
+   {
+    "label": "jitter",
+    "doc": ""
+   },
+   {
+    "label": "on_body_failure",
+    "doc": ""
+   },
+   {
+    "label": "index",
+    "doc": ""
+   },
+   {
+    "label": "carry",
+    "doc": ""
+   },
+   {
+    "label": "collect",
+    "doc": ""
+   }
+  ],
+  "/tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml:7:5": [
+   {
+    "label": "script",
+    "doc": ""
+   },
+   {
+    "label": "do",
+    "doc": ""
+   },
+   {
+    "label": "all",
+    "doc": ""
+   },
+   {
+    "label": "any",
+    "doc": ""
+   },
+   {
+    "label": "race",
+    "doc": ""
+   },
+   {
+    "label": "if",
+    "doc": "One subject plus one operator (with optional json and ignore_case), a bare probe, or a composite. The one-subject/one-operator rule is enforced by implementations (spec/conditions.md)."
+   },
+   {
+    "label": "sleep",
+    "doc": "<integer><unit> parts with units h, m, s, ms in descending order (500ms, 10s, 1h30m). No bare numbers."
+   },
+   {
+    "label": "log",
+    "doc": "Any scalar; Blokky reads it as a string."
+   },
+   {
+    "label": "fail",
+    "doc": "Any scalar; Blokky reads it as a string."
+   },
+   {
+    "label": "assert",
+    "doc": "One subject plus one operator (with optional json and ignore_case), a bare probe, or a composite. The one-subject/one-operator rule is enforced by implementations (spec/conditions.md)."
+   },
+   {
+    "label": "set",
+    "doc": "set and vars values: a literal or template (strings with ${X} placeholders), or a whole-value reference."
+   },
+   {
+    "label": "return",
+    "doc": "Any scalar; Blokky reads it as a string."
+   },
+   {
+    "label": "shell",
+    "doc": ""
+   },
+   {
+    "label": "then",
+    "doc": ""
+   },
+   {
+    "label": "else",
+    "doc": ""
+   },
+   {
+    "label": "message",
+    "doc": "Any scalar; Blokky reads it as a string."
+   },
+   {
+    "label": "code",
+    "doc": ""
+   },
+   {
+    "label": "concurrency",
+    "doc": ""
+   },
+   {
+    "label": "fail_fast",
+    "doc": ""
+   },
+   {
+    "label": "stdin",
+    "doc": ""
+   },
+   {
+    "label": "ok_exit",
+    "doc": ""
+   },
+   {
+    "label": "stderr",
+    "doc": ""
+   },
+   {
+    "label": "encoding",
+    "doc": ""
+   },
+   {
+    "label": "keep_descendants",
+    "doc": ""
+   },
+   {
+    "label": "capture",
+    "doc": ""
+   },
+   {
+    "label": "capture_file",
+    "doc": ""
+   },
+   {
+    "label": "secret",
+    "doc": ""
+   },
+   {
+    "label": "name",
+    "doc": "Any scalar; Blokky reads it as a string."
+   },
+   {
+    "label": "when",
+    "doc": "One subject plus one operator (with optional json and ignore_case), a bare probe, or a composite. The one-subject/one-operator rule is enforced by implementations (spec/conditions.md)."
+   },
+   {
+    "label": "timeout",
+    "doc": "<integer><unit> parts with units h, m, s, ms in descending order (500ms, 10s, 1h30m). No bare numbers."
+   },
+   {
+    "label": "lock",
+    "doc": ""
+   },
+   {
+    "label": "tempdir",
+    "doc": ""
+   },
+   {
+    "label": "cwd",
+    "doc": ""
+   },
+   {
+    "label": "env",
+    "doc": ""
+   },
+   {
+    "label": "export",
+    "doc": ""
+   },
+   {
+    "label": "container",
+    "doc": ""
+   },
+   {
+    "label": "services",
+    "doc": ""
+   },
+   {
+    "label": "finally",
+    "doc": ""
+   },
+   {
+    "label": "finally_timeout",
+    "doc": "<integer><unit> parts with units h, m, s, ms in descending order (500ms, 10s, 1h30m). No bare numbers."
+   },
+   {
+    "label": "ignore_errors",
+    "doc": ""
+   },
+   {
+    "label": "retry",
+    "doc": ""
+   },
+   {
+    "label": "while",
+    "doc": "One subject plus one operator (with optional json and ignore_case), a bare probe, or a composite. The one-subject/one-operator rule is enforced by implementations (spec/conditions.md)."
+   },
+   {
+    "label": "until",
+    "doc": "One subject plus one operator (with optional json and ignore_case), a bare probe, or a composite. The one-subject/one-operator rule is enforced by implementations (spec/conditions.md)."
+   },
+   {
+    "label": "for",
+    "doc": ""
+   },
+   {
+    "label": "attempt_timeout",
+    "doc": "<integer><unit> parts with units h, m, s, ms in descending order (500ms, 10s, 1h30m). No bare numbers."
+   },
+   {
+    "label": "max",
+    "doc": ""
+   },
+   {
+    "label": "every",
+    "doc": "<integer><unit> parts with units h, m, s, ms in descending order (500ms, 10s, 1h30m). No bare numbers."
+   },
+   {
+    "label": "backoff",
+    "doc": ""
+   },
+   {
+    "label": "jitter",
+    "doc": ""
+   },
+   {
+    "label": "on_body_failure",
+    "doc": ""
+   },
+   {
+    "label": "index",
+    "doc": ""
+   },
+   {
+    "label": "carry",
+    "doc": ""
+   },
+   {
+    "label": "collect",
+    "doc": ""
+   }
+  ]
+ },
+ "hover": {
+  "/tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml:1:2": {
+   "kind": "markdown",
+   "value": "#### Blokky plan || Blokky plan\n\nSource: [blokky.schema.json](file:///home/dg/projects/blokky/blokky-specs/schema/blokky.schema.json)"
+  },
+  "/tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml:3:3": {
+   "kind": "markdown",
+   "value": "#### Blokky plan\n\nAllowed Values:\n\n* `\"false\"`\n* `\"true\"`\n\nSource: [blokky.schema.json](file:///home/dg/projects/blokky/blokky-specs/schema/blokky.schema.json)"
+  },
+  "/tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml:4:2": {
+   "kind": "markdown",
+   "value": "#### Blokky plan\n\nAllowed Values:\n\n* `zsh`\n* `bash`\n* `sh`\n* `pwsh`\n* `powershell`\n\nSource: [blokky.schema.json](file:///home/dg/projects/blokky/blokky-specs/schema/blokky.schema.json)"
+  },
+  "/tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml:6:5": {
+   "kind": "markdown",
+   "value": "#### Blokky plan || Blokky plan\n\nSource: [blokky.schema.json](file:///home/dg/projects/blokky/blokky-specs/schema/blokky.schema.json)"
+  },
+  "/tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml:7:6": {
+   "kind": "markdown",
+   "value": "#### Blokky plan\n\n<integer><unit> parts with units h, m, s, ms in descending order (500ms, 10s, 1h30m). No bare numbers.\n\nSource: [blokky.schema.json](file:///home/dg/projects/blokky/blokky-specs/schema/blokky.schema.json)"
+  },
+  "/tmp/claude-1000/schema-editor/cases/90-completion.blokky.yaml:8:6": {
+   "kind": "markdown",
+   "value": "#### Blokky plan\n\nAllowed Values:\n\n* `warn`\n* `debug`\n* `info`\n\nSource: [blokky.schema.json](file:///home/dg/projects/blokky/blokky-specs/schema/blokky.schema.json)"
+  }
+ }
+}

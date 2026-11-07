@@ -1,0 +1,5 @@
+blokky: 1.0
+retry: true
+max: 3
+backoff: { factor: 1.50 }
+exec: [make]

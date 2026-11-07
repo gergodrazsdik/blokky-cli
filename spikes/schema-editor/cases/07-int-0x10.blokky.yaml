@@ -1,0 +1,4 @@
+blokky: 1.0
+max: 0x10
+retry: true
+exec: [make]

@@ -1,0 +1,5 @@
+blokky: 1.0
+fail_fast: yes
+all:
+  - exec: [true]
+  - exec: [false]

@@ -1,0 +1,12 @@
+blokky: 1.0
+inputs:
+  A:
+    default: on
+  B:
+    default: yes
+  C:
+    default: no
+  D:
+    default: y
+    in: [y, n]
+exec: [echo, { var: A }]

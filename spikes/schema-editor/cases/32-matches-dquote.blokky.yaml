@@ -1,0 +1,6 @@
+blokky: 1.0
+inputs:
+  A:
+    default: "1"
+    matches: "^\d+$"
+exec: [make]

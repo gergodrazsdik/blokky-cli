@@ -1,0 +1,3 @@
+blokky: 1.0
+exec: [make]
+exec: [make, test]
