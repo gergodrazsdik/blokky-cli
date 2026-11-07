@@ -120,7 +120,14 @@ Conformance suite complete 2026-11-07: 1,147 cases cover all 380 rules (with spe
 - [~] T-0030 [both] Fold spike findings back into the draft — MVP spike findings decided 2026-11-07 ([cli ADR 0008](../adr/0008-spike-findings.md), [specs ADR 0027](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0027-spike-findings.md); decision record [spikes-mvp.md](../review/spikes-mvp.md))
 - [x] T-0067 [cli] Refresh the design docs before code: architecture, process control (launcher abstraction designed for all three OSes), tech stack, testkit, validation strategy, CI/CD — 2026-11-07: architecture, tech stack, testkit, validation strategy, CI/CD, and process control from the spikes
 - [x] T-0068 [cli] `blokky-testkit` (Native AOT, testkit-interface.md) and the conformance runner with its adapter; CI runs the suite on Linux and reports the pass rate — 2026-11-07: solution skeleton (`blokky.slnx`, Core, Cli, TUnit test projects) and a stub `blokky validate`/`run` that rejects every plan with `BK_PLAN_NOT_SUPPORTED`; `blokky-testkit` (TK-1 to TK-23 on Linux, 122 tests against the JIT and AOT builds); `blokky-conformance` (case loading, selection, workspace, matchers, not-supported check, JSON lines/JUnit/step-summary reports), `conformance.lock` (`v1.0.0-draft.5`), `just conformance` and the `conformance` CI job: 0 pass, 0 fail, all cases skipped with their not-supported check passing. Deferred: scaled/virtual clocks, the RNG seed (CF-41), container images (CF-66), Windows; findings F-0028 to F-0030 ([#50](https://github.com/gergodrazsdik/blokky-cli/pull/50))
-- [ ] T-0069 [cli] Validator: parse and validate until the suite's validation cases pass (unsupported features → `BK_PLAN_NOT_SUPPORTED`)
+- [~] T-0069 [cli] Validator: parse and validate until the suite's validation cases pass (unsupported features → `BK_PLAN_NOT_SUPPORTED`) — 2026-11-07: planned in [ADR 0009](../adr/0009-validator-delivery.md) (16 more 0.1 feature ids, validated/runnable tables, a gating later-feature validation pass), delivered as a gh stack:
+  - [ ] T-0080 [cli] Plan reader (encoding pass, character lint) and YAML front end (YamlDotNet adapter, line map); the validated/runnable tables
+  - [ ] T-0081 [cli] AST, schema-level checks, `validate` output; the runner's later-feature validation pass
+  - [ ] T-0082 [cli] Static rules: syntax
+  - [ ] T-0083 [cli] Static rules: variables and interpolation
+  - [ ] T-0084 [cli] Static rules: conditions
+  - [ ] T-0085 [cli] Static rules: reference and modifiers
+  - [ ] T-0086 [cli] Input binding, feature gate, lint and strict mode
 - [ ] T-0070 [cli] Run engine: sequential execution on Linux until the 0.1 conformance subset passes
 - [ ] T-0071 [cli] 0.1 docs: `configuration.md`, `cli.md`, contracts, agent docs (`agent-guide.md`, `SKILL.md`), README and install
 - [ ] T-0072 [cli] Release 0.1: Linux AOT binaries with checksums; the maintainer tags `cli-v0.1.0`

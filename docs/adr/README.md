@@ -16,6 +16,7 @@ ADRs are **grouped**: a baseline ADR, then one ADR per batch of answered open qu
 | [0006](0006-phase-order-and-incremental-cli.md) | Phase order, spec scope and an incremental CLI | accepted | — (direction revision; supersedes parts of 0001) |
 | [0007](0007-runtime-plan.md) | Runtime plan: MVP, release order, docs and test-first build | accepted | T-0053 (runtime planning session) |
 | [0008](0008-spike-findings.md) | Decisions from the MVP spikes | accepted | T-0030 (MVP spike findings) |
+| [0009](0009-validator-delivery.md) | Validator delivery and the 0.1 feature table | accepted | T-0069 (validator planning) |
 
 ## Format
 
