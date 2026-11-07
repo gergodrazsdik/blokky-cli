@@ -94,7 +94,7 @@ The review is done: an agent council of five lenses (76 findings, all verified),
   - Review done 2026-11-07: every decision recorded in the [council report](../review/council-draft.3.md) §6 (D-1 to D-6, S-1 to S-14, C-1 to C-8, spikes).
   - Applied 2026-11-07 as specs [ADR 0017](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0017-review-features.md) (features, specs PR #36), [ADR 0018](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0018-review-semantics.md) (semantics, #39) and [ADR 0019](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0019-review-corrections.md) (corrections, #38); spike input recorded in [spike-plan.md](../design/spike-plan.md).
 - [x] T-0059 [specs] Maintainer tags `v1.0.0-draft.4` — 2026-11-07, tag `v1.0.0-draft.4`
-- [-] T-0036 [both] Consistency pass — dropped 2026-11-05: replaced by the review phase (cli ADR 0006)
+- [-] T-0036 [both] Consistency pass — dropped 2026-11-05: replaced by the review phase ([cli ADR 0006](../adr/0006-phase-order-and-incremental-cli.md))
 
 ## Phase 4 — Conformance suite (brief §8 step 8)
 
@@ -186,6 +186,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - F-0010 [specs] Add rule IDs (`SY-n`) to `spec/syntax.md` and pin the conformance feature-id vocabulary used by `BK_PLAN_NOT_SUPPORTED`'s `detail.feature`; both needed before the conformance cases (T-0052). Folded into [council report](../review/council-draft.3.md) S-11. Decided 2026-11-07: `SY-n` IDs, `detail.rule` is a rule ID.
 - F-0011 [specs] Review (maintainer): no way to end a sequence early, so "nothing to do" checks wrap the rest of the plan in an `else` ([changed-files-lint](https://github.com/gergodrazsdik/blokky-specs/blob/main/examples/scenarios/changed-files-lint.blokky.yaml) lines 24–26). Decide whether to add an early-exit kind (`return`, ending the enclosing `do` list successfully; later siblings `skipped`) and its scope: plan, nearest `do` (which makes it `continue` in a `for` body), or a named node; `break` for loops; validity in `all`/`any`/`race`, `finally` and `while`/`until` bodies; effect on `outputs` and on the undefined-variable check (S-7). Decided 2026-11-06: add `return`, see [council report](../review/council-draft.3.md) D-6.
 - F-0012 [specs] Review (maintainer): `{ command: /bin/sh, exists: true }` is valid (CO-45 treats a name with a separator as a path), but CO-45 doesn't say whether a path that exists and isn't executable counts as found; align it with the spawn-error rule (reference.md §5, "not executable"). `NAME` stays a literal, like argv[0] (CO-46, RF-9). Decided 2026-11-06: it must also be executable, see [council report](../review/council-draft.3.md) C-8.
+- F-0013 [specs] Review features added in draft.4 without an example: `return` in a loop body and an `if` branch, `carry`/`index` on `while`, `max_items` on a non-`items` source, a JSON poll that survives a non-JSON response; the pagination example's README row didn't mention the cursor or `carry`. Fixed 2026-11-07 in [specs PR #41](https://github.com/gergodrazsdik/blokky-specs/pull/41).
 
 ## Decisions
 
