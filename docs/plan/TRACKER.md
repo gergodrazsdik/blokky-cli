@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0064 [specs] Wave D: timing and process control
-2. T-0065 [specs] Wave E: modifier combinations and containers
-3. T-0066 [specs] Maintainer tags `v1.0.0-draft.5`
+1. T-0065 [specs] Wave E: modifier combinations and containers (stack open)
+2. T-0066 [specs] Maintainer tags `v1.0.0-draft.5` (decide F-0022 and F-0023 first, or carry them)
+3. T-0053 [cli] Runtime planning session
 
 ## Phase 0 — Bootstrap
 
@@ -106,8 +106,8 @@ The review is done: an agent council of five lenses (76 findings, all verified),
 - [x] T-0061 [specs] Wave A, validation: syntax and the static reference rules (SY, RF), the generated validity-matrix and sibling-table cases (CF-45, `scripts/generate-matrix.py`), inputs and variables at validation (VA), errors (ER) — specs PRs [#45](https://github.com/gergodrazsdik/blokky-specs/pull/45), [#46](https://github.com/gergodrazsdik/blokky-specs/pull/46), [#47](https://github.com/gergodrazsdik/blokky-specs/pull/47), [#48](https://github.com/gergodrazsdik/blokky-specs/pull/48), [#49](https://github.com/gergodrazsdik/blokky-specs/pull/49) (301 hand-written cases in four areas, 398 generated matrix cases) — 2026-11-07; coverage 188/365 rules (syntax.md, reference.md and errors.md complete)
 - [x] T-0062 [specs] Wave B, run semantics: node kinds, statuses, group errors, `return`, `when` (EM core, RS); leaf processes (EM-14 to EM-24, EM-68, EM-69); captures, scopes, the environment and masking at run time (VA) — 2026-11-07, specs stack [#50](https://github.com/gergodrazsdik/blokky-specs/pull/50) to [#53](https://github.com/gergodrazsdik/blokky-specs/pull/53) (ADR 0022 and 127 cases); coverage 250/365 rules (variables.md and results.md complete)
 - [x] T-0063 [specs] Wave C: conditions and shells (CO, SH) — 2026-11-07, specs stack [#55](https://github.com/gergodrazsdik/blokky-specs/pull/55) to [#58](https://github.com/gergodrazsdik/blokky-specs/pull/58) (ADR 0023, checker position check, 166 cases); coverage 329/373 rules (shells.md complete, conditions.md 48/50)
-- [~] T-0064 [specs] Wave D, timing and process control: `timeout` and grace, `finally`, `lock`, `services`, external stop and kill, repetition with `carry`, `collect` and `index` (EM)
-- [ ] T-0065 [specs] Wave E: modifier combinations (CF-46, CF-47) and containers (CP)
+- [x] T-0064 [specs] Wave D, timing and process control: `timeout` and grace, `finally`, `lock`, `services`, external stop and kill, repetition with `carry`, `collect` and `index` (EM) — 2026-11-07, specs stack [#60](https://github.com/gergodrazsdik/blokky-specs/pull/60) to [#63](https://github.com/gergodrazsdik/blokky-specs/pull/63) (ADR 0024, 78 cases); coverage 350/374 (execution-model.md complete)
+- [~] T-0065 [specs] Wave E: modifier combinations (CF-46, CF-47) and containers (CP) — specs stack [#65](https://github.com/gergodrazsdik/blokky-specs/pull/65) to [#68](https://github.com/gergodrazsdik/blokky-specs/pull/68): ADR 0025, the ADR 0025 sweep, 36 container cases and 13 combination cases; with it coverage is 374/374 rules across 1,135 cases
 - [ ] T-0066 [specs] Maintainer tags `v1.0.0-draft.5` with the spec fixes found while writing the cases
 
 ## Phase 5 — Runtime planning, spikes and incremental CLI (brief §8 steps 9–11)
@@ -200,7 +200,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - F-0014 [specs] Gaps in `conformance/README.md` found while writing the case checker: `after_run` (CF-64) was missing from the closed key list (CF-9), and its entry shape was undefined; CF-64's example called `alive --pids` expecting 1, but TK-16 is `alive FILE`, exiting 0 when nothing is alive; the result document's `skip_reason` lacked `returned` and `pruned` (results.md); a validation example asserted `invocations`, which isn't a validation-outcome key. Fixed 2026-11-07 in [specs PR #42](https://github.com/gergodrazsdik/blokky-specs/pull/42) (T-0060).
 - F-0015 [specs] Spec gaps found while checking the first cases (T-0060); the cases avoid asserting on them until decided. (1) SY-1 and CF-24 define no position for an error about a missing key (RF-5's missing `max`/`timeout`, `if` without `then`): the triggering key (`until`), or no position. (2) `BK_INPUT_UNKNOWN`'s `detail.suggestion` has no closeness metric (variables.md §4.3 shows only case folding; SY-30 uses edit distance for keys), and isn't said to be required when a candidate exists. (3) EM-15 gives Windows leaves a console only as a SHOULD, so whether a timed-out leaf gets the grace period there (EM-26, `graceful: none`) is implementation-defined; cases allow both until EM-15 is a MUST or the cases branch on `graceful`. Decided 2026-11-07 ([specs ADR 0020](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0020-conformance-gaps.md), [specs PR #43](https://github.com/gergodrazsdik/blokky-specs/pull/43)): the triggering key; edit distance ≤ 2 after case mapping, required when one exists; a console per Windows leaf is a MUST.
 - F-0016 [specs] Spec gaps found by the wave A cases (T-0061): one mistake with several rule IDs, overlapping plan-error codes, error positions, invalid-text handling, grammar details, input and name codes, masking, binding rules, editorial and schema fixes ([review notes](../review/conformance-wave-a.md)). Decided 2026-11-07 and applied in [specs ADR 0021](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0021-wave-a-gaps.md), [specs PR #44](https://github.com/gergodrazsdik/blokky-specs/pull/44); D-3 was withdrawn as a misreading of reference.md §4.3, now reworded.
-- F-0017 [specs] Smaller points left open after ADR 0021; the wave A cases accept either answer (`$one_of`) or don't assert them. Decide before tagging draft.5 (T-0066):
+- F-0017 [specs] Smaller points left open after ADR 0021; the wave A cases accept either answer (`$one_of`) or don't assert them. Decide before tagging draft.5 (T-0066): Decided 2026-11-07 (questionnaire) and applied in [specs ADR 0025](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0025-open-points.md).
   - Which ID a plan error reports when no RF rule applies and two SY/VA/ER rules say the same thing (SY-52 vs SY-42/VA-4/VA-6/ER-1; SY-53/SY-54/SY-57 vs SY-24/SY-25; SY-20 vs SY-41), and whether a targeted error (SY-91) reports SY-91 or the generic rule.
   - Overlaps D-1's precedence doesn't name: RF-16 vs RF-23, RF-6 vs RF-23, RF-27 vs RF-23 in `vars` values; `timeout: { var: X }` (RF-9 or a type mismatch); a regex that doesn't compile (RF-22 or its own rule); a root that is a list (VALUE or INVALID); the code of the targeted `secret:` on an input.
   - Positions: a scope error at the name inside `{ var: X }` or at the reference; a secret literal at `value` or `secret`; the depth error's column; content after `...`; an unset `from_env` in `vars` at its entry's key; an `env`/`export` name conflict; `for` without `as`.
@@ -208,7 +208,25 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
 - F-0018 [specs] Spec gaps found by the wave B cases (T-0062): unrun `if` branches in the result, failures inside `then`/`else`/`finally` lists, capture checks on decoded text, compact JSON, result fields (RS-6, run id, `children`, `left_running`), leaf details, `stdin` bytes, the drain bound, conformance timing ([review notes](../review/conformance-wave-b.md)). Decided 2026-11-07 and applied in [specs ADR 0022](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0022-wave-b-gaps.md).
 - F-0019 [specs] Spec gaps found by the wave C cases (T-0063): glob semantics, symlinks in resolution, overlapping rule IDs and codes in conditions, positions, condition-error reasons, probe details, `host:` pruning, `.bat`/`.cmd`, backslash escapes, Windows quoting and prologue, conformance configuration ([review notes](../review/conformance-wave-c.md)). Decided 2026-11-07 and applied in [specs ADR 0023](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0023-wave-c-gaps.md).
 - F-0020 [specs] Spec gaps found by the wave D cases (T-0064): the status after an own `attempt_timeout`, `finally_timeout` results, timeout codes for per-attempt `leaf_timeout`, `ended_by` and nesting on cancellation, the stopped run's error, node durations, `while` timing, services results, lock contention inside one run, and kill cases that couldn't be written ([review notes](../review/conformance-wave-d.md)). Decided 2026-11-07 and applied in [specs ADR 0024](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0024-wave-d-gaps.md).
-- F-0021 [specs] Points left open after waves C and D; cases don't assert them. Decide with F-0017 before draft.5 (T-0066): when an external stop arrives during `finally` after the body already failed, is the root's error the body's error (EM-51) or `BK_CANCELLED` (EM-57); whether `?` in a glob can match a leading dot (SY-100 names only `*` and `**`); CO-46 has no observable case (only its `container` warning remains).
+- F-0021 [specs] Points left open after waves C and D; cases don't assert them. Decide with F-0017 before draft.5 (T-0066): when an external stop arrives during `finally` after the body already failed, is the root's error the body's error (EM-51) or `BK_CANCELLED` (EM-57); whether `?` in a glob can match a leading dot (SY-100 names only `*` and `**`); CO-46 has no observable case (only its `container` warning remains). Decided 2026-11-07 (questionnaire) and applied in [specs ADR 0025](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0025-open-points.md).
+- F-0022 [specs] Points left open by the wave E combination cases; no case asserts them:
+  - does `finally` run when an outer layer fails the node (lock wait, `BK_CWD_INVALID`, `BK_TEMPDIR_FAILED`, a timeout during startup)?
+  - are services stopped at once when the node's own timeout fires (EM-26 vs EM-7/EM-65)?
+  - what `repetition` a node records that fails before its first attempt;
+  - the status of an entry interrupted by the node's own timeout;
+  - whether the `finally` and child nodes of a node skipped by `when` appear in the result (RS-3 vs RS-6), and what a node that failed in `when` records;
+  - how soon a waiter gets a released lock (no polling bound, unlike EM-62).
+- F-0023 [specs] Points left open by the wave E container cases; no case asserts them:
+  - an image-reference grammar, and rule IDs for a missing `image` or mount `path`;
+  - the subkeys of the result's `container` field;
+  - error codes when argv[0] or the shell is missing from the image (CP-15);
+  - shell detection under `container`;
+  - CP-36's `detail.missing` form;
+  - the default cwd mount for an absolute host `cwd` (CP-9 vs CP-14);
+  - CP-10's wording;
+  - `env_pass` vs `env` overlaps;
+  - a container leaf's `invocation`;
+  - absolute container paths on Windows hosts.
 
 ## Decisions
 
