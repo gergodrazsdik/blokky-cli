@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0063 [specs] Wave C: conditions and shells
-2. T-0064 [specs] Wave D: timing and process control
-3. T-0065 [specs] Wave E: modifier combinations and containers
+1. T-0064 [specs] Wave D: timing and process control
+2. T-0065 [specs] Wave E: modifier combinations and containers
+3. T-0066 [specs] Maintainer tags `v1.0.0-draft.5`
 
 ## Phase 0 — Bootstrap
 
@@ -105,8 +105,8 @@ The review is done: an agent council of five lenses (76 findings, all verified),
 - [x] T-0060 [specs] Case checker (`scripts/check.py`, `conformance/case.schema.json`, `just check` and `just coverage`, in `just lint` and CI) and a first batch of 8 cases — 2026-11-07, [specs PR #42](https://github.com/gergodrazsdik/blokky-specs/pull/42)
 - [x] T-0061 [specs] Wave A, validation: syntax and the static reference rules (SY, RF), the generated validity-matrix and sibling-table cases (CF-45, `scripts/generate-matrix.py`), inputs and variables at validation (VA), errors (ER) — specs PRs [#45](https://github.com/gergodrazsdik/blokky-specs/pull/45), [#46](https://github.com/gergodrazsdik/blokky-specs/pull/46), [#47](https://github.com/gergodrazsdik/blokky-specs/pull/47), [#48](https://github.com/gergodrazsdik/blokky-specs/pull/48), [#49](https://github.com/gergodrazsdik/blokky-specs/pull/49) (301 hand-written cases in four areas, 398 generated matrix cases) — 2026-11-07; coverage 188/365 rules (syntax.md, reference.md and errors.md complete)
 - [x] T-0062 [specs] Wave B, run semantics: node kinds, statuses, group errors, `return`, `when` (EM core, RS); leaf processes (EM-14 to EM-24, EM-68, EM-69); captures, scopes, the environment and masking at run time (VA) — 2026-11-07, specs stack [#50](https://github.com/gergodrazsdik/blokky-specs/pull/50) to [#53](https://github.com/gergodrazsdik/blokky-specs/pull/53) (ADR 0022 and 127 cases); coverage 250/365 rules (variables.md and results.md complete)
-- [~] T-0063 [specs] Wave C: conditions and shells (CO, SH)
-- [ ] T-0064 [specs] Wave D, timing and process control: `timeout` and grace, `finally`, `lock`, `services`, external stop and kill, repetition with `carry`, `collect` and `index` (EM)
+- [x] T-0063 [specs] Wave C: conditions and shells (CO, SH) — 2026-11-07, specs stack [#55](https://github.com/gergodrazsdik/blokky-specs/pull/55) to [#58](https://github.com/gergodrazsdik/blokky-specs/pull/58) (ADR 0023, checker position check, 166 cases); coverage 329/373 rules (shells.md complete, conditions.md 48/50)
+- [~] T-0064 [specs] Wave D, timing and process control: `timeout` and grace, `finally`, `lock`, `services`, external stop and kill, repetition with `carry`, `collect` and `index` (EM)
 - [ ] T-0065 [specs] Wave E: modifier combinations (CF-46, CF-47) and containers (CP)
 - [ ] T-0066 [specs] Maintainer tags `v1.0.0-draft.5` with the spec fixes found while writing the cases
 
