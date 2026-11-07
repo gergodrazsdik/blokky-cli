@@ -8,21 +8,32 @@ public class CaseRunnerTests
 {
     private static readonly Matcher Matcher = new();
 
+    private static readonly HashSet<string> None = [];
+
     private static AdapterOutcome Rejected(string json, int code = 3) => BlokkyAdapter.Interpret(AdapterTests.Exited(code, json));
 
     [Test]
     public async Task A_well_formed_not_supported_rejection_passes_the_check()
     {
-        var (problem, note) = CaseRunner.NotSupportedProblem(Rejected(AdapterTests.NotSupportedEnvelope), 0, ["log"]);
+        var (problem, note) = CaseRunner.NotSupportedProblem(Rejected(AdapterTests.NotSupportedEnvelope), 0, ["log"], None);
 
         await Assert.That(problem).IsNull();
         await Assert.That(note).IsNull();
     }
 
     [Test]
+    public async Task The_check_fails_when_the_named_feature_is_declared_for_the_case()
+    {
+        var problem = CaseRunner.NotSupportedProblem(Rejected(AdapterTests.NotSupportedEnvelope), 0, ["log"],
+            new HashSet<string> { "log" }).Problem;
+
+        await Assert.That(problem).Contains("declares supported");
+    }
+
+    [Test]
     public async Task A_feature_the_case_does_not_list_is_noted_not_failed()
     {
-        var (problem, note) = CaseRunner.NotSupportedProblem(Rejected(AdapterTests.NotSupportedEnvelope), 0, ["exec"]);
+        var (problem, note) = CaseRunner.NotSupportedProblem(Rejected(AdapterTests.NotSupportedEnvelope), 0, ["exec"], None);
 
         await Assert.That(problem).IsNull();
         await Assert.That(note).Contains("'log'");
@@ -34,7 +45,7 @@ public class CaseRunnerTests
         const string Yaml = """{"status":"invalid","phase":"plan","errors":[{"code":"BK_PLAN_YAML","message":"m"}]}""";
         const string Warp =
             """{"status":"invalid","phase":"plan","errors":[{"code":"BK_PLAN_NOT_SUPPORTED","message":"m","detail":{"feature":"warp"}}]}""";
-        string? Problem(AdapterOutcome outcome, int log = 0) => CaseRunner.NotSupportedProblem(outcome, log, ["log"]).Problem;
+        string? Problem(AdapterOutcome outcome, int log = 0) => CaseRunner.NotSupportedProblem(outcome, log, ["log"], None).Problem;
 
         await Assert.That(Problem(Rejected(AdapterTests.NotSupportedEnvelope), log: 1)).Contains("a process started");
         await Assert.That(Problem(Rejected(AdapterTests.NotSupportedEnvelope, 2))).Contains("exit 2");
@@ -49,7 +60,7 @@ public class CaseRunnerTests
         var notSupported = Rejected(AdapterTests.NotSupportedEnvelope);
         var yaml = Rejected("""{"status":"invalid","phase":"plan","errors":[{"code":"BK_PLAN_YAML","message":"m"}]}""");
 
-        await Assert.That(CaseRunner.NotSupportedProblem(notSupported, 0, ["log"], survivors: 1).Problem).Contains("outlived blokky");
+        await Assert.That(CaseRunner.NotSupportedProblem(notSupported, 0, ["log"], None, survivors: 1).Problem).Contains("outlived blokky");
         await Assert.That(CaseRunner.MatchValidation(Values.Map("plan_errors: [{ code: BK_PLAN_YAML }]"), yaml, 0, Matcher, survivors: 2))
             .Contains("CF-23");
     }
@@ -154,7 +165,7 @@ public class CaseRunnerEndToEndTests
             await File.WriteAllTextAsync(file, Case);
             var fake = new FakeRunner(AdapterTests.Exited(0,
                 """{"status":"succeeded","error":null,"nodes":[{"id":"/","kind":"exec","status":"succeeded","exit_code":0}]}"""));
-            var caps = new AdapterCapabilities(new HashSet<string> { "exec" }, ["real"], true, false);
+            var caps = new AdapterCapabilities(new HashSet<string> { "exec" }, new HashSet<string> { "exec" }, ["real"], true, false);
             var host = new HostInfo("linux", new Dictionary<string, string>(), new Dictionary<string, string>(), "/usr/bin/true", false);
             var settings = new RunnerSettings(Path.Combine(root, "run"), 1, 10, false);
             var runner = new CaseRunner(new BlokkyAdapter("/fake/blokky", fake, caps), host, settings);

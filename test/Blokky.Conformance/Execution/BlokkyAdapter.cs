@@ -1,22 +1,32 @@
 using System.Text;
 using System.Text.Json;
+using Blokky.Conformance.Cases;
 using Blokky.Core.Features;
 
 namespace Blokky.Conformance.Execution;
 
 /// <summary>What the adapter declares (CF-54).</summary>
-/// <param name="Features">Supported feature ids: Core's table (CF-12).</param>
+/// <param name="Validated">Feature ids the validator fully checks: Core's validated table, declared for validation cases.</param>
+/// <param name="Runnable">Feature ids the run engine executes: Core's runnable table, declared for run cases (ADR 0009).</param>
 /// <param name="ClockModes">Clock modes the binary implements (§5.1).</param>
 /// <param name="ExternalStop">Whether it can stop a run from outside (CF-55).</param>
 /// <param name="Seed">Whether it takes an RNG seed (CF-41).</param>
-internal sealed record AdapterCapabilities(IReadOnlySet<string> Features, IReadOnlyList<string> ClockModes, bool ExternalStop, bool Seed)
+internal sealed record AdapterCapabilities(
+    IReadOnlySet<string> Validated,
+    IReadOnlySet<string> Runnable,
+    IReadOnlyList<string> ClockModes,
+    bool ExternalStop,
+    bool Seed)
 {
     /// <summary>
-    /// This build: the features in <see cref="FeatureSupport.Supported"/>; only <c>real</c>, since the clock can be
-    /// selected only in test builds of blokky and none exists yet (testkit.md §5); external stops by SIGTERM on Unix.
+    /// This build: Core's two feature tables; only <c>real</c>, since the clock can be selected only in test builds of
+    /// blokky and none exists yet (testkit.md §5); external stops by SIGTERM on Unix.
     /// </summary>
     public static AdapterCapabilities Current { get; } =
-        new(FeatureSupport.Supported, ["real"], !OperatingSystem.IsWindows(), Seed: false);
+        new(FeatureSupport.Validated, FeatureSupport.Runnable, ["real"], !OperatingSystem.IsWindows(), Seed: false);
+
+    /// <summary>The supported features declared for a case (CF-12): validated for a validation outcome, else runnable.</summary>
+    public IReadOnlySet<string> FeaturesFor(ExpectKind kind) => kind == ExpectKind.Validation ? Validated : Runnable;
 }
 
 /// <summary>How a run ended, as the adapter sees it.</summary>

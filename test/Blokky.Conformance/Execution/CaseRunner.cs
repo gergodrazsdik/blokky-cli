@@ -105,7 +105,8 @@ internal sealed class CaseRunner(BlokkyAdapter adapter, HostInfo host, RunnerSet
             var outcome = await adapter.RunAsync(request, ct).ConfigureAwait(false);
             var survivors = (await Survivors.SettleAsync(ws.Marker, settings.Settle, ct).ConfigureAwait(false)).Count;
             var logCount = ws.LogCount();
-            var (problem, note) = NotSupportedProblem(outcome, logCount, c.Features, survivors);
+            var (problem, note) = NotSupportedProblem(outcome, logCount, c.Features, adapter.Capabilities.FeaturesFor(c.ExpectKind),
+                survivors);
             if (problem is not null && RejectedWithOwnErrors(c.ExpectKind, c.Expect, outcome, logCount, survivors, _matcher))
             {
                 (problem, note) = (null, "rejected with the case's own validation errors instead of BK_PLAN_NOT_SUPPORTED");
@@ -142,12 +143,14 @@ internal sealed class CaseRunner(BlokkyAdapter adapter, HostInfo host, RunnerSet
 
     /// <summary>Why the not-supported check fails, or null; and a note on a <c>detail.feature</c> the case doesn't list.</summary>
     /// <param name="logCount">Testkit invocations in the case's log.</param>
+    /// <param name="declared">The features the adapter declares for this case (validated or runnable, ADR 0009).</param>
     /// <param name="survivors">The case's processes still alive after <c>blokky</c> exited and the settle time.</param>
     internal static (string? Problem, string? Note) NotSupportedProblem(AdapterOutcome outcome, int logCount,
-        IReadOnlyList<string> caseFeatures, int survivors = 0)
+        IReadOnlyList<string> caseFeatures, IReadOnlySet<string> declared, int survivors = 0)
     {
         ArgumentNullException.ThrowIfNull(outcome);
         ArgumentNullException.ThrowIfNull(caseFeatures);
+        ArgumentNullException.ThrowIfNull(declared);
         if (logCount > 0)
         {
             return ($"a process started: {logCount} testkit invocation(s) (EM-1)", null);
@@ -184,7 +187,7 @@ internal sealed class CaseRunner(BlokkyAdapter adapter, HostInfo host, RunnerSet
             return ($"BK_PLAN_NOT_SUPPORTED's detail.feature is {YamlValues.Show(feature)}, not a feature id (errors.md)", null);
         }
 
-        if (FeatureSupport.IsSupported(feature))
+        if (declared.Contains(feature))
         {
             return ($"BK_PLAN_NOT_SUPPORTED names '{feature}', which this build declares supported", null);
         }

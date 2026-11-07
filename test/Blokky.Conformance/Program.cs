@@ -76,7 +76,8 @@ Console.WriteLine($"blokky conformance: {specsDir} at {head ?? "(unknown commit)
 Console.WriteLine($"binary: {adapter.Binary}; testkit: {host.Testkit ?? "not built"}; shells: {string.Join(", ", host.Shells.Keys)}");
 var capabilities = adapter.Capabilities;
 var clockModes = string.Join(", ", capabilities.ClockModes);
-Console.WriteLine($"declared support: {capabilities.Features.Count} of {FeatureIds.All.Count} features; clock modes: {clockModes}");
+Console.WriteLine($"declared support: {capabilities.Validated.Count} validated and {capabilities.Runnable.Count} runnable of "
+    + $"{FeatureIds.All.Count} features; clock modes: {clockModes}");
 
 // CF-14, CF-59: cases that list the same port never run at the same time.
 var portLocks = new ConcurrentDictionary<int, SemaphoreSlim>();

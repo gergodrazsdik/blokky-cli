@@ -25,7 +25,7 @@ public class PublishedBinaryTests
 
             var outcome = await adapter.RunAsync(new RunRequest(plan, [], env, dir, TimeSpan.FromSeconds(30), []), CancellationToken.None);
 
-            await Assert.That(CaseRunner.NotSupportedProblem(outcome, 0, ["do", "exec"]).Problem).IsNull();
+            await Assert.That(CaseRunner.NotSupportedProblem(outcome, 0, ["do", "exec"], new HashSet<string>()).Problem).IsNull();
         }
         finally
         {

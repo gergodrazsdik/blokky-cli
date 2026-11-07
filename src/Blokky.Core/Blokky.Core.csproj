@@ -6,6 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Scanner and Parser only, behind Reading/Yaml/IYamlFrontEnd (ADR 0008); pinned, upgrades rerun the suite. -->
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Blokky.Core.Tests" />
   </ItemGroup>
 </Project>

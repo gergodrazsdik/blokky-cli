@@ -114,7 +114,10 @@
         }
       },
       "blokky.core": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "YamlDotNet": "[18.1.0, )"
+        }
       },
       "YamlDotNet": {
         "type": "CentralTransitive",

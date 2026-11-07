@@ -246,7 +246,8 @@ public class SurvivorTests
             // The fake testkit logs one fixed line, as `blokky-testkit exit 0` would (TK-5).
             var testkit = Script("blokky-testkit",
                 "printf '%s\\n' '{\"name\":\"blokky-testkit\",\"argv\":[\"exit\",\"0\"]}' >> \"$TESTKIT_LOG\"\n");
-            var caps = new AdapterCapabilities(features.ToHashSet(StringComparer.Ordinal), ["real"], true, false);
+            var set = features.ToHashSet(StringComparer.Ordinal);
+            var caps = new AdapterCapabilities(set, set, ["real"], true, false);
             var bin = Path.GetDirectoryName(File.Exists("/usr/bin/sleep") ? "/usr/bin/sleep" : "/bin/sleep")!;
             var host = new HostInfo("linux", new Dictionary<string, string> { ["sh"] = bin }, new Dictionary<string, string>(), testkit,
                 false);

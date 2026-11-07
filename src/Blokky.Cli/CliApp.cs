@@ -2,13 +2,16 @@ using System.Reflection;
 using System.Text;
 using Blokky.Core.Contracts;
 using Blokky.Core.Errors;
+using Blokky.Core.Features;
 using Blokky.Core.Plans;
+using Blokky.Core.Reading;
 
 namespace Blokky.Cli;
 
 /// <summary>
 /// The CLI host: parses argv, reads the plan and reports. Streams are passed in so tests drive it in-process.
-/// This build executes nothing: every plan stops at the feature gate (<see cref="StubFeatureGate"/>).
+/// This build executes nothing: a plan is read (<see cref="PlanReader"/>), and one that reads cleanly stops at the feature
+/// gate (<see cref="StubFeatureGate"/>).
 /// </summary>
 internal static class CliApp
 {
@@ -55,8 +58,15 @@ internal static class CliApp
             return Fail(new PreRunEnvelope(Phase.Usage, [readError!]), stdout, stderr);
         }
 
-        // validate and run share the static front half; nothing past it exists yet.
-        var planErrors = StubFeatureGate.Check(plan);
+        // validate and run share the static front half: the plan reader, then (until the AST lands) the stub gate.
+        var read = new PlanReader().Read(plan.Bytes.Span);
+        if (!read.Ok)
+        {
+            return Fail(new PreRunEnvelope(Phase.Plan, read.Errors), stdout, stderr);
+        }
+
+        var table = command.Kind == CommandKind.Validate ? FeatureTable.Validated : FeatureTable.Runnable;
+        var planErrors = StubFeatureGate.Check(plan, table);
         return Fail(new PreRunEnvelope(Phase.Plan, planErrors), stdout, stderr);
     }
 
