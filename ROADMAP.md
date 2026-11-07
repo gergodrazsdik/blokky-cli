@@ -8,33 +8,39 @@ Coding agents keep writing fragile ad-hoc shell for timeouts, retries, polling, 
 
 ## Phases
 
-1. **Specification draft.** The complete language spec in blokky-specs, every planned feature tagged `v0.1` or `later`, plus the CLI exit codes. *(current)*
-2. **Spikes.** Verify the runtime behaviour the spec depends on: process launch and tree kill per OS, the lifeline that stops leaves when Blokky is killed, Windows job objects and graceful termination, YamlDotNet under Native AOT, safe deletion, and how Claude Code hooks interact with allow rules.
-3. **Finalized spec.** Fold the spike findings back in; resolve or re-scope every provisional item.
-4. **v0.1 implementation.** The .NET 11 Native AOT CLI.
-5. **MCP host.** A second host next to the CLI, with read-only `plan`/`leaves` tools and a `run` tool.
-6. **Signing and packaging.** Code signing and native packages.
+1. **Language specification** in blokky-specs: the complete language as `1.0.0-draft.N`, an example suite, a review, and a conformance suite covering every rule. *(done: `1.0.0-draft.5`)*
+2. **Runtime planning.** MVP, release order, docs and a test-first build ([ADR 0007](docs/adr/0007-runtime-plan.md)). *(done)*
+3. **Spikes** for what the MVP depends on: the POSIX launcher, lifeline and tree kill; YamlDotNet under AOT; schema and editor behaviour; parent-death handling; safe deletion; the regex subset on `NonBacktracking`. The other spikes run before the release that needs them. *(current)*
+4. **Incremental CLI**, test-first against the conformance suite: `blokky-testkit` and the conformance runner first, then the validator, then the run engine. Each release below ships when its conformance subset passes.
+5. **`1.0.0`** of the language once the runtime has validated the draft.
 
-## v0.1: implementation
+## Releases
 
-- `Blokky.Core` (parser, AST, linter, executor, config, result model) with a thin CLI host.
-- Commands: `run` (stdin heredoc or file, `--input`, `--cleanup`, `--max-duration`, `--expect-sha256`), `plan`, `leaves`, `validate`, `lint`, `report`, `clean`, `gc`, `config show`, `schema` (including the agent cheat sheet), `hook check` for Claude Code, `version`.
-- Process control: own session or Job Object per leaf, whole-tree timeouts and cancellation, no leaf outliving the run even when Blokky is killed.
-- Run registry and runtime-owned artefacts with `clean`/`gc`.
-- Hierarchical JSONC configuration with user-only and free keys; optional validator plugin; runner-rules mode for the hook.
-- Shells: `bash`, `sh`, `pwsh`, Windows PowerShell 5.1.
-- Testkit and conformance runs against the published AOT binary on linux-x64, linux-arm64, osx-arm64 and win-x64.
+| Release | Adds |
+|---|---|
+| 0.1 | The full validator and sequential execution (`exec`, `script` with bash/sh/pwsh, `do`, `if`, `log`, `fail`, `assert`, `set`, `return`, `when`, `timeout`, `cwd`, `env`, `export`, `finally`, `ignore_errors`, captures, inputs, vars, outputs, conditions without probes) on Linux; the CLI with agent docs |
+| 0.2 | Repetition (`retry`, `while`, `until`, `for`, `collect`, `carry`, `index`) and probes |
+| 0.3 | `all`, `any`, `race`, `tempdir`, `lock` |
+| 0.4 | The Claude Code hook and approval |
+| 0.5 | `services` |
+| 0.6 | macOS and Windows |
+| 0.7 | `container` |
+| later | The MCP host |
 
-## v0.1: distribution
+Features a release doesn't support fail validation with "not supported by this blokky version" (`BK_PLAN_NOT_SUPPORTED`). Each release lists the spec version it implements, its feature matrix and its conformance pass rate.
 
-- GitHub Releases with per-RID Native AOT binaries, SHA-256 checksums, artifact attestations and an SBOM attestation (`gh attestation verify` as the primary check).
+## Command set
+
+`run` (stdin heredoc or file, `--input`, `--cleanup`, `--max-duration`, `--expect-sha256`), `plan`, `leaves`, `validate`, `lint`, `report`, `clean`, `gc`, `config show`, `schema`, as specified in [cli.md](docs/cli.md); which commands 0.1 ships is decided when its docs are written.
+
+## Distribution
+
+- GitHub Releases with per-RID Native AOT binaries (`linux-x64` and `linux-arm64` from 0.1; `osx-arm64` and `win-x64` from 0.6), SHA-256 checksums, artifact attestations and an SBOM attestation (`gh attestation verify` as the primary check).
 - Unsigned binaries in 0.x; no `self-update` command.
 - Install docs per platform, including macOS quarantine handling.
 
 ## Later
 
-- MCP host.
-- Language features tagged `later` in the spec: containers, `become`, services, locks, `race`, `matrix`, `for` over captured output, `collect`, `zsh` and `fish`.
 - Out-of-band OS consent (UAC through Sudo for Windows, askpass, polkit).
 - Code signing (Authenticode, macOS notarization).
 - Packaging: winget, Homebrew tap, dotnet tool, apt/rpm.
