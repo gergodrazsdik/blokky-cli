@@ -8,9 +8,9 @@ Legend: [ ] todo · [~] in progress · [x] done · [-] dropped · [!] blocked/ne
 
 <!-- the next 3–5 items, in order; agents pick work from here -->
 
-1. T-0061 [specs] Wave A: validation cases
-2. T-0062 [specs] Wave B: execution-model core and results
-3. T-0063 [specs] Wave C: conditions and shells
+1. T-0062 [specs] Wave B: run semantics (kinds and status, leaf processes, variables at run time)
+2. T-0063 [specs] Wave C: conditions and shells
+3. T-0064 [specs] Wave D: timing and process control
 
 ## Phase 0 — Bootstrap
 
@@ -103,8 +103,8 @@ The review is done: an agent council of five lenses (76 findings, all verified),
 - [~] T-0052 [specs] Conformance cases for the features that survive the review, each citing its rule IDs (see F-0007 for schema checks)
   - Plan agreed 2026-11-07: a static checker first, then validation cases before run semantics, in waves. Each area is its own PR from its own worktree, with a second agent checking every case against the spec text (cases can't run until the CLI has a runner). Spec gaps found while writing get a finding at once; blocking ones are fixed in a separate specs PR first.
 - [x] T-0060 [specs] Case checker (`scripts/check.py`, `conformance/case.schema.json`, `just check` and `just coverage`, in `just lint` and CI) and a first batch of 8 cases — 2026-11-07, [specs PR #42](https://github.com/gergodrazsdik/blokky-specs/pull/42)
-- [~] T-0061 [specs] Wave A, validation: syntax and the static reference rules (SY, RF), the generated validity-matrix and sibling-table cases (CF-45, `scripts/generate-matrix.py`), inputs and variables at validation (VA), errors (ER) — specs PRs [#45](https://github.com/gergodrazsdik/blokky-specs/pull/45), [#46](https://github.com/gergodrazsdik/blokky-specs/pull/46), [#47](https://github.com/gergodrazsdik/blokky-specs/pull/47), [#48](https://github.com/gergodrazsdik/blokky-specs/pull/48), [#49](https://github.com/gergodrazsdik/blokky-specs/pull/49) (301 hand-written cases in four areas, 398 generated matrix cases)
-- [ ] T-0062 [specs] Wave B, run semantics: node kinds, statuses, group errors, `return`, `when`, captures and outputs (EM core, RS)
+- [x] T-0061 [specs] Wave A, validation: syntax and the static reference rules (SY, RF), the generated validity-matrix and sibling-table cases (CF-45, `scripts/generate-matrix.py`), inputs and variables at validation (VA), errors (ER) — specs PRs [#45](https://github.com/gergodrazsdik/blokky-specs/pull/45), [#46](https://github.com/gergodrazsdik/blokky-specs/pull/46), [#47](https://github.com/gergodrazsdik/blokky-specs/pull/47), [#48](https://github.com/gergodrazsdik/blokky-specs/pull/48), [#49](https://github.com/gergodrazsdik/blokky-specs/pull/49) (301 hand-written cases in four areas, 398 generated matrix cases) — 2026-11-07; coverage 188/365 rules (syntax.md, reference.md and errors.md complete)
+- [~] T-0062 [specs] Wave B, run semantics: node kinds, statuses, group errors, `return`, `when` (EM core, RS); leaf processes (EM-14 to EM-24, EM-68, EM-69); captures, scopes, the environment and masking at run time (VA)
 - [ ] T-0063 [specs] Wave C: conditions and shells (CO, SH)
 - [ ] T-0064 [specs] Wave D, timing and process control: `timeout` and grace, `finally`, `lock`, `services`, external stop and kill, repetition with `carry`, `collect` and `index` (EM)
 - [ ] T-0065 [specs] Wave E: modifier combinations (CF-46, CF-47) and containers (CP)
