@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Everything a host needs, with no console or argv (architecture.md §1). -->
+  <PropertyGroup>
+    <RootNamespace>Blokky.Core</RootNamespace>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Blokky.Core.Tests" />
+  </ItemGroup>
+</Project>

@@ -2,7 +2,7 @@
 
 Thanks for your interest. Blokky lives in two repositories, [blokky-specs](https://github.com/gergodrazsdik/blokky-specs) (the language) and [blokky-cli](https://github.com/gergodrazsdik/blokky-cli) (the implementation), and both follow the rules below.
 
-> **The project is in its specification phase.** The spec is pre-1.0, and syntax, semantics and every design decision may still change during 0.x. There is no implementation code yet: only throwaway spike code on unmerged `spikes/*` branches.
+> **The CLI is being implemented incrementally** ([ADR 0007](docs/adr/0007-runtime-plan.md)). The spec is pre-1.0, and syntax, semantics and every design decision may still change during 0.x. Nothing is released yet.
 
 ## Questions and discussion
 
@@ -55,7 +55,7 @@ Keep commits small and logical. The `commit-msg` hook checks the header and the 
 
 ## Branches and pull requests
 
-- Never commit directly to `main`. Work on a feature branch: `docs/<topic>` for documentation and spec work, `spikes/<topic>` for spikes (never merged).
+- Never commit directly to `main`. Work on a feature branch: `feat/<topic>` for code (with tests), `docs/<topic>` for documentation and spec work, `spikes/<topic>` for spikes (never merged).
 - Open a pull request. Its description gives a short summary, the decisions it applies (link the ADRs), the tracker IDs and any open items.
 - PRs are **squash-merged** by the maintainer. The squash commit keeps your commits' messages, including their `Signed-off-by` lines. Keep the PR title a valid Conventional Commit header; it becomes the squash commit's title.
 - A change that touches both repos gets two linked PRs; the spec PR merges first.

@@ -7,7 +7,7 @@ Status: **draft** (T-0067, 2026-11-07). Source: brief §7, [ADR 0001](../adr/000
 | Workflow | Trigger | Jobs | Status |
 |---|---|---|---|
 | `lint.yml` | PR, push to `main` | `just lint` (markdownlint, yamllint, actionlint, ShellCheck, typos, editorconfig-checker); DCO check on PRs | exists |
-| `build.yml` | PR, push to `main` | build and unit tests; AOT publish; CLI tests; conformance (§2) | with the .NET solution (T-0068) |
+| `build.yml` | PR, push to `main` | build and unit tests; AOT publish; CLI tests; conformance (§2) | exists without conformance (`just build`, `just test-aot`); conformance with the runner (T-0068) |
 | `fuzz.yml` | schedule, manual | long fuzzing runs of the YAML front end ([validation-strategy.md](validation-strategy.md#6-fuzzing)) | with the parser (T-0069) |
 | `codeql.yml` | PR, push to `main`, schedule | CodeQL for C# and for workflows | with the .NET solution |
 | `release.yml` | push of a `cli-v*` tag | verify, build, gate, publish (§3) | before 0.1 (T-0072) |

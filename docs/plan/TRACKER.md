@@ -120,7 +120,7 @@ Conformance suite complete 2026-11-07: 1,147 cases cover all 380 rules (with spe
 - [~] T-0029 [cli] Spikes on unmerged `spikes/*` branches; one task per spike is added once the plan is approved — MVP spikes 1, 5, 8L, 3, 4, 6, 7, 9, 12, 14 done 2026-11-07 on WSL (branches `spikes/{launcher,yaml-regex,paths-delete,pwsh,schema-editor}`, reports in [design/notes](../design/notes/)); CI runs and the later spikes pending
 - [~] T-0030 [both] Fold spike findings back into the draft — MVP spike findings decided 2026-11-07 ([cli ADR 0008](../adr/0008-spike-findings.md), [specs ADR 0027](https://github.com/gergodrazsdik/blokky-specs/blob/main/adr/0027-spike-findings.md); decision record [spikes-mvp.md](../review/spikes-mvp.md))
 - [x] T-0067 [cli] Refresh the design docs before code: architecture, process control (launcher abstraction designed for all three OSes), tech stack, testkit, validation strategy, CI/CD — 2026-11-07: architecture, tech stack, testkit, validation strategy, CI/CD, and process control from the spikes
-- [ ] T-0068 [cli] `blokky-testkit` (Native AOT, testkit-interface.md) and the conformance runner with its adapter; CI runs the suite on Linux and reports the pass rate
+- [~] T-0068 [cli] `blokky-testkit` (Native AOT, testkit-interface.md) and the conformance runner with its adapter; CI runs the suite on Linux and reports the pass rate — 2026-11-07: solution skeleton (`blokky.slnx`, Core, Cli, TUnit test projects), a stub `blokky validate`/`run` that rejects every plan with `BK_PLAN_NOT_SUPPORTED`, the `build` workflow (build, tests, AOT publish); testkit and runner next
 - [ ] T-0069 [cli] Validator: parse and validate until the suite's validation cases pass (unsupported features → `BK_PLAN_NOT_SUPPORTED`)
 - [ ] T-0070 [cli] Run engine: sequential execution on Linux until the 0.1 conformance subset passes
 - [ ] T-0071 [cli] 0.1 docs: `configuration.md`, `cli.md`, contracts, agent docs (`agent-guide.md`, `SKILL.md`), README and install
@@ -139,7 +139,7 @@ Conformance suite complete 2026-11-07: 1,147 cases cover all 380 rules (with spe
 - [ ] T-0037 [both] Spec `1.0.0` once the runtime has validated the draft (was: finalize the spec after the spikes)
 - [ ] T-0038 [cli] Enable CodeQL (C#) once C# code lands
 - [ ] T-0039 [cli] Enable the Dependabot `nuget` block once the solution exists
-- [ ] T-0054 [cli] Add .NET `.editorconfig` rules (C# style, naming, `*.csproj` indentation) once the solution exists (removed from the bootstrap version on 2026-11-06)
+- [x] T-0054 [cli] Add .NET `.editorconfig` rules (C# style, naming, `*.csproj` indentation) once the solution exists (removed from the bootstrap version on 2026-11-06) — 2026-11-07, with the solution skeleton (T-0068 PR): file-scoped namespaces, braces, usings, `this.` and accessibility rules, naming (PascalCase, `I` interfaces, `_camelCase` private fields), 2-space XML/MSBuild files; enforced by the build
 - [ ] T-0040 [cli] Release workflow verifies the release tag's signature (`git verify-tag`): GitHub tag rulesets can't check tag-object signatures
 - [ ] T-0041 [both] Protected `release` environment with manual approval (brief §7)
 
@@ -250,6 +250,7 @@ Seeded from brief §4, keeping its IDs. "Draft" = needed for the language spec d
   4. a plain scalar containing U+2028 (`log: a<LS>b`) fails with "did not find expected key" (YAML 1.1 line-break rules; YAML 1.2 makes it an ordinary character);
   5. a leading U+FEFF becomes part of the first key (`"\uFEFFa"`) instead of being dropped as a byte order mark.
 - F-0026 [cli] Run-control details left open by [ADR 0008](../adr/0008-spike-findings.md): the report status, exit code and leaves' `killed_by` value of a run stopped by `lifeline_lost` (RC-6), and the report field for escapee pids and whether escapees get `killed_by` (RC-22). Decide with the 0.1 contracts (T-0071).
+- F-0027 [cli] Pre-run error codes the contracts don't name yet, found while writing the stub CLI (T-0068): (1) a plan file that can't be read (missing, a directory, no permission) has no code; the stub reports `BK_USAGE` (exit 2, phase `usage`); (2) cli.md's precedence lists input values as step 5, after the plan, but `BK_INPUT_SYNTAX` (no `=`, a bad name) needs no plan; the stub reports it with the argument errors in step 1. Decide with the 0.1 contracts (T-0071).
 
 ## Decisions
 

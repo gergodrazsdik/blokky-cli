@@ -31,12 +31,11 @@ doctor:
     check editorconfig-checker "https://github.com/editorconfig-checker/editorconfig-checker#installation"
     check shellcheck           "https://github.com/koalaman/shellcheck#installing"
     check gitleaks             "https://github.com/gitleaks/gitleaks#installing"
+    check dotnet               ".NET 11 SDK (version in global.json): https://dotnet.microsoft.com/download"
     echo "Recommended:"
     check gh                   "https://cli.github.com/"
     check pinact               "https://github.com/suzuki-shunsuke/pinact#install"
     check claude               "https://code.claude.com/docs/en/setup"
-    echo "Later (implementation phase):"
-    check dotnet               ".NET 11 SDK: https://dotnet.microsoft.com/download"
     echo "Git settings:"
     if [ "$(git config --bool commit.gpgSign || echo false)" = true ]; then
       echo "  ok       commit.gpgSign"
@@ -96,6 +95,53 @@ typos:
 [group('lint')]
 editorconfig:
     git ls-files -z | xargs -0 scripts/with-tool.sh editorconfig-checker
+
+# .NET recipes run inside a Claude Code sandbox too: `-m:1` (no MSBuild worker
+# nodes) and tests through `dotnet run` (no `dotnet test` sockets). CI runs them.
+solution := "blokky.slnx"
+rid := "linux-x64"
+test_projects := "test/Blokky.Core.Tests test/Blokky.Cli.Tests"
+
+# Build the solution (warnings are errors; CI=true restores in locked mode)
+[group('dotnet')]
+build:
+    dotnet build {{ solution }} -m:1
+
+# Build, then run every test project (TUnit on Microsoft.Testing.Platform)
+[group('dotnet')]
+test: build
+    #!/bin/sh
+    set -eu
+    for project in {{ test_projects }}; do
+      dotnet run --project "$project" --no-build
+    done
+
+# Native AOT publish of `blokky` to artifacts/publish/; fails on any IL2xxx/IL3xxx warning
+[group('dotnet')]
+publish rid=rid:
+    #!/bin/sh
+    set -eu
+    dotnet restore {{ solution }} -m:1
+    log="$(mktemp)"
+    trap 'rm -f "$log"' EXIT
+    status=0
+    dotnet publish src/Blokky.Cli -c Release -r {{ rid }} --no-restore -m:1 >"$log" 2>&1 || status=$?
+    cat "$log"
+    if grep -Eq '(warning|error) IL[23][0-9]{3}' "$log"; then
+      echo "AOT publish produced trim/AOT diagnostics (IL2xxx/IL3xxx)" >&2
+      exit 1
+    fi
+    exit "$status"
+
+# Publish, then run the tests, including those against the published binary
+[group('dotnet')]
+test-aot rid=rid: (publish rid)
+    BLOKKY_BIN="{{ justfile_directory() }}/artifacts/publish/Blokky.Cli/release_{{ rid }}/blokky" just test
+
+# Check C# formatting (whitespace; style rules are enforced by the build)
+[group('lint')]
+format-check:
+    dotnet format whitespace --folder --verify-no-changes
 
 # Pin GitHub Actions to full commit SHAs (pinact)
 [group('meta')]

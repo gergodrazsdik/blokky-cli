@@ -10,13 +10,13 @@ blokky-cli holds the .NET implementation of Blokky (CLI host, later an MCP host)
 
 [docs/design/brief.md](docs/design/brief.md) is the source of truth for the current phase. Read it before any non-trivial work. Its §4 open questions are asked, not decided silently; its §8 defines the process.
 
-**Current phase: specification.** No implementation code. Spike code is allowed only on unmerged `spikes/*` branches, after the maintainer approves the spike plan.
+**Current phase: incremental CLI implementation** ([ADR 0007](docs/adr/0007-runtime-plan.md); brief §8 step 11). Production code lands on `feat/<topic>` branches, always with tests; docs-only changes use `docs/<topic>`. Spike code stays throwaway on unmerged `spikes/<topic>` branches, after the maintainer approves the spike plan. The spec in blokky-specs stays a draft and is refined through ADRs as the runtime validates it.
 
 ## Working agreement
 
-- Work on feature branches (`docs/<topic>`, spikes `spikes/<topic>`). **Never commit to `main`.**
+- Work on feature branches (`feat/<topic>` for code, `docs/<topic>` for docs, spikes `spikes/<topic>`). **Never commit to `main`.**
 - Push branches and open PRs with `gh`. The PR description gives a summary, the decisions it applies (link ADRs), tracker IDs and open items. **Never merge PRs**; the maintainer reviews and merges.
-- Conventional Commits (`docs: …`, `chore: …`); small, logical commits.
+- Conventional Commits (`feat: …`, `fix: …`, `docs: …`, `chore: …`); small, logical commits.
 - **DCO and signatures:** always `git commit -s`, with commit signing enabled; never disable signing or pass `--no-verify`. Tags are annotated and signed (`git tag -s`), and release tags are the maintainer's. Write the commit message to a file outside the repo and pass it with `git commit -s -F <file>`.
 - After a PR merges, rebase remaining branches onto `main` (for a stack: `gh stack sync`, below).
 
@@ -38,10 +38,16 @@ Use `just` (`just --list`):
 | `just doctor` | Check tools and git settings; prints install hints. |
 | `just hooks` | Install the lefthook git hooks. |
 | `just lint` | All linters: `lint-md`, `lint-yaml`, `lint-actions`, `lint-sh`, `typos`, `editorconfig`. |
+| `just build` | Build the .NET solution (`dotnet build -m:1`, warnings as errors). |
+| `just test` | Build, then run every test project (TUnit on Microsoft.Testing.Platform). |
+| `just publish` | Native AOT publish of `blokky` (default `linux-x64`) to `artifacts/publish/`; fails on any trim/AOT warning. |
+| `just test-aot` | `publish`, then the tests including those against the published binary (what CI runs). |
+| `just format-check` | C# whitespace formatting (style rules are enforced by the build). |
+| `just conformance` | Run the blokky-specs conformance suite against the AOT binary (added with the runner, T-0068). |
 | `just pin` | Pin workflow actions to full SHAs (`pinact run`). |
 | `just claude` | Start Claude Code with `../blokky-specs` added. |
 
-Run `just lint` before committing. The hooks (pre-commit, commit-msg) run the same checks on staged files plus gitleaks, the DCO sign-off and the Conventional Commits header.
+Run `just lint` (and, for code, `just test`) before committing. The hooks (pre-commit, commit-msg) run the same checks on staged files plus gitleaks, the DCO sign-off and the Conventional Commits header.
 
 ## Work tracker
 

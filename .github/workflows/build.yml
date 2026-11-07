@@ -1,0 +1,60 @@
+---
+name: build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build-test:
+    name: build-test (linux-x64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      JUST_VERSION: "1.59.0"
+      DOTNET_NOLOGO: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+      - name: Install just
+        run: pipx install "rust-just==${JUST_VERSION}"
+      - name: Restore (locked)
+        run: dotnet restore blokky.slnx
+      - name: Build
+        run: just build
+      - name: Format
+        run: dotnet format blokky.slnx --verify-no-changes --no-restore
+      - name: Unit and CLI tests, AOT publish, tests against the AOT binary
+        run: just test-aot
+      - name: Smoke run
+        run: |
+          set +e
+          printf 'blokky: 1.0\nlog: hi\n' | artifacts/publish/Blokky.Cli/release_linux-x64/blokky run - >smoke.json
+          code=$?
+          set -e
+          cat smoke.json
+          test "$code" -eq 3
+          jq -e '.status == "invalid" and .errors[0].code == "BK_PLAN_NOT_SUPPORTED"' smoke.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: blokky-linux-x64
+          path: artifacts/publish/Blokky.Cli/release_linux-x64/blokky
+          retention-days: 7
+          if-no-files-found: error

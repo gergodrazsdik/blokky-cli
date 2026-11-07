@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Blokky.Cli/Blokky.Cli.csproj" />
+    <Project Path="src/Blokky.Core/Blokky.Core.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Blokky.Cli.Tests/Blokky.Cli.Tests.csproj" />
+    <Project Path="test/Blokky.Core.Tests/Blokky.Core.Tests.csproj" />
+  </Folder>
+</Solution>
