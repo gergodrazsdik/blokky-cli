@@ -1,6 +1,6 @@
 using Blokky.Core.Ast;
 
-namespace Blokky.Core.Validation.Rules.Variables;
+namespace Blokky.Core.Syntax;
 
 /// <summary>A <c>${…}</c> placeholder in a string (syntax.md §7.3).</summary>
 /// <param name="Offset">Where <c>${</c> starts, in UTF-16 code units of the string.</param>
@@ -19,7 +19,7 @@ public sealed record Placeholder(int Offset, int Length, string Content, bool Te
 /// <summary>
 /// The interpolation syntax of display strings and templates (syntax.md §7.3, SY-82 to SY-84, VA-56, VA-57): <c>${X}</c>
 /// is plan variable <c>X</c>; <c>$${</c> is a literal <c>${</c> in every field. One linear scan, left to right. Shared by
-/// the variables rule family (RF-9, RF-23, RF-27) and, later, the renderer.
+/// the variables rule family (RF-9, RF-23, RF-27), the feature derivation (<c>interpolation</c>) and, later, the renderer.
 /// </summary>
 public static class InterpolationSyntax
 {
@@ -89,19 +89,6 @@ public static class InterpolationSyntax
     public static bool IsVariableName(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        if (text.Length == 0 || !char.IsAsciiLetterUpper(text[0]))
-        {
-            return false;
-        }
-
-        foreach (var c in text)
-        {
-            if (!char.IsAsciiLetterUpper(c) && !char.IsAsciiDigit(c) && c != '_')
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return Grammars.IsUpperName(text);
     }
 }

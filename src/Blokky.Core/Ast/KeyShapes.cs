@@ -1,5 +1,5 @@
 using System.Collections.Frozen;
-using System.Text;
+using Blokky.Core.Syntax;
 
 namespace Blokky.Core.Ast;
 
@@ -223,12 +223,13 @@ public static class KeyShapes
         return (best, null);
     }
 
+    /// <summary>The code points of <paramref name="text"/> after CO-12's simple uppercase mapping (SY-30).</summary>
     private static int[] Upper(string text)
     {
         var runes = new List<int>(text.Length);
         foreach (var rune in text.EnumerateRunes())
         {
-            runes.Add(Rune.ToUpperInvariant(rune).Value);
+            runes.Add(SimpleCase.Upper(rune.Value));
         }
 
         return [.. runes];

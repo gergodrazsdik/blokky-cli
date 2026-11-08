@@ -46,37 +46,18 @@ internal sealed record PendingEntry(string Key, string Task, string Why);
 /// </summary>
 internal static class PendingRuleFamilies
 {
-    public static IReadOnlyList<PendingEntry> Entries { get; } =
-    [
-
-        // T-0084: conditions.
-
-        // T-0085: reference and modifiers.
-        new("RF-2", "T-0085", "one repetition modifier"),
-        new("RF-3", "T-0085", "the validity matrix and sibling table"),
-        new("RF-4", "T-0085", "attempt_timeout with repetition"),
-        new("RF-5", "T-0085", "bounded while and until"),
-        new("RF-11", "T-0085", "absolute cwd with tempdir"),
-        new("RF-12", "T-0085", "captures on leaves only"),
-        new("RF-17", "T-0085", "lock inside lock"),
-        new("RF-18", "T-0085", "for as"),
-        new("RF-20", "T-0085", "input default and constraints"),
-        new("RF-24", "T-0085", "service names"),
-        new("RF-25", "T-0085", "for options with their source"),
-        new("RF-28", "T-0085", "modifiers on no-process kinds"),
-        new("RF-29", "T-0085", "return placement"),
-        new("RF-30", "T-0085", "index, carry and collect"),
-        new("RF-31", "T-0085", "concurrency and fail_fast with for"),
-        new("RF-32", "T-0085", "companion fields"),
-        new("RF-33", "T-0085", "ignore_errors on the root"),
-        new("SH-17", "T-0085", "shell availability"),
-        new("CP-19", "T-0085", "container rules"),
-        new("containers/validation/mount-path-not-absolute", "T-0085", "container mount paths (no rule ID asserted)"),
-    ];
+    /// <summary>
+    /// The entries. Empty since T-0085: every static rule family is written. The mechanism stays for later families
+    /// (T-0086 and beyond); a new entry names its task and what is missing.
+    /// </summary>
+    public static IReadOnlyList<PendingEntry> Entries { get; } = [];
 
     /// <summary>The entry an expected error of case <paramref name="caseId"/> falls under, or null.</summary>
-    public static PendingEntry? For(string caseId, string? code, string? rule) =>
-        Entries.FirstOrDefault(e => e.Key == rule || e.Key == code || e.Key == caseId);
+    public static PendingEntry? For(string caseId, string? code, string? rule) => For(Entries, caseId, code, rule);
+
+    /// <summary>The entry of <paramref name="entries"/> an expected error of case <paramref name="caseId"/> falls under, or null.</summary>
+    public static PendingEntry? For(IReadOnlyList<PendingEntry> entries, string caseId, string? code, string? rule) =>
+        entries.FirstOrDefault(e => e.Key == rule || e.Key == code || e.Key == caseId);
 }
 
 /// <summary>
@@ -88,9 +69,18 @@ internal static class PendingRuleFamilies
 /// </summary>
 internal static class LaterFeaturePass
 {
-    public static LaterResult Judge(ConformanceCase c, AdapterOutcome outcome, int logCount, int survivors, Matcher matcher)
+    public static LaterResult Judge(ConformanceCase c, AdapterOutcome outcome, int logCount, int survivors, Matcher matcher) =>
+        Judge(c, outcome, logCount, survivors, matcher, PendingRuleFamilies.Entries);
+
+    /// <summary>
+    /// <see cref="Judge(ConformanceCase, AdapterOutcome, int, int, Matcher)"/> against <paramref name="pending"/> instead of
+    /// <see cref="PendingRuleFamilies.Entries"/> (a test seam: the pass's tests don't depend on the live list).
+    /// </summary>
+    internal static LaterResult Judge(ConformanceCase c, AdapterOutcome outcome, int logCount, int survivors, Matcher matcher,
+        IReadOnlyList<PendingEntry> pending)
     {
         ArgumentNullException.ThrowIfNull(c);
+        ArgumentNullException.ThrowIfNull(pending);
         ArgumentNullException.ThrowIfNull(outcome);
         ArgumentNullException.ThrowIfNull(matcher);
         var reportedErrors = outcome.PlanErrors.Where(e => !IsNotSupported(e)).ToList();
@@ -117,7 +107,8 @@ internal static class LaterFeaturePass
 
         var expected = (c.Expect.GetValueOrDefault("plan_errors") as List<object?> ?? [])
             .OfType<OrderedDictionary<string, object?>>().ToList();
-        var entries = expected.Select(e => PendingRuleFamilies.For(c.Id, e.GetValueOrDefault("code") as string, RuleOf(e))).ToList();
+        var entries = expected.Select(e => PendingRuleFamilies.For(pending, c.Id, e.GetValueOrDefault("code") as string, RuleOf(e)))
+            .ToList();
         var keys = entries.OfType<PendingEntry>().Select(e => e.Key).Distinct(StringComparer.Ordinal).ToList();
 
         // Which expected errors were reported, one to one: the implemented rules' errors take their matches first, so a
@@ -179,26 +170,31 @@ internal static class LaterFeaturePass
             }
         }
 
-        return new(LaterKind.Pending, $"pending rule family: {string.Join(", ", missingKeys.Select(Describe))}", keys, missingKeys);
+        return new(LaterKind.Pending, $"pending rule family: {string.Join(", ", missingKeys.Select(k => Describe(pending, k)))}", keys,
+            missingKeys);
     }
 
     /// <summary>
     /// Entries that no case needs any more: they apply to some judged case, and in none of them is one of the entry's own
     /// expected errors missing. Meaningful for a full run only.
     /// </summary>
-    public static IReadOnlyList<PendingEntry> Stale(IEnumerable<LaterResult> results)
+    public static IReadOnlyList<PendingEntry> Stale(IEnumerable<LaterResult> results) => Stale(results, PendingRuleFamilies.Entries);
+
+    /// <summary><see cref="Stale(IEnumerable{LaterResult})"/> over <paramref name="pending"/> (a test seam).</summary>
+    internal static IReadOnlyList<PendingEntry> Stale(IEnumerable<LaterResult> results, IReadOnlyList<PendingEntry> pending)
     {
+        ArgumentNullException.ThrowIfNull(pending);
         var list = results.ToList();
         var applies = list.SelectMany(r => r.PendingKeys).ToHashSet(StringComparer.Ordinal);
         var needed = list.SelectMany(r => r.MissingKeys).ToHashSet(StringComparer.Ordinal);
-        return [.. PendingRuleFamilies.Entries.Where(e => applies.Contains(e.Key) && !needed.Contains(e.Key))];
+        return [.. pending.Where(e => applies.Contains(e.Key) && !needed.Contains(e.Key))];
     }
 
     private static bool IsNotSupported(object? error) =>
         (error as OrderedDictionary<string, object?>)?.GetValueOrDefault("code") is ErrorCodes.PlanNotSupported;
 
-    private static string Describe(string key) =>
-        PendingRuleFamilies.Entries.First(e => e.Key == key) is var e ? $"{e.Key} ({e.Task})" : key;
+    private static string Describe(IReadOnlyList<PendingEntry> pending, string key) =>
+        pending.FirstOrDefault(e => e.Key == key) is { } e ? $"{e.Key} ({e.Task})" : key;
 
     private static string? RuleOf(OrderedDictionary<string, object?> error) =>
         (error.GetValueOrDefault("detail") as OrderedDictionary<string, object?>)?.GetValueOrDefault("rule") as string;

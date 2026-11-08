@@ -8,6 +8,13 @@ public class LaterFeaturePassTests
 {
     private static readonly Matcher Matcher = new();
 
+    /// <summary>The tests' own pending list, so removing live entries from <see cref="PendingRuleFamilies"/> never breaks them.</summary>
+    private static readonly PendingEntry[] Pending =
+    [
+        new("RF-13", "T-0084", "sample entry keyed by rule ID"),
+        new("SH-7", "T-0082", "sample entry keyed by rule ID"),
+    ];
+
     private static ConformanceCase Case(string id, string expect) =>
         CaseLoader.Parse(id, $"title: t\nrules: [SY-1]\nfeatures: [log]\nplan: |\n  blokky: 1.0\n  log: x\nexpect:\n{expect}", "linux");
 
@@ -19,9 +26,10 @@ public class LaterFeaturePassTests
 
     private const string Sy57 = """{"code":"BK_PLAN_VALUE","message":"m","pos":"3:10","detail":{"rule":"SY-57"}}""";
 
-    private const string Rf3 = """{"code":"BK_PLAN_INVALID","message":"m","pos":"4:1","detail":{"rule":"RF-3"}}""";
+    private const string Rf13 = """{"code":"BK_PLAN_INVALID","message":"m","pos":"4:1","detail":{"rule":"RF-13"}}""";
 
-    private static LaterResult Judge(ConformanceCase c, AdapterOutcome outcome) => LaterFeaturePass.Judge(c, outcome, 0, 0, Matcher);
+    private static LaterResult Judge(ConformanceCase c, AdapterOutcome outcome) =>
+        LaterFeaturePass.Judge(c, outcome, 0, 0, Matcher, Pending);
 
     [Test]
     public async Task Expected_errors_pass_with_not_supported_errors_beside_them()
@@ -37,23 +45,23 @@ public class LaterFeaturePassTests
     public async Task Missing_errors_of_a_pending_family_are_pending_and_the_others_must_be_there()
     {
         var c = Case("x/b", "  plan_errors:\n    - { code: BK_PLAN_VALUE, detail: { rule: SY-57 }, line: 3 }\n"
-            + "    - { code: BK_PLAN_INVALID, detail: { rule: RF-3 }, line: 4 }\n  exhaustive: true\n");
+            + "    - { code: BK_PLAN_INVALID, detail: { rule: RF-13 }, line: 4 }\n  exhaustive: true\n");
 
         var pending = Judge(c, Envelope(Sy57, NotSupported));
         var missingOwn = Judge(c, Envelope(NotSupported));
-        var all = Judge(c, Envelope(Sy57, Rf3, NotSupported));
+        var all = Judge(c, Envelope(Sy57, Rf13, NotSupported));
 
         await Assert.That(pending.Kind).IsEqualTo(LaterKind.Pending);
-        await Assert.That(pending.Reason).Contains("RF-3 (T-0085)");
+        await Assert.That(pending.Reason).Contains("RF-13 (T-0084)");
         await Assert.That(missingOwn.Kind).IsEqualTo(LaterKind.Fail);
         await Assert.That(all.Kind).IsEqualTo(LaterKind.Pass);
-        await Assert.That(all.PendingKeys).Contains("RF-3");
+        await Assert.That(all.PendingKeys).Contains("RF-13");
     }
 
     [Test]
     public async Task A_pending_exhaustive_case_fails_on_an_error_it_does_not_expect()
     {
-        var c = Case("x/c", "  plan_errors:\n    - { code: BK_PLAN_INVALID, detail: { rule: RF-3 }, line: 4 }\n  exhaustive: true\n");
+        var c = Case("x/c", "  plan_errors:\n    - { code: BK_PLAN_INVALID, detail: { rule: RF-13 }, line: 4 }\n  exhaustive: true\n");
 
         await Assert.That(Judge(c, Envelope(NotSupported)).Kind).IsEqualTo(LaterKind.Pending);
         await Assert.That(Judge(c, Envelope(Sy57, NotSupported)).Reason).Contains("doesn't expect");
@@ -72,18 +80,18 @@ public class LaterFeaturePassTests
     {
         LaterResult[] results =
         [
-            new(LaterKind.Pass, null, ["RF-3", "RF-2"], []),
-            new(LaterKind.Pending, "p", ["RF-2"], ["RF-2"]),
+            new(LaterKind.Pass, null, ["RF-13", "SH-7"], []),
+            new(LaterKind.Pending, "p", ["SH-7"], ["SH-7"]),
         ];
 
-        await Assert.That(string.Join(",", LaterFeaturePass.Stale(results).Select(e => e.Key))).IsEqualTo("RF-3");
+        await Assert.That(string.Join(",", LaterFeaturePass.Stale(results, Pending).Select(e => e.Key))).IsEqualTo("RF-13");
     }
 
     [Test]
     public async Task An_exhaustive_pending_case_matches_reported_errors_one_to_one()
     {
         var c = Case("x/e", "  plan_errors:\n    - { code: BK_PLAN_VALUE, detail: { rule: SY-57 }, line: 3 }\n"
-            + "    - { code: BK_PLAN_INVALID, detail: { rule: RF-3 }, line: 4 }\n  exhaustive: true\n");
+            + "    - { code: BK_PLAN_INVALID, detail: { rule: RF-13 }, line: 4 }\n  exhaustive: true\n");
 
         var twice = Judge(c, Envelope(Sy57, Sy57, NotSupported));
 
@@ -94,17 +102,17 @@ public class LaterFeaturePassTests
     [Test]
     public async Task An_entry_is_still_needed_only_where_its_own_error_is_missing()
     {
-        // RF-3's error is reported, RF-2's is missing: the case is pending on RF-2 only, and RF-3 is stale for it.
-        var c = Case("x/f", "  plan_errors:\n    - { code: BK_PLAN_INVALID, detail: { rule: RF-3 }, line: 4 }\n"
-            + "    - { code: BK_PLAN_INVALID, detail: { rule: RF-2 }, line: 5 }\n");
+        // RF-13's error is reported, SH-7's is missing: the case is pending on SH-7 only, and RF-13 is stale for it.
+        var c = Case("x/f", "  plan_errors:\n    - { code: BK_PLAN_INVALID, detail: { rule: RF-13 }, line: 4 }\n"
+            + "    - { code: BK_PLAN_INVALID, detail: { rule: SH-7 }, line: 5 }\n");
 
-        var result = Judge(c, Envelope(Rf3, NotSupported));
+        var result = Judge(c, Envelope(Rf13, NotSupported));
 
         await Assert.That(result.Kind).IsEqualTo(LaterKind.Pending);
-        await Assert.That(result.PendingKeys).IsEquivalentTo(["RF-3", "RF-2"]);
-        await Assert.That(result.MissingKeys).IsEquivalentTo(["RF-2"]);
-        await Assert.That(result.Reason).DoesNotContain("RF-3");
-        await Assert.That(string.Join(",", LaterFeaturePass.Stale([result]).Select(e => e.Key))).IsEqualTo("RF-3");
+        await Assert.That(result.PendingKeys).IsEquivalentTo(["RF-13", "SH-7"]);
+        await Assert.That(result.MissingKeys).IsEquivalentTo(["SH-7"]);
+        await Assert.That(result.Reason).DoesNotContain("RF-13");
+        await Assert.That(string.Join(",", LaterFeaturePass.Stale([result], Pending).Select(e => e.Key))).IsEqualTo("RF-13");
     }
 
     [Test]
@@ -112,12 +120,12 @@ public class LaterFeaturePassTests
     {
         // One reported BK_PLAN_INVALID at line 4 fits both expected errors; the implemented rule's error takes it.
         var c = Case("x/g", "  plan_errors:\n    - { code: BK_PLAN_INVALID, line: 4 }\n"
-            + "    - { code: BK_PLAN_INVALID, detail: { rule: RF-3 }, line: 4 }\n");
+            + "    - { code: BK_PLAN_INVALID, detail: { rule: RF-13 }, line: 4 }\n");
 
-        var result = Judge(c, Envelope(Rf3, NotSupported));
+        var result = Judge(c, Envelope(Rf13, NotSupported));
 
         await Assert.That(result.Kind).IsEqualTo(LaterKind.Pending);
-        await Assert.That(result.MissingKeys).IsEquivalentTo(["RF-3"]);
+        await Assert.That(result.MissingKeys).IsEquivalentTo(["RF-13"]);
     }
 
     [Test]
@@ -133,6 +141,15 @@ public class LaterFeaturePassTests
         await Assert.That(Judge(run, Envelope(Sy88, NotSupported)).Reason).Contains("SY-88");
         await Assert.That(Judge(input, Envelope(NotSupported)).Kind).IsEqualTo(LaterKind.NotApplicable);
         await Assert.That(Judge(input, Envelope(Sy88, NotSupported)).Kind).IsEqualTo(LaterKind.Fail);
+    }
+
+    [Test]
+    public async Task Without_a_pending_entry_a_missing_error_fails()
+    {
+        var c = Case("x/h", "  plan_errors:\n    - { code: BK_PLAN_INVALID, detail: { rule: RF-13 }, line: 4 }\n");
+
+        await Assert.That(LaterFeaturePass.Judge(c, Envelope(NotSupported), 0, 0, Matcher, []).Kind).IsEqualTo(LaterKind.Fail);
+        await Assert.That(LaterFeaturePass.Stale([new(LaterKind.Pass, null, [], [])], [])).IsEmpty();
     }
 
     [Test]

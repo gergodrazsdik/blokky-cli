@@ -49,5 +49,11 @@ public static class PlanRules
         new Rules.Conditions.ConditionRules(),
 
         // T-0085: reference and modifiers.
+        new Rules.Reference.ValidityMatrixRule(),
+        new Rules.Reference.LoopRule(),
+        new Rules.Reference.NestingRule(),
+        new Rules.Reference.ModifierValueRule(),
+        new Rules.Reference.InputConstraintRule(),
+        new Rules.Reference.PwshScriptRule(),
     ];
 }

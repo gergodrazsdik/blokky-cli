@@ -263,7 +263,8 @@ public static class Grammars
     private static bool IsDecimalInteger(ReadOnlySpan<char> s) =>
         s.Length > 0 && !s.ContainsAnyExceptInRange('0', '9') && (s.Length == 1 || s[0] != '0');
 
-    private static bool IsUpperName(string text) =>
+    /// <summary>The variable-name grammar without the <c>BLOKKY_</c> check: <c>^[A-Z][A-Z0-9_]*$</c> (VA-4).</summary>
+    internal static bool IsUpperName(string text) =>
         text.Length > 0 && char.IsAsciiLetterUpper(text[0])
         && text.All(c => char.IsAsciiLetterUpper(c) || char.IsAsciiDigit(c) || c == '_');
 

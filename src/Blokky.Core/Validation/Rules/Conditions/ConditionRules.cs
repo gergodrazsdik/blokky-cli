@@ -1,5 +1,4 @@
 using Blokky.Core.Ast;
-using Blokky.Core.Reading;
 
 namespace Blokky.Core.Validation.Rules.Conditions;
 
@@ -178,7 +177,7 @@ public sealed class ConditionRules : IPlanRule
         var script = probe.Key("script");
         if (exec is not null && script is not null)
         {
-            var later = Later(exec.Position, script.Position) ? exec : script;
+            var later = Positions.Later(exec, script);
             errors.Invalid("CO-26", later.Position, probe.Node,
                 "a probe runs exec: or script:, not both: keep one", "probe: { exec: [docker, info] }");
         }
@@ -225,7 +224,7 @@ public sealed class ConditionRules : IPlanRule
                 continue;
             }
 
-            errors.Invalid("CO-12", Later(key.Position, op.Key.Position) ? key.Position : op.Key.Position, condition.Node,
+            errors.Invalid("CO-12", Positions.Later(key, op.Key).Position, condition.Node,
                 $"ignore_case: applies to equals, in, contains, matches and their not_ forms, not to '{op.Key.Name}': remove it");
         }
     }
@@ -248,7 +247,4 @@ public sealed class ConditionRules : IPlanRule
     }
 
     private static PlanScalar? Part(ConditionSubject subject) => (subject.Value as LiteralValue)?.Scalar;
-
-    /// <summary>Whether <paramref name="a"/> comes after <paramref name="b"/> in the document.</summary>
-    private static bool Later(PlanPosition a, PlanPosition b) => a.Line > b.Line || (a.Line == b.Line && a.Column > b.Column);
 }

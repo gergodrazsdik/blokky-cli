@@ -1,5 +1,6 @@
 using Blokky.Core.Ast;
 using Blokky.Core.Reading;
+using Blokky.Core.Syntax;
 
 namespace Blokky.Core.Features;
 
@@ -107,7 +108,7 @@ public static class FeatureDeriver
 
         foreach (var display in new[] { node.Name, node.Log, node.Fail, node.Message, node.Return })
         {
-            if (display is not null && Interpolation.HasPlaceholder(display.Text))
+            if (display is not null && InterpolationSyntax.HasPlaceholder(display.Text))
             {
                 Add(found, "interpolation", display.Position, p);
             }
@@ -238,7 +239,7 @@ public static class FeatureDeriver
                 }
 
                 break;
-            case LiteralValue literal when template && Interpolation.HasPlaceholder(literal.Scalar.Text):
+            case LiteralValue literal when template && InterpolationSyntax.HasPlaceholder(literal.Scalar.Text):
                 Add(found, "interpolation", literal.Position, node);
                 break;
         }
@@ -259,24 +260,5 @@ public static class FeatureDeriver
         {
             found[feature] = new FeatureUse(feature, at, node);
         }
-    }
-}
-
-/// <summary><c>${X}</c> placeholders (SY-82 to SY-84).</summary>
-public static class Interpolation
-{
-    /// <summary>Whether <paramref name="text"/> has a <c>${</c> that isn't the escape <c>$${</c>.</summary>
-    public static bool HasPlaceholder(string text)
-    {
-        ArgumentNullException.ThrowIfNull(text);
-        for (var i = text.IndexOf("${", StringComparison.Ordinal); i >= 0; i = text.IndexOf("${", i + 1, StringComparison.Ordinal))
-        {
-            if (i == 0 || text[i - 1] != '$')
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }
