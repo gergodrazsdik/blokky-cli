@@ -111,6 +111,9 @@ public sealed class YamlDotNetFrontEnd : IYamlFrontEnd
                 case CommentToken comment:
                     markers.Add(new YamlMarker(YamlMarkerKind.Comment, at, comment.IsInline, comment.Value));
                     break;
+                case BlockEntry:
+                    markers.Add(new YamlMarker(YamlMarkerKind.SequenceEntry, at));
+                    break;
                 case FlowSequenceStart or FlowMappingStart or BlockSequenceStart or BlockMappingStart:
                     if (++depth > YamlSubsetChecker.MaxDepth)
                     {

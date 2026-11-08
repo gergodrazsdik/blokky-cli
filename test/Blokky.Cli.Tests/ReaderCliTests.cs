@@ -13,12 +13,15 @@ public class ReaderCliTests
     ];
 
     private static string? Rule(JsonElement error) =>
-        error.TryGetProperty("detail", out var detail) && detail.TryGetProperty("rule", out var rule) ? rule.GetString() : null;
+        error.TryGetProperty("detail", out var detail)
+            ? (detail.TryGetProperty("rule", out var rule) ? rule : detail.TryGetProperty("feature", out var feature) ? feature : default)
+                is { ValueKind: JsonValueKind.String } value ? value.GetString() : null
+            : null;
 
     [Test]
     [Arguments("run")]
     [Arguments("validate")]
-    public async Task Yaml_errors_are_all_reported_with_positions_and_rules(string command)
+    public async Task Yaml_errors_are_all_reported_with_positions_and_rules_and_the_plan_is_still_checked(string command)
     {
         var result = CliHarness.Run("blokky: 1.0\nname: !custom x\nlog: hi\nlog: again\n", command, "-");
         using var json = result.Json();
@@ -27,9 +30,9 @@ public class ReaderCliTests
         await Assert.That(json.RootElement.GetProperty("status").GetString()).IsEqualTo("invalid");
         await Assert.That(json.RootElement.GetProperty("phase").GetString()).IsEqualTo("plan");
         await Assert.That(string.Join("; ", Summary(json.RootElement)))
-            .IsEqualTo("BK_PLAN_YAML 2:7 SY-15; BK_PLAN_DUPLICATE_KEY 4:1 SY-18");
+            .IsEqualTo("BK_PLAN_YAML 2:7 SY-15; BK_PLAN_DUPLICATE_KEY 4:1 SY-18; BK_PLAN_NOT_SUPPORTED 3:1 log");
         await Assert.That(result.Stderr).StartsWith("blokky: error BK_PLAN_YAML at 2:7: ");
-        await Assert.That(result.Stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length).IsEqualTo(2);
+        await Assert.That(result.Stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length).IsEqualTo(3);
     }
 
     [Test]

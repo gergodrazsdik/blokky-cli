@@ -99,6 +99,11 @@ await Parallel.ForEachAsync(files, new ParallelOptions { MaxDegreeOfParallelism 
         {
             Console.WriteLine($"{Report.OutcomeName(result.Outcome),-5} {result.Id}{(result.Reason is null ? "" : ": " + result.Reason)}");
         }
+
+        if (result.Later is { } later && (later.Kind == LaterKind.Fail || (options.Verbose && later.Kind != LaterKind.Pass)))
+        {
+            Console.WriteLine($"later {Report.LaterName(later.Kind),-7} {result.Id}: {later.Reason}");
+        }
     }
     finally
     {
@@ -133,13 +138,22 @@ if (Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY") is { Length: > 0 }
 var notes = ordered.Count(r => r.Note is not null);
 Console.WriteLine(totals.Line());
 Console.WriteLine(totals.RateLine());
+Console.WriteLine(totals.LaterLine());
+
+// The pending list only shrinks: an entry whose cases all pass must be deleted (meaningful for a full run only).
+var stale = options.Filters.Count == 0 ? LaterFeaturePass.Stale(ordered.Select(r => r.Later).OfType<LaterResult>()) : [];
+foreach (var entry in stale)
+{
+    Console.WriteLine(
+        $"stale pending entry {entry.Key} ({entry.Task}): every case it applies to passes; delete it from PendingRuleFamilies");
+}
 if (notes > 0)
 {
     Console.WriteLine($"notes: {notes} case(s) carry a note (see {options.Results})");
 }
 
 Console.WriteLine($"results: {options.Results}, {options.JUnit}");
-return totals.Fail + totals.Error > 0 ? 1 : 0;
+return totals.Fail + totals.Error + totals.Later.Fail + stale.Count > 0 ? 1 : 0;
 
 // Ports come from requires.ports; the loader reads them again per case, so this is a cheap pre-scan of the raw file.
 static IReadOnlyList<int> PortsOf(string file)

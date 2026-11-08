@@ -53,3 +53,17 @@ The exit code is that of the failing step. Within a step, every error found is r
 | `report` | 0, 2, 70 |
 | `clean`, `gc` | 0, 2, 9, 70 |
 | `config show`, `schema`, `version` | 0, 2, 4, 70 |
+
+## `validate` output
+
+`blokky validate [--input NAME=VALUE]... <plan-file | ->` runs the static front half that `run` runs (encoding, YAML, schema, static rules, the feature gate on the *validated* table) and starts nothing ([architecture.md §1.1](design/architecture.md#11-the-ast-and-the-validator)).
+
+- **Rejected** (exit 3, or the code of an earlier failing step): stdout carries the pre-run envelope ([output-contract.md §4](contracts/output-contract.md#4-the-pre-run-envelope)) with every error of the step. Plan errors carry `pos`; `node`, the path id of the node the error belongs to (`/` for the plan-only keys), only when it belongs to one (reader-level errors, such as SY-14, SY-16, SY-18, SY-32 and YAML syntax errors, have none); `detail` (`rule`, or `suggestion` for an unknown key, `supported` for `BK_PLAN_VERSION`, `feature` for `BK_PLAN_NOT_SUPPORTED`); and, for targeted errors, `fix`. stderr carries one line per error: `blokky: error CODE at LINE:COLUMN in NODE: message`, without `in NODE` for an error with no node.
+- **Accepted** (exit 0): stdout carries the verdict, one JSON document followed by LF, and stderr nothing. Without a validator (`validator.path`, from 0.4) the decision is `allow`; the validator adds `ask` (exit 5) and `deny` (exit 6) with their `reason` (LV-29). Provisional until the 0.1 contracts (T-0071, tracker F-0034):
+
+```json
+{ "schema_version": "0.1", "status": "valid", "decision": "allow",
+  "plan": { "sha256": "9f2c41…", "spec_version": "1.0", "source": "stdin" } }
+```
+
+`plan` has the run report's fields: the SHA-256 of the plan bytes, the spec version from `blokky:`, and `stdin` or the plan file's absolute path.

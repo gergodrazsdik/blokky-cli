@@ -32,8 +32,8 @@ internal static class CommandLine
             blokky --version
             blokky --help
 
-        This build supports no language features yet: every plan is rejected with
-        BK_PLAN_NOT_SUPPORTED (exit 3) and nothing runs.
+        This build checks a plan's structure, but supports no language features yet:
+        every valid plan is rejected with BK_PLAN_NOT_SUPPORTED (exit 3) and nothing runs.
         """;
 
     public static (ParsedCommand? Command, IReadOnlyList<BlokkyError> Errors) Parse(IReadOnlyList<string> args)

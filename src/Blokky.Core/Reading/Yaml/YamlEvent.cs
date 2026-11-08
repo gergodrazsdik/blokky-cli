@@ -114,6 +114,11 @@ public enum YamlMarkerKind
     Comment,
 
     /// <summary>
+    /// The <c>-</c> of a block sequence entry: where an empty item is located (SY-20), since its event sits after the dash.
+    /// </summary>
+    SequenceEntry,
+
+    /// <summary>
     /// The token pass failed here, so no markers follow; <see cref="YamlMarker.Text"/> says why. The event pass reports a
     /// syntax error at the same place; when it doesn't, the markers after it would be lost silently, so it is an error.
     /// </summary>

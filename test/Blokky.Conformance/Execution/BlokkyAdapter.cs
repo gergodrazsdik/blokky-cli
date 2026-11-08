@@ -35,6 +35,9 @@ internal enum OutcomeKind
     /// <summary>The pre-run envelope: plan, input or usage errors; nothing ran.</summary>
     Rejected,
 
+    /// <summary><c>blokky validate</c> accepted the plan (<c>status: valid</c>); nothing ran.</summary>
+    Valid,
+
     /// <summary>A run report, mapped to the result document.</summary>
     Result,
 
@@ -128,7 +131,10 @@ internal sealed class BlokkyAdapter(string blokky, IProcessRunner runner, Adapte
         return Interpret(outcome);
     }
 
-    /// <summary>Reads stdout: one JSON document (OC-1), the envelope (<c>status: invalid</c>) or a report.</summary>
+    /// <summary>
+    /// Reads stdout: one JSON document (OC-1), the envelope (<c>status: invalid</c>), the validate verdict
+    /// (<c>status: valid</c>) or a report.
+    /// </summary>
     internal static AdapterOutcome Interpret(ProcessOutcome outcome)
     {
         ArgumentNullException.ThrowIfNull(outcome);
@@ -188,6 +194,11 @@ internal sealed class BlokkyAdapter(string blokky, IProcessRunner runner, Adapte
             }
 
             return rejected;
+        }
+
+        if (root.GetValueOrDefault("status") is "valid")
+        {
+            return Make(OutcomeKind.Valid);
         }
 
         return Make(OutcomeKind.Result, result: ReportMapper.Map(root));

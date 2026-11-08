@@ -18,6 +18,19 @@ public sealed record PlanReadResult(
 {
     /// <summary>Whether the plan reads cleanly: valid text and YAML within the subset.</summary>
     public bool Ok => Errors.Count == 0;
+
+    /// <summary>
+    /// Whether the events can still be built into a tree, so the later checks add their errors to the reader's (SY-3): the
+    /// text is valid YAML, and every error is one the tree can leave out (an anchor, alias or merge key, a tag or directive,
+    /// a second document, a repeated key). Encoding, character, cap and syntax errors, rejected keys (SY-17) and a root that
+    /// isn't a mapping (SY-32) end processing.
+    /// </summary>
+    public bool CanContinue =>
+        Text is not null
+        && Events.Count > 0
+        && Events[^1].Kind != YamlEventKind.Error
+        && Errors.All(e => e.Code is ErrorCodes.PlanYaml or ErrorCodes.PlanDuplicateKey
+            && e.Detail?["rule"]?.GetValue<string>() is "SY-14" or "SY-15" or "SY-16" or "SY-18");
 }
 
 /// <summary>

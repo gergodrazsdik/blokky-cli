@@ -10,6 +10,12 @@ namespace Blokky.Conformance.Reporting;
 /// <summary>Totals and the pass rate (CF-63).</summary>
 internal sealed record Totals(int Cases, int Pass, int Fail, int Error, int SkipNotSupported, int SkipRequirement, int SkipPlatform)
 {
+    /// <summary>
+    /// The later-feature validation pass (ADR 0009): validation cases whose features aren't all validated, and the valid plans
+    /// of not-supported run cases.
+    /// </summary>
+    public LaterTotals Later { get; init; } = new(0, 0, 0, 0);
+
     public int Skip => SkipNotSupported + SkipRequirement + SkipPlatform;
 
     /// <summary>Cases that count for the pass rate: every case but requirement and platform skips (CF-63).</summary>
@@ -28,7 +34,14 @@ internal sealed record Totals(int Cases, int Pass, int Fail, int Error, int Skip
             Count(r => r.Outcome == Outcome.Error),
             Count(r => r.Outcome == Outcome.Skip && r.SkipKind == SkipKind.NotSupported),
             Count(r => r.Outcome == Outcome.Skip && r.SkipKind == SkipKind.Requirement),
-            Count(r => r.Outcome == Outcome.Skip && r.SkipKind == SkipKind.Platform));
+            Count(r => r.Outcome == Outcome.Skip && r.SkipKind == SkipKind.Platform))
+        {
+            Later = new LaterTotals(
+                Count(r => r.Later?.Kind == LaterKind.Pass),
+                Count(r => r.Later?.Kind == LaterKind.Pending),
+                Count(r => r.Later?.Kind == LaterKind.Fail),
+                Count(r => r.Later?.Kind == LaterKind.NotApplicable)),
+        };
     }
 
     public string Line() => string.Create(CultureInfo.InvariantCulture,
@@ -37,6 +50,17 @@ internal sealed record Totals(int Cases, int Pass, int Fail, int Error, int Skip
 
     public string RateLine() => string.Create(CultureInfo.InvariantCulture,
         $"pass rate: {PassRate:0.00}% ({Pass} of {Counted} cases not skipped for a requirement or platform)");
+
+    public string LaterLine() => string.Create(CultureInfo.InvariantCulture,
+        $"later-feature validation: {Later.Pass} of {Later.Judged} pass, {Later.Pending} pending a rule family, {Later.Fail} fail "
+        + $"({Later.NotApplicable} not applicable: they expect input errors)");
+}
+
+/// <summary>Totals of the later-feature validation pass.</summary>
+internal sealed record LaterTotals(int Pass, int Pending, int Fail, int NotApplicable)
+{
+    /// <summary>Cases the pass judged: all but the not-applicable ones.</summary>
+    public int Judged => Pass + Pending + Fail;
 }
 
 /// <summary>Writes the machine-readable results: JSON lines and JUnit XML (CF-63, validation-strategy.md §2).</summary>
@@ -48,6 +72,14 @@ internal static class Report
         Outcome.Fail => "fail",
         Outcome.Skip => "skip",
         _ => "error",
+    };
+
+    public static string LaterName(LaterKind kind) => kind switch
+    {
+        LaterKind.Pass => "pass",
+        LaterKind.Pending => "pending",
+        LaterKind.Fail => "fail",
+        _ => "n/a",
     };
 
     public static void WriteJsonLines(string path, IEnumerable<CaseResult> results, Totals totals)
@@ -72,6 +104,12 @@ internal static class Report
                 w.WriteEndArray();
                 Optional(w, "clock", r.Clock);
                 Optional(w, "note", r.Note);
+                if (r.Later is { } later)
+                {
+                    w.WriteString("later", LaterName(later.Kind));
+                    Optional(w, "later_reason", later.Reason);
+                }
+
                 w.WriteNumber("elapsed_ms", (long)r.Elapsed.TotalMilliseconds);
             });
         }
@@ -87,6 +125,10 @@ internal static class Report
             w.WriteNumber("skip_requirement", totals.SkipRequirement);
             w.WriteNumber("skip_platform", totals.SkipPlatform);
             w.WriteNumber("pass_rate", Math.Round(totals.PassRate, 2));
+            w.WriteNumber("later_pass", totals.Later.Pass);
+            w.WriteNumber("later_pending", totals.Later.Pending);
+            w.WriteNumber("later_fail", totals.Later.Fail);
+            w.WriteNumber("later_not_applicable", totals.Later.NotApplicable);
             w.WriteEndObject();
         });
     }
@@ -102,7 +144,8 @@ internal static class Report
         xml.WriteStartElement("testsuite");
         xml.WriteAttributeString("name", "blokky-conformance");
         xml.WriteAttributeString("tests", Invariant(totals.Cases));
-        xml.WriteAttributeString("failures", Invariant(totals.Fail));
+        var laterOnly = results.Count(r => r.Outcome != Outcome.Fail && r.Later?.Kind == LaterKind.Fail);
+        xml.WriteAttributeString("failures", Invariant(totals.Fail + laterOnly));
         xml.WriteAttributeString("errors", Invariant(totals.Error));
         xml.WriteAttributeString("skipped", Invariant(totals.Skip));
         foreach (var r in results)
@@ -111,7 +154,7 @@ internal static class Report
             xml.WriteAttributeString("classname", r.Id.Split('/')[0]);
             xml.WriteAttributeString("name", r.Id);
             xml.WriteAttributeString("time", (r.Elapsed.TotalMilliseconds / 1000).ToString("0.000", CultureInfo.InvariantCulture));
-            var element = r.Outcome switch
+            var element = r.Later?.Kind == LaterKind.Fail ? "failure" : r.Outcome switch
             {
                 Outcome.Fail => "failure",
                 Outcome.Error => "error",
@@ -121,7 +164,8 @@ internal static class Report
             if (element is not null)
             {
                 xml.WriteStartElement(element);
-                xml.WriteAttributeString("message", Sanitize(r.Reason ?? ""));
+                var message = r.Later?.Kind == LaterKind.Fail ? "later-feature validation: " + r.Later.Reason : r.Reason;
+                xml.WriteAttributeString("message", Sanitize(message ?? ""));
                 xml.WriteEndElement();
             }
 
@@ -143,15 +187,18 @@ internal static class Report
             .AppendLine("|---:|---:|---:|---:|---:|---:|---:|---:|")
             .AppendLine(CultureInfo.InvariantCulture,
                 $"| {totals.Cases} | {totals.Pass} | {totals.Fail} | {totals.Error} | {totals.SkipNotSupported} "
-                + $"| {totals.SkipRequirement} | {totals.SkipPlatform} | {totals.PassRate:0.00}% |");
-        var bad = results.Where(r => r.Outcome is Outcome.Fail or Outcome.Error).Take(50).ToList();
+                + $"| {totals.SkipRequirement} | {totals.SkipPlatform} | {totals.PassRate:0.00}% |")
+            .AppendLine()
+            .AppendLine(CultureInfo.InvariantCulture, $"{totals.LaterLine()}.");
+        var bad = results.Where(r => r.Outcome is Outcome.Fail or Outcome.Error || r.Later?.Kind == LaterKind.Fail).Take(50).ToList();
         if (bad.Count > 0)
         {
             sb.AppendLine().AppendLine("| Case | Outcome | Reason |").AppendLine("|---|---|---|");
             foreach (var r in bad)
             {
                 sb.AppendLine(CultureInfo.InvariantCulture,
-                    $"| `{r.Id}` | {OutcomeName(r.Outcome)} | {(r.Reason ?? "").Replace("|", "\\|", StringComparison.Ordinal)} |");
+                    $"| `{r.Id}` | {OutcomeName(r.Outcome)}{(r.Later?.Kind == LaterKind.Fail ? " (later: fail)" : "")} | "
+                    + $"{(r.Later?.Kind == LaterKind.Fail ? r.Later.Reason : r.Reason)?.Replace("|", "\\|", StringComparison.Ordinal)} |");
             }
         }
 

@@ -5,10 +5,11 @@ using System.Text.Json.Serialization;
 namespace Blokky.Core.Contracts;
 
 /// <summary>
-/// Source-generated serialization for the pre-run envelope (tech-stack.md §3). Snake-case names, nulls omitted.
+/// Source-generated serialization for the pre-run envelope and the validate verdict (tech-stack.md §3). Snake-case names, nulls omitted.
 /// The run report, events and <c>leaves</c> get their own contexts as they land.
 /// </summary>
 [JsonSerializable(typeof(PreRunEnvelope))]
+[JsonSerializable(typeof(ValidateVerdict))]
 internal sealed partial class ContractJsonContext : JsonSerializerContext
 {
     /// <summary>

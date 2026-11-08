@@ -52,16 +52,27 @@ internal sealed partial class Matcher(MatchOptions options)
     {
     }
 
-    public string? Match(object? expected, object? actual, string path)
+    public string? Match(object? expected, object? actual, string path) => Match(expected, actual, path, inDetail: false);
+
+    /// <param name="inDetail">Whether <paramref name="actual"/> is an error's <c>detail</c> or lies below it.</param>
+    private string? Match(object? expected, object? actual, string path, bool inDetail)
     {
         if (expected is OrderedDictionary<string, object?> map && IsMatcher(map))
         {
-            return MatchMatcher(map, actual, path);
+            return MatchMatcher(map, actual, path, inDetail);
         }
 
         switch (expected)
         {
             case OrderedDictionary<string, object?> subset:
+                if (inDetail && actual is Missing && OnlyAbsent(subset))
+                {
+                    // CF-31: a field under a detail that isn't there isn't there either (detail: { suggestion: { $absent } }
+                    // on an error without detail). Only within detail: elsewhere (a node, a result field) a missing
+                    // mapping fails, so nodes: { /x: { error: { $absent: true } } } still needs node /x.
+                    return null;
+                }
+
                 if (actual is not OrderedDictionary<string, object?> actualMap)
                 {
                     return Mismatch(path, "a mapping", actual);
@@ -70,7 +81,7 @@ internal sealed partial class Matcher(MatchOptions options)
                 foreach (var (key, value) in subset)
                 {
                     var found = actualMap.TryGetValue(key, out var a) ? a : Missing.Value;
-                    if (Match(value, found, Join(path, key)) is { } mismatch)
+                    if (Match(value, found, Join(path, key), inDetail || key == "detail") is { } mismatch)
                     {
                         return mismatch;
                     }
@@ -91,7 +102,7 @@ internal sealed partial class Matcher(MatchOptions options)
 
                 for (var i = 0; i < list.Count; i++)
                 {
-                    if (Match(list[i], actualList[i], Index(path, i)) is { } mismatch)
+                    if (Match(list[i], actualList[i], Index(path, i), inDetail) is { } mismatch)
                     {
                         return mismatch;
                     }
@@ -106,6 +117,11 @@ internal sealed partial class Matcher(MatchOptions options)
                 return ScalarEquals(expected, actual) ? null : Mismatch(path, YamlValues.Show(expected), actual);
         }
     }
+
+    /// <summary>Whether <paramref name="subset"/> has entries and every leaf of it is <c>{ $absent: true }</c>.</summary>
+    private static bool OnlyAbsent(OrderedDictionary<string, object?> subset) =>
+        subset.Count > 0 && subset.Values.All(v => v is OrderedDictionary<string, object?> m
+            && (IsMatcher(m) ? m.Count == 1 && m.GetValueOrDefault("$absent") is true : OnlyAbsent(m)));
 
     internal static bool IsMatcher(OrderedDictionary<string, object?> map)
     {
@@ -133,7 +149,7 @@ internal sealed partial class Matcher(MatchOptions options)
         return true;
     }
 
-    private string? MatchMatcher(OrderedDictionary<string, object?> matcher, object? actual, string path)
+    private string? MatchMatcher(OrderedDictionary<string, object?> matcher, object? actual, string path, bool inDetail)
     {
         var (key, arg) = (matcher.GetAt(0).Key, matcher.GetAt(0).Value);
         switch (key)
@@ -183,7 +199,7 @@ internal sealed partial class Matcher(MatchOptions options)
                         throw new CaseFormatException("$one_of takes a non-empty list");
                     }
 
-                    return options1.Any(o => Match(o, actual, path) is null)
+                    return options1.Any(o => Match(o, actual, path, inDetail) is null)
                         ? null
                         : Mismatch(path, "one of " + YamlValues.Show(options1), actual);
                 }
@@ -223,7 +239,7 @@ internal sealed partial class Matcher(MatchOptions options)
                         return $"{Show(path)}: expected a list of {wanted.Count} in any order, got {list.Count}: {YamlValues.Show(list)}";
                     }
 
-                    var unmatched = BipartiteMatch(wanted, list, path);
+                    var unmatched = BipartiteMatch(wanted, list, path, inDetail);
                     return unmatched is null
                         ? null
                         : $"{Show(Index(path, unmatched.Value))}: no distinct element matches {YamlValues.Show(wanted[unmatched.Value])} "
@@ -278,32 +294,44 @@ internal sealed partial class Matcher(MatchOptions options)
         return null;
     }
 
-    /// <summary>Kuhn's augmenting paths: each expected element gets a distinct actual one. Returns an unmatched index.</summary>
-    private int? BipartiteMatch(List<object?> wanted, List<object?> actual, string path)
+    /// <summary>Each expected element gets a distinct actual one (<see cref="Assign"/>). Returns an unmatched index.</summary>
+    private int? BipartiteMatch(List<object?> wanted, List<object?> actual, string path, bool inDetail)
     {
         var fits = new bool[wanted.Count, actual.Count];
         for (var i = 0; i < wanted.Count; i++)
         {
             for (var j = 0; j < actual.Count; j++)
             {
-                fits[i, j] = Match(wanted[i], actual[j], path) is null;
+                fits[i, j] = Match(wanted[i], actual[j], path, inDetail) is null;
             }
         }
 
-        var owner = Enumerable.Repeat(-1, actual.Count).ToArray();
-        for (var i = 0; i < wanted.Count; i++)
+        var matched = Assign(fits, Enumerable.Range(0, wanted.Count));
+        var first = Array.IndexOf(matched, false);
+        return first < 0 ? null : first;
+    }
+
+    /// <summary>
+    /// A maximum matching by Kuhn's augmenting paths: whether each row of <paramref name="fits"/> gets a distinct column.
+    /// Rows are tried in <paramref name="order"/>, and a row matched once stays matched, so earlier rows win the columns.
+    /// </summary>
+    internal static bool[] Assign(bool[,] fits, IEnumerable<int> order)
+    {
+        ArgumentNullException.ThrowIfNull(fits);
+        ArgumentNullException.ThrowIfNull(order);
+        var (rows, columns) = (fits.GetLength(0), fits.GetLength(1));
+        var owner = Enumerable.Repeat(-1, columns).ToArray();
+        var matched = new bool[rows];
+        foreach (var i in order)
         {
-            if (!TryAssign(i, new bool[actual.Count]))
-            {
-                return i;
-            }
+            matched[i] = TryAssign(i, new bool[columns]);
         }
 
-        return null;
+        return matched;
 
         bool TryAssign(int i, bool[] seen)
         {
-            for (var j = 0; j < actual.Count; j++)
+            for (var j = 0; j < columns; j++)
             {
                 if (!fits[i, j] || seen[j])
                 {

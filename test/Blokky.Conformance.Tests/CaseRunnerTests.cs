@@ -186,6 +186,49 @@ public class CaseRunnerEndToEndTests
     }
 
     /// <summary>
+    /// A run case skipped as not supported still needs a valid plan: a stray plan error beside <c>BK_PLAN_NOT_SUPPORTED</c>
+    /// keeps the CF-12 check passing (the spec asks for the not-supported error, not for it alone) but fails the later-feature
+    /// pass, which gates the run.
+    /// </summary>
+    [Test]
+    [Arguments("", "Pass")]
+    [Arguments("""{"code":"BK_PLAN_VALUE","message":"m","pos":"2:7","detail":{"rule":"SY-88"}},""", "Fail")]
+    public async Task A_not_supported_run_case_fails_the_later_pass_on_a_stray_plan_error(string stray, string later)
+    {
+        if (OperatingSystem.IsWindows() || !File.Exists("/usr/bin/true"))
+        {
+            Skip.Test("needs /usr/bin/true");
+        }
+
+        var root = Directory.CreateTempSubdirectory("conformance-stray-").FullName;
+        try
+        {
+            var cases = Path.Combine(root, "cases", "area");
+            Directory.CreateDirectory(cases);
+            var file = Path.Combine(cases, "one.yaml");
+            await File.WriteAllTextAsync(file, Case);
+            var fake = new FakeRunner(AdapterTests.Exited(3, $$$"""
+                {"status":"invalid","phase":"plan","errors":[{{{stray}}}
+                    {"code":"BK_PLAN_NOT_SUPPORTED","message":"m","pos":"2:1","detail":{"feature":"exec"}}]}
+                """));
+            var caps = new AdapterCapabilities(new HashSet<string>(), new HashSet<string>(), ["real"], true, false);
+            var host = new HostInfo("linux", new Dictionary<string, string>(), new Dictionary<string, string>(), "/usr/bin/true", false);
+            var settings = new RunnerSettings(Path.Combine(root, "run"), 1, 10, false);
+            var runner = new CaseRunner(new BlokkyAdapter("/fake/blokky", fake, caps), host, settings);
+
+            var result = await runner.RunAsync(Path.Combine(root, "cases"), file, CancellationToken.None);
+
+            await Assert.That(result.Outcome).IsEqualTo(Outcome.Skip);
+            await Assert.That(result.Later!.Kind.ToString()).IsEqualTo(later);
+            await Assert.That(Reporting.Totals.Of([result]).Later.Fail).IsEqualTo(later == "Fail" ? 1 : 0);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// A blokky whose tables differ, validated {exec} and runnable {}: <c>validate</c> rejects only what isn't validated and
     /// <c>run</c> anything. Validation cases must go through <c>validate</c>, or they meet the runnable gate while being
     /// judged against the validated table (ADR 0009).

@@ -34,7 +34,7 @@ public class StubCliTests
 
         await Assert.That(result.Stdout.EndsWith("}\n", StringComparison.Ordinal)).IsTrue();
         await Assert.That(result.Stdout.Count(c => c == '\n')).IsEqualTo(1);
-        await Assert.That(result.Stderr).StartsWith("blokky: error BK_PLAN_NOT_SUPPORTED at 2:1: ");
+        await Assert.That(result.Stderr).StartsWith("blokky: error BK_PLAN_NOT_SUPPORTED at 2:1 in /: ");
     }
 
     [Test]
