@@ -176,7 +176,8 @@ public class AstBuilderTests
     [Test]
     public async Task A_node_used_as_a_condition_is_recorded_for_the_conditions_rules()
     {
-        var result = Validate("blokky: 1.0\nwhen: { exec: [a], timeout: 1s }\nlog: x\n");
+        // The builder alone reports nothing; the conditions family reports CO-4 (ConditionRulesTests).
+        var result = new PlanValidator(Everything, rules: []).Validate("blokky: 1.0\nwhen: { exec: [a], timeout: 1s }\nlog: x\n"u8);
 
         await Assert.That(result.Errors.Count).IsEqualTo(0);
         await Assert.That(result.Ast!.Root.When!.NodeKindKey!.Position).IsEqualTo(new PlanPosition(2, 9));
