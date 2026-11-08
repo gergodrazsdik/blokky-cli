@@ -1,28 +1,35 @@
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using Blokky.Core.Contracts;
 using Blokky.Core.Errors;
 using Blokky.Core.Features;
 using Blokky.Core.Plans;
 using Blokky.Core.Reading;
+using Blokky.Core.Validation;
 
 namespace Blokky.Cli;
 
 /// <summary>
 /// The CLI host: parses argv, reads the plan and reports. Streams are passed in so tests drive it in-process.
-/// This build executes nothing: a plan is read (<see cref="PlanReader"/>), and one that reads cleanly stops at the feature
-/// gate (<see cref="StubFeatureGate"/>).
+/// This build executes nothing: <c>validate</c> and <c>run</c> share the static front half (<see cref="PlanValidator"/>);
+/// <c>validate</c> prints the verdict for a plan that passes it, and <c>run</c> stops at the runnable gate, which is empty.
 /// </summary>
 internal static class CliApp
 {
-    public static int Run(IReadOnlyList<string> args, Stream stdin, Stream stdout, Stream stderr)
+    public static int Run(IReadOnlyList<string> args, Stream stdin, Stream stdout, Stream stderr) =>
+        Run(args, stdin, stdout, stderr, FeatureSupport.Validated, FeatureSupport.Runnable);
+
+    /// <summary>Runs with the given feature tables, so tests can drive the paths the empty tables don't reach yet.</summary>
+    internal static int Run(IReadOnlyList<string> args, Stream stdin, Stream stdout, Stream stderr, IReadOnlySet<string> validated,
+        IReadOnlySet<string> runnable)
     {
         ArgumentNullException.ThrowIfNull(stdin);
         ArgumentNullException.ThrowIfNull(stdout);
         ArgumentNullException.ThrowIfNull(stderr);
         try
         {
-            return Dispatch(args, stdin, stdout, stderr);
+            return Dispatch(args, stdin, stdout, stderr, validated, runnable);
         }
 #pragma warning disable CA1031 // Last-resort handler: any unexpected exception is BK_INTERNAL (exit 70).
         catch (Exception ex)
@@ -34,7 +41,8 @@ internal static class CliApp
         }
     }
 
-    private static int Dispatch(IReadOnlyList<string> args, Stream stdin, Stream stdout, Stream stderr)
+    private static int Dispatch(IReadOnlyList<string> args, Stream stdin, Stream stdout, Stream stderr, IReadOnlySet<string> validated,
+        IReadOnlySet<string> runnable)
     {
         var (command, usageErrors) = CommandLine.Parse(args);
         if (command is null)
@@ -58,16 +66,25 @@ internal static class CliApp
             return Fail(new PreRunEnvelope(Phase.Usage, [readError!]), stdout, stderr);
         }
 
-        // validate and run share the static front half: the plan reader, then (until the AST lands) the stub gate.
-        var read = new PlanReader().Read(plan.Bytes.Span);
-        if (!read.Ok)
+        // validate and run share the static front half; validate gates on validated, run on runnable (ADR 0009), which is a
+        // subset of validated, so one gate covers both.
+        var validate = command.Kind == CommandKind.Validate;
+        var result = new PlanValidator(validate ? validated : runnable, validate ? FeatureTable.Validated : FeatureTable.Runnable)
+            .Validate(plan.Bytes.Span);
+        if (!result.Ok)
         {
-            return Fail(new PreRunEnvelope(Phase.Plan, read.Errors), stdout, stderr);
+            return Fail(new PreRunEnvelope(Phase.Plan, result.Errors), stdout, stderr);
         }
 
-        var table = command.Kind == CommandKind.Validate ? FeatureTable.Validated : FeatureTable.Runnable;
-        var planErrors = StubFeatureGate.Check(plan, table);
-        return Fail(new PreRunEnvelope(Phase.Plan, planErrors), stdout, stderr);
+        if (!validate)
+        {
+            // Unreachable while runnable is empty: every valid plan uses at least its root kind. T-0070 adds the run engine.
+            throw new InvalidOperationException("this build has no run engine yet");
+        }
+
+        var sha256 = Convert.ToHexStringLower(SHA256.HashData(plan.Bytes.Span));
+        WriteBytes(stdout, ContractWriter.ToUtf8(new ValidateVerdict(new PlanIdentity(sha256, result.Ast!.SpecVersion!, plan.Source))));
+        return ExitCodes.Success;
     }
 
     internal static string Version { get; } =
@@ -133,6 +150,11 @@ internal static class CliApp
             if (error.Pos is not null)
             {
                 lines.Append(" at ").Append(error.Pos);
+            }
+
+            if (error.Node is not null)
+            {
+                lines.Append(" in ").Append(error.Node);
             }
 
             lines.Append(": ").Append(DisplayText.Escape(error.Message)).Append('\n');

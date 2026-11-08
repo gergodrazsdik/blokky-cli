@@ -25,7 +25,8 @@ internal sealed record CaseResult(
     IReadOnlyList<string> Rules,
     string? Clock,
     TimeSpan Elapsed,
-    string? Note = null);
+    string? Note = null,
+    LaterResult? Later = null);
 
 /// <summary>Runner settings.</summary>
 /// <param name="RunRoot">Where per-case directories are created.</param>
@@ -113,10 +114,12 @@ internal sealed class CaseRunner(BlokkyAdapter adapter, HostInfo host, RunnerSet
                 (problem, note) = (null, "rejected with the case's own validation errors instead of BK_PLAN_NOT_SUPPORTED");
             }
 
+            // ADR 0009: the later-feature validation pass judges the same invocation against the case's expected errors.
+            var later = c.ExpectKind == ExpectKind.Validation ? LaterFeaturePass.Judge(c, outcome, logCount, survivors, _matcher) : null;
             return problem is null
-                ? new CaseResult(c.Id, Outcome.Skip, selection.Reason, SkipKind.NotSupported, c.Rules, null, clock.Elapsed, note)
+                ? new CaseResult(c.Id, Outcome.Skip, selection.Reason, SkipKind.NotSupported, c.Rules, null, clock.Elapsed, note, later)
                 : new CaseResult(c.Id, Outcome.Fail, $"not-supported check (CF-12): {problem}", SkipKind.NotSupported, c.Rules, null,
-                    clock.Elapsed, note);
+                    clock.Elapsed, note, later);
         }
         finally
         {

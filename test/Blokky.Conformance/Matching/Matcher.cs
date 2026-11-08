@@ -62,6 +62,13 @@ internal sealed partial class Matcher(MatchOptions options)
         switch (expected)
         {
             case OrderedDictionary<string, object?> subset:
+                if (actual is Missing && OnlyAbsent(subset))
+                {
+                    // CF-31: a field under a mapping that isn't there isn't there either (detail: { suggestion: { $absent } }
+                    // on an error without detail).
+                    return null;
+                }
+
                 if (actual is not OrderedDictionary<string, object?> actualMap)
                 {
                     return Mismatch(path, "a mapping", actual);
@@ -106,6 +113,11 @@ internal sealed partial class Matcher(MatchOptions options)
                 return ScalarEquals(expected, actual) ? null : Mismatch(path, YamlValues.Show(expected), actual);
         }
     }
+
+    /// <summary>Whether every leaf of <paramref name="subset"/> is <c>{ $absent: true }</c>.</summary>
+    private static bool OnlyAbsent(OrderedDictionary<string, object?> subset) =>
+        subset.Values.All(v => v is OrderedDictionary<string, object?> m
+            && (IsMatcher(m) ? m.Count == 1 && m.GetValueOrDefault("$absent") is true : OnlyAbsent(m)));
 
     internal static bool IsMatcher(OrderedDictionary<string, object?> map)
     {

@@ -8,7 +8,7 @@ namespace Blokky.Core.Reading.Yaml;
 public interface IYamlFrontEnd
 {
     /// <summary>
-    /// Token-level facts: directives, explicit and empty keys, comments. Stops at a syntax error with a
+    /// Token-level facts: directives, explicit and empty keys, comments, block sequence entries. Stops at a syntax error with a
     /// <see cref="YamlMarkerKind.ScanFailed"/> marker (<see cref="ReadEvents"/> reports the error), and once the nesting is
     /// deeper than the depth cap (the event stream reaches the cap too).
     /// </summary>

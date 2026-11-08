@@ -17,7 +17,7 @@ Inside `Blokky.Core`:
 | Part | Does |
 |---|---|
 | Plan reader | Bytes in, encoding pass and character lint (BOM, UTF-8, control characters), then the YAML front end: YamlDotNet's scanner and parser behind one adapter, an event stream with positions computed by Blokky's own line map, every scalar a string ([ADR 0008](../adr/0008-spike-findings.md)). |
-| AST builder | Builds typed nodes from the events. Every node keeps line and column; nothing is deserialized by reflection. |
+| AST builder | Builds the syntax tree, then typed nodes, from the events, with the schema-level checks on the way (§1.1). Every node keeps line and column and its path id; nothing is deserialized by reflection. |
 | Validator | Schema-level checks, static rules (the spec's `RF` rules), the feature gate (§3), lint and strict mode. Collects every error instead of stopping at the first. |
 | Input binder | Binds `--input` values (or MCP `inputs`) to the plan's `inputs`, applies defaults, computes `inputs_sha256`. |
 | Invocation builder | The **single** renderer of what a leaf runs: program, argv, env, cwd, script file. `leaves`, `plan`, the validator request and the executor all call it ([leaves-and-validation.md](../contracts/leaves-and-validation.md), LV-3). |
@@ -26,6 +26,17 @@ Inside `Blokky.Core`:
 | Run registry | The per-user state dir: run ids (ULID), run dirs, the advisory liveness lock, the registry of runtime-owned artefacts, `clean` and `gc`. |
 | Config loader | Hierarchical JSON config, precedence and the two key trust classes ([configuration.md](../configuration.md), [ADR 0003](../adr/0003-validation-config-lint.md)). |
 | Result model and contracts | The run result, error objects and their serialization: report, pre-run envelope, events, `leaves`, validator protocol (§5). |
+
+### 1.1 The AST and the validator
+
+`PlanValidator` (`Blokky.Core/Validation`) runs the plan step in four stages, collecting every error (SY-3):
+
+1. **Plan reader** (`Reading/`): bytes to YAML events and token markers. Encoding, character, cap and syntax errors, rejected keys (SY-17) and a root that isn't a mapping (SY-32) end the step; anchors, tags, a second document and repeated keys don't (`PlanReadResult.CanContinue`), so their errors are reported with the later ones.
+2. **AST builder** (`Ast/`): `SyntaxTree` turns the events into scalars, sequences and mappings (the first document; repeated and merge keys left out). `AstBuilder` then builds the typed AST in one pass: `PlanAst` (the plan-only keys) and `PlanNode` (every key a node may carry, whatever its kind, so later rules see misplaced keys), with conditions, probes, `for`, services and the other mappings as their own types. Each value keeps its position (SY-1), and each node its path id (`/do/2`), the `node` of its errors. On the way it reports everything a schema can express: `blokky:` (SY-34, SY-35, SY-51), kind detection (RF-1), plan-only keys below the root (SY-33), unknown keys with suggestions (SY-19, SY-30, SY-48), required keys (CP-40), field types (SY-88, SY-89, SY-47, CO-4 for a string condition), the scalar grammars (SY-52 to SY-59, SY-96, CO-19), enumerations, and empty values, lists and mappings (SY-20, RF-21, SY-22). A wrong value is left out and the rest is still built. Where a rule family owns the mistake, the builder records it instead of reporting a type error: references and secret literals in fields that don't take them (`PlanAst.MisplacedReferences`, RF-9, RF-19) and a node used as a condition (`Condition.NodeKindKey`, CO-4). Every scalar is also listed with its field form (`PlanAst.Scalars`: literal, reference, display, template, shell text), for RF-9's `${` check.
+3. **Static rule families**: classes implementing `IPlanRule`, run in the order of `PlanRules.All`. Each gets a `PlanContext` (the AST, the syntax tree, the text and its line map) and reports into the shared `PlanErrorSink`, which builds the error objects (`node`, `pos`, `detail.rule`). `PlanWalk` gives the traversals (nodes in document order, the conditions of a node, nested conditions), so rules don't each walk the tree.
+4. **Feature gate** (§3): `FeatureDeriver` derives the plan's feature ids from the AST, and `FeatureGate` reports each unsupported one.
+
+**Adding a rule family** (T-0082 to T-0085): write a class implementing `IPlanRule` in `Blokky.Core/Validation/Rules/`, add one line in your task's section of `PlanRules.All`, and delete your rules' entries from the conformance runner's pending list (`PendingRuleFamilies`, [validation-strategy.md §2](validation-strategy.md#2-conformance-suite)). A rule reads the AST and must skip what is null (a value that was wrong); it never throws for a bad plan. It reports its rule IDs as `BK_PLAN_INVALID` or `BK_PLAN_VALUE` per blokky-specs `errors.md` §4, at the narrowest token (SY-1). The builder needs no change unless a rule needs a value the AST doesn't keep yet.
 
 ## 2. Data flow
 
@@ -51,7 +62,7 @@ The static commands share the front half: `validate`, `lint`, `plan` and `leaves
 
 Each release supports a subset of the language ([ROADMAP.md](../../ROADMAP.md)). Core holds two tables of feature ids, using the pinned vocabulary of the conformance suite (blokky-specs `conformance/README.md`, CF-12): **validated** (the validator fully checks the feature) and **runnable** (the run engine executes it), runnable always a subset of validated ([ADR 0009](../adr/0009-validator-delivery.md)). `validate` gates on validated, `run` on runnable; a release requires both to be equal for its features.
 
-- The validator derives the feature ids a plan uses from the AST. Any unsupported id is a plan error `BK_PLAN_NOT_SUPPORTED` with `detail.feature` and the node's position, reported with every other plan error (exit 3). No process starts.
+- The validator derives the feature ids a plan uses from the AST, the way blokky-specs `scripts/check.py` derives each case's `features` (CF-11), so the gate and the suite agree. Any unsupported id is a plan error `BK_PLAN_NOT_SUPPORTED` with `detail.feature`, once per feature, at its first use (the key that uses it, with that node's path id), reported with every other plan error (exit 3). No process starts.
 - The check runs after schema and static rules, so a plan that is invalid for other reasons gets those errors too.
 - The conformance adapter declares support from the same tables (CF-54): validated for validation cases, runnable for run cases, so the runner's skips and the binary's behaviour can't drift.
 - The table is per build, not per config: no flag or config key enables an unsupported feature.

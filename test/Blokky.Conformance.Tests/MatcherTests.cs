@@ -67,6 +67,15 @@ public class MatcherTests
     }
 
     [Test]
+    public async Task A_field_under_a_missing_mapping_is_absent()
+    {
+        await Assert.That(Match("{ detail: { suggestion: { $absent: true } } }", "{ code: X }")).IsNull();
+        await Assert.That(Match("{ detail: { a: { b: { $absent: true } } } }", "{ code: X }")).IsNull();
+        await Assert.That(Match("{ detail: { rule: { $absent: true }, x: 1 } }", "{ code: X }")).IsNotNull();
+        await Assert.That(Match("{ detail: { suggestion: { $present: true } } }", "{ code: X }")).IsNotNull();
+    }
+
+    [Test]
     public async Task Regex_is_unanchored()
     {
         await Assert.That(Match("{ $regex: 'bin/sh$' }", "/usr/bin/sh")).IsNull();

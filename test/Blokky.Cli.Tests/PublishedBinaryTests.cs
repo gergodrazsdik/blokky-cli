@@ -35,11 +35,28 @@ public class PublishedBinaryTests
         using var json = JsonDocument.Parse(stdout);
         var errors = json.RootElement.GetProperty("errors").EnumerateArray()
             .Select(e => $"{e.GetProperty("code").GetString()} {e.GetProperty("pos").GetString()} "
-                + e.GetProperty("detail").GetProperty("rule").GetString());
+                + (e.GetProperty("detail").TryGetProperty("rule", out var rule) ? rule : e.GetProperty("detail").GetProperty("feature"))
+                    .GetString());
 
         await Assert.That(code).IsEqualTo(3);
         await Assert.That(string.Join("; ", errors))
-            .IsEqualTo("BK_PLAN_YAML 2:7 SY-14; BK_PLAN_YAML 3:6 SY-14; BK_PLAN_DUPLICATE_KEY 4:1 SY-18");
+            .IsEqualTo("BK_PLAN_YAML 2:7 SY-14; BK_PLAN_YAML 3:6 SY-14; BK_PLAN_DUPLICATE_KEY 4:1 SY-18; BK_PLAN_NOT_SUPPORTED 3:1 log");
+    }
+
+    [Test]
+    [RequiresPublishedBinary]
+    public async Task Aot_binary_reports_schema_errors_with_their_node()
+    {
+        var (code, stdout, stderr) = await RunAsync("blokky: 1.0\ndo:\n  - timeout: 30\n    exec: [a]\n    retries: 3\n", "validate", "-");
+        using var json = JsonDocument.Parse(stdout);
+        var errors = json.RootElement.GetProperty("errors").EnumerateArray()
+            .Select(e => $"{e.GetProperty("code").GetString()} {e.GetProperty("pos").GetString()} {e.GetProperty("node").GetString()}")
+            .ToList();
+
+        await Assert.That(code).IsEqualTo(3);
+        await Assert.That(errors[0]).IsEqualTo("BK_PLAN_VALUE 3:14 /do/0");
+        await Assert.That(errors[1]).IsEqualTo("BK_PLAN_UNKNOWN_KEY 5:5 /do/0");
+        await Assert.That(stderr).StartsWith("blokky: error BK_PLAN_VALUE at 3:14 in /do/0: ");
     }
 
     [Test]

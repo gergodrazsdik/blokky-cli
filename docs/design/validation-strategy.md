@@ -27,6 +27,15 @@ The CI wiring is in [ci-cd.md](ci-cd.md); the testkit and per-case setup in [tes
 - **Declared support** comes from Core's feature table (CF-12, [architecture.md](architecture.md#3-feature-support-gate)): the cases a release doesn't support are skipped, and their not-supported check (`BK_PLAN_NOT_SUPPORTED`, no process started) must pass.
 - **Output:** JSON lines per case (id, outcome, reason, cited rules, first mismatch) plus totals and the **pass rate** (CF-63), and a JUnit file for the CI UI. The pass rate counts not-supported skips as not passed, so it measures language coverage.
 
+### Later-feature validation pass
+
+The validator checks the whole language, but CF-12 skips every case whose features aren't supported, so validation cases for later features would go unmeasured. The runner adds a non-normative **later-feature validation pass** ([ADR 0009](../adr/0009-validator-delivery.md)):
+
+- It judges every validation case whose features aren't all validated, on the not-supported check's own `blokky validate` invocation. Such a case passes when the expected errors are reported, matched as in a normal run; `BK_PLAN_NOT_SUPPORTED` errors are allowed in addition (and don't count for `exhaustive`). The invocation passes no inputs: inputs are checked only after the plan step, which the unsupported features end, so cases that expect input errors are *not applicable* in this pass.
+- The report shows it as a second number next to the CF-63 pass rate (`later-feature validation: P of J pass, N pending a rule family, F fail`), and each case's JSON line carries `later` and `later_reason`. A `fail` there fails the run, and CI.
+- **Pending rule families.** While the static rule families are being written (T-0082 to T-0085), many cases expect errors nothing reports yet. They are marked *pending* through an explicit, reviewed list in the runner, `PendingRuleFamilies`: entries keyed by rule ID (`RF-3`), error code (`BK_FROM_ENV_UNSET`) or case id, each naming the task that implements it. A case is pending when it fails only because expected errors of listed entries are missing: every expected error of an unlisted rule must still be reported, and an exhaustive case may report no error it doesn't expect. Anything else is a fail.
+- **Why not an allow-list of cases.** An allow-list hides a case whole, whatever goes wrong in it, and nothing makes it shrink. The pending list names what is missing, not which cases may fail: a regression in an implemented rule fails even inside a pending case, and the list only shrinks: an entry whose cases all pass is reported as stale and fails the run (full runs only), so each rule-family PR deletes its entries as it lands.
+
 ### Release gate
 
 A release is published only when **100% of its in-scope cases pass on each RID** it ships (ADR 0007, [ADR 0008](../adr/0008-spike-findings.md)):
