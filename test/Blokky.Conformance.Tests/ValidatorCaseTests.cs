@@ -225,7 +225,14 @@ public class ValidatorCaseTests
             throw new InvalidOperationException("unreachable");
         }
 
-        return CaseLoader.Load(dir, Path.Combine(dir, id + ".yaml"), "linux");
+        var c = CaseLoader.Load(dir, Path.Combine(dir, id + ".yaml"), "linux");
+        if (c.Requires.Os.Count > 0 && !c.Requires.Os.Contains(HostInfo.CurrentOs))
+        {
+            // The validator judges host paths by the OS it runs on (CP-41, RF-11), as the runner's requirement skip does.
+            Skip.Test($"requires {string.Join(", ", c.Requires.Os)}");
+        }
+
+        return c;
     }
 
     private static List<string> CaseIds(Func<ConformanceCase, bool> select)

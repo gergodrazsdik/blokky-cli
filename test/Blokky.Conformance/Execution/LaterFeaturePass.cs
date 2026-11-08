@@ -51,27 +51,8 @@ internal static class PendingRuleFamilies
 
         // T-0084: conditions.
 
-        // T-0085: reference and modifiers.
-        new("RF-2", "T-0085", "one repetition modifier"),
-        new("RF-3", "T-0085", "the validity matrix and sibling table"),
-        new("RF-4", "T-0085", "attempt_timeout with repetition"),
-        new("RF-5", "T-0085", "bounded while and until"),
-        new("RF-11", "T-0085", "absolute cwd with tempdir"),
-        new("RF-12", "T-0085", "captures on leaves only"),
-        new("RF-17", "T-0085", "lock inside lock"),
-        new("RF-18", "T-0085", "for as"),
-        new("RF-20", "T-0085", "input default and constraints"),
-        new("RF-24", "T-0085", "service names"),
-        new("RF-25", "T-0085", "for options with their source"),
-        new("RF-28", "T-0085", "modifiers on no-process kinds"),
-        new("RF-29", "T-0085", "return placement"),
-        new("RF-30", "T-0085", "index, carry and collect"),
-        new("RF-31", "T-0085", "concurrency and fail_fast with for"),
-        new("RF-32", "T-0085", "companion fields"),
-        new("RF-33", "T-0085", "ignore_errors on the root"),
-        new("SH-17", "T-0085", "shell availability"),
-        new("CP-19", "T-0085", "container rules"),
-        new("containers/validation/mount-path-not-absolute", "T-0085", "container mount paths (no rule ID asserted)"),
+        // T-0085: reference and modifiers. RF-20's check of a default against matches: needs the portable regex subset.
+        new("syntax/inputs/default-fails-matches", "T-0082", "RF-20: an input default checked against matches: (the regex subset)"),
     ];
 
     /// <summary>The entry an expected error of case <paramref name="caseId"/> falls under, or null.</summary>
