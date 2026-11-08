@@ -8,7 +8,12 @@ namespace Blokky.Core.Validation;
 /// <param name="Tree">The root mapping of the syntax tree.</param>
 /// <param name="Text">The decoded plan text, without its BOM.</param>
 /// <param name="Lines">The line map of <paramref name="Text"/>: positions in O(log n).</param>
-public sealed record PlanContext(PlanAst Ast, SyntaxMapping Tree, string Text, LineMap Lines);
+/// <param name="EnvironmentVariable">
+/// Reads the environment the run starts with, for what is resolved in validation (<c>from_env</c> in <c>vars</c>, VA-40);
+/// null for the process environment.
+/// </param>
+public sealed record PlanContext(PlanAst Ast, SyntaxMapping Tree, string Text, LineMap Lines,
+    Func<string, string?>? EnvironmentVariable = null);
 
 /// <summary>
 /// A family of static rules (reference.md §8 and the rules of syntax.md, variables.md, conditions.md that relate keys,
@@ -38,6 +43,7 @@ public static class PlanRules
         new Rules.Syntax.SyntaxRules(),
 
         // T-0083: variables and interpolation.
+        new Rules.Variables.VariableRules(),
 
         // T-0084: conditions.
 

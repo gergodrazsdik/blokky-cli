@@ -30,7 +30,7 @@ public class ValidatorCaseTests
     public static IEnumerable<string> PendingCases() => CaseIds(c => Judged(c) && PendingKeys(c).Count > 0);
 
     /// <summary>Cases whose plan is valid: run and no-result cases, and validation cases without <c>plan_errors</c>.</summary>
-    public static IEnumerable<string> ValidPlanCases() => CaseIds(c => !ExpectsPlanErrors(c));
+    public static IEnumerable<string> ValidPlanCases() => CaseIds(c => OnThisOs(c) && !ExpectsPlanErrors(c));
 
     [Test]
     [MethodDataSource(nameof(SchemaLevelCases))]
@@ -62,7 +62,7 @@ public class ValidatorCaseTests
     public async Task Valid_plans_get_only_not_supported_errors(string id)
     {
         var c = LoadOrSkip(id);
-        var stray = Validator.Validate(c.Plan).Errors.Where(e => e.Code != ErrorCodes.PlanNotSupported)
+        var stray = ValidatorFor(c).Validate(c.Plan).Errors.Where(e => e.Code != ErrorCodes.PlanNotSupported)
             .Select(e => $"{e.Code} {e.Detail?["rule"]} {e.Pos}: {e.Message}").ToList();
 
         await Assert.That(string.Join("\n", stray)).IsEqualTo("");
@@ -161,8 +161,15 @@ public class ValidatorCaseTests
 
     private static readonly PlanValidator Validator = new(FrozenSet<string>.Empty);
 
+    /// <summary>A validator that reads the case's environment, as the runner's invocation does (CF-56, VA-40).</summary>
+    private static PlanValidator ValidatorFor(ConformanceCase c) =>
+        c.Env.Count == 0
+            ? Validator
+            : new(FrozenSet<string>.Empty,
+                environment: name => c.Env.TryGetValue(name, out var value) ? value : Environment.GetEnvironmentVariable(name));
+
     private static LaterResult Judge(ConformanceCase c) =>
-        LaterFeaturePass.Judge(c, Interpret(Validator.Validate(c.Plan).Errors), 0, 0, Matcher);
+        LaterFeaturePass.Judge(c, Interpret(ValidatorFor(c).Validate(c.Plan).Errors), 0, 0, Matcher);
 
     /// <summary>
     /// Whether a node, service or probe has a script in a shell the plan doesn't name, or a <c>shell</c> without a script.
@@ -185,8 +192,17 @@ public class ValidatorCaseTests
     private static List<ConformanceCase> AllCases(string dir) =>
         [.. CaseLoader.FindCaseFiles(dir).Select(f => TryLoad(dir, f)).OfType<ConformanceCase>()];
 
+    /// <summary>
+    /// Whether the case runs on this host (CF-33): environment names compare by the host's rules (VA-6), so a case for
+    /// another OS can expect what this host doesn't report.
+    /// </summary>
+    private static bool OnThisOs(ConformanceCase c) =>
+        c.Requires.Os.Count == 0
+        || c.Requires.Os.Contains(OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux");
+
     private static bool Judged(ConformanceCase c) =>
-        c.ExpectKind == ExpectKind.Validation && c.Expect.GetValueOrDefault("input_errors") is not List<object?> { Count: > 0 };
+        OnThisOs(c) && c.ExpectKind == ExpectKind.Validation
+        && c.Expect.GetValueOrDefault("input_errors") is not List<object?> { Count: > 0 };
 
     private static List<string> PendingKeys(ConformanceCase c) =>
         [.. (c.Expect.GetValueOrDefault("plan_errors") as List<object?> ?? []).OfType<OrderedDictionary<string, object?>>()
