@@ -72,8 +72,8 @@ public class LaterFeaturePassTests
     {
         LaterResult[] results =
         [
-            new(LaterKind.Pass, null, ["RF-3", "SH-7"], []),
-            new(LaterKind.Pending, "p", ["SH-7"], ["SH-7"]),
+            new(LaterKind.Pass, null, ["RF-3", "RF-2"], []),
+            new(LaterKind.Pending, "p", ["RF-2"], ["RF-2"]),
         ];
 
         await Assert.That(string.Join(",", LaterFeaturePass.Stale(results).Select(e => e.Key))).IsEqualTo("RF-3");
@@ -94,15 +94,15 @@ public class LaterFeaturePassTests
     [Test]
     public async Task An_entry_is_still_needed_only_where_its_own_error_is_missing()
     {
-        // RF-3's error is reported, SH-7's is missing: the case is pending on SH-7 only, and RF-3 is stale for it.
+        // RF-3's error is reported, RF-2's is missing: the case is pending on RF-2 only, and RF-3 is stale for it.
         var c = Case("x/f", "  plan_errors:\n    - { code: BK_PLAN_INVALID, detail: { rule: RF-3 }, line: 4 }\n"
-            + "    - { code: BK_PLAN_INVALID, detail: { rule: SH-7 }, line: 5 }\n");
+            + "    - { code: BK_PLAN_INVALID, detail: { rule: RF-2 }, line: 5 }\n");
 
         var result = Judge(c, Envelope(Rf3, NotSupported));
 
         await Assert.That(result.Kind).IsEqualTo(LaterKind.Pending);
-        await Assert.That(result.PendingKeys).IsEquivalentTo(["RF-3", "SH-7"]);
-        await Assert.That(result.MissingKeys).IsEquivalentTo(["SH-7"]);
+        await Assert.That(result.PendingKeys).IsEquivalentTo(["RF-3", "RF-2"]);
+        await Assert.That(result.MissingKeys).IsEquivalentTo(["RF-2"]);
         await Assert.That(result.Reason).DoesNotContain("RF-3");
         await Assert.That(string.Join(",", LaterFeaturePass.Stale([result]).Select(e => e.Key))).IsEqualTo("RF-3");
     }

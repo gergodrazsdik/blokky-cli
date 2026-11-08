@@ -48,19 +48,6 @@ internal static class PendingRuleFamilies
 {
     public static IReadOnlyList<PendingEntry> Entries { get; } =
     [
-        // T-0082: syntax rules on strings (exec strings, argv[0], regexes, JSON paths, globs, image references).
-        new("SH-7", "T-0082", "exec string splitting"),
-        new("SH-10", "T-0082", ".bat/.cmd as argv[0]"),
-        new("RF-22", "T-0082", "the portable regex subset"),
-        new("SY-65", "T-0082", "JSON path member names"),
-        new("SY-66", "T-0082", "JSON path bracket members"),
-        new("SY-67", "T-0082", "JSON path indexes"),
-        new("SY-68", "T-0082", "unsupported JSON path forms"),
-        new("SY-72", "T-0082", "glob ** segments"),
-        new("SY-73", "T-0082", "glob braces"),
-        new("SY-102", "T-0082", "glob .. segments"),
-        new("SY-103", "T-0082", "image references"),
-
         // T-0083: variables and interpolation.
         new("RF-6", "T-0083", "modifiers referencing the node's own variables"),
         new("RF-7", "T-0083", "shadowing"),
