@@ -46,6 +46,7 @@ public static class PlanRules
         new Rules.Variables.VariableRules(),
 
         // T-0084: conditions.
+        new Rules.Conditions.ConditionRules(),
 
         // T-0085: reference and modifiers.
     ];

@@ -50,13 +50,6 @@ internal static class PendingRuleFamilies
     [
 
         // T-0084: conditions.
-        new("CO-4", "T-0084", "condition shape: subjects, operators, a node as a condition"),
-        new("CO-12", "T-0084", "ignore_case on other operators"),
-        new("CO-26", "T-0084", "probe exec/script/shell"),
-        new("CO-44", "T-0084", "service-only subjects"),
-        new("CO-47", "T-0084", "operator and subject pairs"),
-        new("RF-13", "T-0084", "the result subject"),
-        new("RF-14", "T-0084", "not around a simple condition"),
 
         // T-0085: reference and modifiers.
         new("RF-2", "T-0085", "one repetition modifier"),
