@@ -48,19 +48,6 @@ internal static class PendingRuleFamilies
 {
     public static IReadOnlyList<PendingEntry> Entries { get; } =
     [
-        // T-0083: variables and interpolation.
-        new("RF-6", "T-0083", "modifiers referencing the node's own variables"),
-        new("RF-7", "T-0083", "shadowing"),
-        new("RF-8", "T-0083", "all children binding the same name"),
-        new("RF-9", "T-0083", "references and ${} in literal fields"),
-        new("RF-10", "T-0083", "forbidden and reserved environment names"),
-        new("RF-15", "T-0083", "outputs bound only in a loop"),
-        new("RF-16", "T-0083", "captures under finally"),
-        new("RF-19", "T-0083", "secret literals"),
-        new("RF-23", "T-0083", "references with no binding"),
-        new("RF-26", "T-0083", "names bound twice"),
-        new("RF-27", "T-0083", "templates outside set and vars"),
-        new("BK_FROM_ENV_UNSET", "T-0083", "from_env in vars, resolved before the run"),
 
         // T-0084: conditions.
         new("CO-4", "T-0084", "condition shape: subjects, operators, a node as a condition"),

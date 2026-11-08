@@ -9,7 +9,7 @@ namespace Blokky.Core.Tests;
 public class FeatureGateTests
 {
     private static ValidationResult Validate(string plan, params string[] supported) =>
-        new PlanValidator(supported.ToFrozenSet(StringComparer.Ordinal)).Validate(Encoding.UTF8.GetBytes(plan));
+        new PlanValidator(supported.ToFrozenSet(StringComparer.Ordinal), rules: []).Validate(Encoding.UTF8.GetBytes(plan));
 
     private static string Features(string plan) =>
         string.Join(" ", Validate(plan).Features.Select(f => f.Feature).Order(StringComparer.Ordinal));

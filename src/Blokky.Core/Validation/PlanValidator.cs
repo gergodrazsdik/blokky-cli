@@ -29,8 +29,9 @@ public sealed record ValidationResult(
 /// <param name="table">Which table that is.</param>
 /// <param name="rules">The rule families; <see cref="PlanRules.All"/> by default.</param>
 /// <param name="reader">The plan reader; the default one by default.</param>
+/// <param name="environment">The environment the run starts with (VA-40); the process environment by default.</param>
 public sealed class PlanValidator(IReadOnlySet<string> supported, FeatureTable table = FeatureTable.Validated,
-    IReadOnlyList<IPlanRule>? rules = null, PlanReader? reader = null)
+    IReadOnlyList<IPlanRule>? rules = null, PlanReader? reader = null, Func<string, string?>? environment = null)
 {
     private readonly IReadOnlyList<IPlanRule> _rules = rules ?? PlanRules.All;
     private readonly PlanReader _reader = reader ?? new PlanReader();
@@ -51,7 +52,7 @@ public sealed class PlanValidator(IReadOnlySet<string> supported, FeatureTable t
         }
 
         var ast = AstBuilder.Build(tree, errors);
-        var context = new PlanContext(ast, tree, read.Text!, read.Lines!);
+        var context = new PlanContext(ast, tree, read.Text!, read.Lines!, environment);
         foreach (var rule in _rules)
         {
             rule.Check(context, errors);

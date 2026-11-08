@@ -12,7 +12,8 @@ public class AstBuilderTests
 {
     private static readonly FrozenSet<string> Everything = FeatureIds.All.ToFrozenSet(StringComparer.Ordinal);
 
-    private static ValidationResult Validate(string plan) => new PlanValidator(Everything).Validate(Encoding.UTF8.GetBytes(plan));
+    private static ValidationResult Validate(string plan) =>
+        new PlanValidator(Everything, rules: []).Validate(Encoding.UTF8.GetBytes(plan));
 
     /// <summary>Each error as <c>code rule-or-suggestion line:column node</c>.</summary>
     private static string Errors(string plan) =>

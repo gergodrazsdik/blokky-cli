@@ -39,6 +39,9 @@ public static class ErrorCodes
     /// <summary>A language key in the wrong place, or a rule relating keys, values or scopes (language).</summary>
     public const string PlanInvalid = "BK_PLAN_INVALID";
 
+    /// <summary>A <c>{ from_env: NAME }</c> names an unset environment variable (language, VA-40).</summary>
+    public const string FromEnvUnset = "BK_FROM_ENV_UNSET";
+
     /// <summary>A feature the implementation doesn't support yet (language).</summary>
     public const string PlanNotSupported = "BK_PLAN_NOT_SUPPORTED";
 
