@@ -45,6 +45,7 @@ They apply to kinds already in 0.1, and the Linux spikes covered the process-con
 - The conformance adapter declares validated for validation cases and runnable for run cases (CF-54). The runner's skips still come from the binary's own tables.
 - The adapter runs validation cases (and their not-supported check) through `blokky validate` and run cases through `blokky run`, with the same inputs and stdin, so each case meets the gate of the table it is judged against.
 - T-0069 grows validated to the 0.1 table. T-0070 grows runnable kind by kind. A release requires the two tables to be equal for its features.
+- A feature enters validated only once none of the validation cases that list it still depends on an entry of the runner's pending list (the rule families not written yet); otherwise an invalid plan using it would validate clean.
 
 ### Later-feature validation
 

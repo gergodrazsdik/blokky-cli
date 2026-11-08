@@ -73,6 +73,21 @@ public class MatcherTests
         await Assert.That(Match("{ detail: { a: { b: { $absent: true } } } }", "{ code: X }")).IsNull();
         await Assert.That(Match("{ detail: { rule: { $absent: true }, x: 1 } }", "{ code: X }")).IsNotNull();
         await Assert.That(Match("{ detail: { suggestion: { $present: true } } }", "{ code: X }")).IsNotNull();
+        await Assert.That(Match("{ plan_errors: { $contains: [{ detail: { suggestion: { $absent: true } } }] } }",
+            "{ plan_errors: [{ code: X }] }")).IsNull();
+    }
+
+    [Test]
+    public async Task The_absent_shortcut_applies_only_within_detail_and_needs_entries()
+    {
+        var result = "{ status: failed, nodes: { /all/0: { status: failed } } }";
+
+        await Assert.That(Match("{ nodes: { /all/1: { error: { $absent: true } } } }", result))
+            .IsEqualTo("nodes./all/1: expected a mapping, got (absent)");
+        await Assert.That(Match("{ nodes: { /all/0: { error: { $absent: true } } } }", result)).IsNull();
+        await Assert.That(Match("{ outputs: { } }", result)).IsNotNull();
+        await Assert.That(Match("{ detail: { } }", "{ code: X }")).IsNotNull();
+        await Assert.That(Match("{ detail: { a: { } } }", "{ code: X }")).IsNotNull();
     }
 
     [Test]

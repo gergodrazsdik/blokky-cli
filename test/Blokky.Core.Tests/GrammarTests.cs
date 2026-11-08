@@ -172,6 +172,7 @@ public class GrammarTests
     [Arguments("register", "capture")]
     [Arguments("params", "inputs")]
     [Arguments("xyzzy", null)]
+    [Arguments("ti\U0001F600\U0001F600eout", "timeout")]
     public async Task Unknown_root_keys_get_a_synonym_or_the_closest_key(string key, string? suggestion)
     {
         await Assert.That(KeyShapes.Suggest(MappingShape.Root, key).Suggestion).IsEqualTo(suggestion);

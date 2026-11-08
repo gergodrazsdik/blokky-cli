@@ -24,7 +24,11 @@ internal enum LaterKind
 /// <param name="Kind">The outcome.</param>
 /// <param name="Reason">The mismatch, or why the case is pending or not applicable.</param>
 /// <param name="PendingKeys">The <see cref="PendingRuleFamilies"/> entries the case's expected errors fall under.</param>
-internal sealed record LaterResult(LaterKind Kind, string? Reason, IReadOnlyList<string> PendingKeys);
+/// <param name="MissingKeys">
+/// The entries of <paramref name="PendingKeys"/> with an expected error of their own that wasn't reported: the entries
+/// this case still needs. An entry that applies to a case but isn't missing there is stale for that case.
+/// </param>
+internal sealed record LaterResult(LaterKind Kind, string? Reason, IReadOnlyList<string> PendingKeys, IReadOnlyList<string> MissingKeys);
 
 /// <summary>An entry of the pending list: the rules a later task implements.</summary>
 /// <param name="Key">A rule ID (<c>RF-3</c>), an error code (<c>BK_FROM_ENV_UNSET</c>) or a case id.</param>
@@ -35,9 +39,10 @@ internal sealed record PendingEntry(string Key, string Task, string Why);
 /// <summary>
 /// The rule families not implemented yet, as an explicit, reviewed list: an expected error whose rule (or code, or case)
 /// is listed may be missing from <c>blokky validate</c>'s output without failing the later-feature pass. Each of T-0082
-/// to T-0086 deletes its entries; an entry whose cases all pass is reported as stale and fails the run, so the list only
-/// shrinks. It is not an allow-list of failures: a pending case still fails when an expected error of an implemented rule
-/// is missing, or (for an exhaustive case) when an error is reported that the case doesn't expect.
+/// to T-0086 deletes its entries; an entry none of whose cases misses an error of its own is reported as stale and fails
+/// the run, so the list only shrinks. It is not an allow-list of failures: a pending case still fails when an expected
+/// error of an implemented rule is missing, or (for an exhaustive case) when an error is reported that the case doesn't
+/// expect.
 /// </summary>
 internal static class PendingRuleFamilies
 {
@@ -111,7 +116,8 @@ internal static class PendingRuleFamilies
 /// The later-feature validation pass (ADR 0009, validation-strategy.md §2): a validation case whose features aren't all
 /// validated passes when <c>blokky validate</c> reports the case's expected errors, with <c>BK_PLAN_NOT_SUPPORTED</c>
 /// allowed in addition. It reuses the not-supported check's invocation, which passes no inputs: inputs only matter once the
-/// plan step passes, which unsupported features prevent.
+/// plan step passes, which unsupported features prevent. A case whose plan is valid (a run or no-result case, or a
+/// validation case that expects only input errors) is judged too: any plan error but <c>BK_PLAN_NOT_SUPPORTED</c> fails it.
 /// </summary>
 internal static class LaterFeaturePass
 {
@@ -120,68 +126,109 @@ internal static class LaterFeaturePass
         ArgumentNullException.ThrowIfNull(c);
         ArgumentNullException.ThrowIfNull(outcome);
         ArgumentNullException.ThrowIfNull(matcher);
+        var reportedErrors = outcome.PlanErrors.Where(e => !IsNotSupported(e)).ToList();
+        var expectsPlanErrors = c.ExpectKind == ExpectKind.Validation
+            && c.Expect.GetValueOrDefault("plan_errors") is List<object?> { Count: > 0 };
+        if (!expectsPlanErrors)
+        {
+            // The plan is valid: only the feature gate may reject it (a stray error would hide behind the not-supported skip).
+            if (reportedErrors.Count > 0)
+            {
+                return new(LaterKind.Fail,
+                    $"the case's plan is valid, but blokky reported: {string.Join(", ", reportedErrors.Select(YamlShow))}", [], []);
+            }
+
+            return c.ExpectKind == ExpectKind.Validation
+                ? new(LaterKind.NotApplicable, "expects input errors, which are checked after the plan step", [], [])
+                : new(LaterKind.Pass, null, [], []);
+        }
+
         if (c.Expect.GetValueOrDefault("input_errors") is List<object?> { Count: > 0 })
         {
-            return new(LaterKind.NotApplicable, "expects input errors, which are checked after the plan step", []);
+            return new(LaterKind.NotApplicable, "expects input errors, which are checked after the plan step", [], []);
         }
 
         var expected = (c.Expect.GetValueOrDefault("plan_errors") as List<object?> ?? [])
             .OfType<OrderedDictionary<string, object?>>().ToList();
-        var keys = expected.Select(e => PendingRuleFamilies.For(c.Id, e.GetValueOrDefault("code") as string, RuleOf(e))?.Key)
-            .OfType<string>().Distinct(StringComparer.Ordinal).ToList();
-        var reported = outcome with
+        var entries = expected.Select(e => PendingRuleFamilies.For(c.Id, e.GetValueOrDefault("code") as string, RuleOf(e))).ToList();
+        var keys = entries.OfType<PendingEntry>().Select(e => e.Key).Distinct(StringComparer.Ordinal).ToList();
+
+        // Which expected errors were reported, one to one: the implemented rules' errors take their matches first, so a
+        // pending error counts as found only with a reported error that is left over.
+        var fits = new bool[expected.Count, reportedErrors.Count];
+        for (var i = 0; i < expected.Count; i++)
         {
-            PlanErrors = [.. outcome.PlanErrors.Where(e => (e as OrderedDictionary<string, object?>)?.GetValueOrDefault("code") is not
-                ErrorCodes.PlanNotSupported)],
-        };
+            for (var j = 0; j < reportedErrors.Count; j++)
+            {
+                fits[i, j] = matcher.Match(expected[i], reportedErrors[j], "") is null;
+            }
+        }
+
+        var indexes = Enumerable.Range(0, expected.Count).ToList();
+        var found = Matcher.Assign(fits, [.. indexes.Where(i => entries[i] is null), .. indexes.Where(i => entries[i] is not null)]);
+        var missingKeys = indexes.Where(i => !found[i] && entries[i] is not null).Select(i => entries[i]!.Key)
+            .Distinct(StringComparer.Ordinal).ToList();
+
+        var reported = outcome with { PlanErrors = reportedErrors };
         var mismatch = CaseRunner.MatchValidation(c.Expect, reported, logCount, matcher, survivors);
         if (mismatch is null)
         {
-            return new(LaterKind.Pass, null, keys);
-        }
-
-        if (keys.Count == 0)
-        {
-            return new(LaterKind.Fail, mismatch, keys);
+            return new(LaterKind.Pass, null, keys, missingKeys);
         }
 
         // Pending: only expected errors of pending families may be missing; nothing else may be wrong.
-        if (outcome.Kind != OutcomeKind.Rejected || outcome.Phase != "plan" || logCount > 0 || survivors > 0)
+        if (missingKeys.Count == 0 || outcome.Kind != OutcomeKind.Rejected || outcome.Phase != "plan" || logCount > 0 || survivors > 0
+            || outcome.OtherErrors.Count > 0)
         {
-            return new(LaterKind.Fail, mismatch, keys);
+            return new(LaterKind.Fail, mismatch, keys, missingKeys);
         }
 
-        var required = expected.Where(e => PendingRuleFamilies.For(c.Id, e.GetValueOrDefault("code") as string, RuleOf(e)) is null)
-            .Cast<object?>().ToList();
+        var required = expected.Where((_, i) => entries[i] is null).Cast<object?>().ToList();
         if (required.Count > 0
             && matcher.Match(new OrderedDictionary<string, object?> { ["$contains"] = required }, reported.PlanErrors, "plan_errors")
                 is { } missing)
         {
-            return new(LaterKind.Fail, $"{missing} (the case's other errors are pending: {string.Join(", ", keys)})", keys);
+            return new(LaterKind.Fail, $"{missing} (the case's other errors are pending: {string.Join(", ", missingKeys)})", keys,
+                missingKeys);
         }
 
         if (c.Expect.GetValueOrDefault("exhaustive") is true)
         {
-            foreach (var error in reported.PlanErrors)
+            // As in CaseRunner.MatchValidation: every reported error needs an expected error of its own.
+            var back = new bool[reportedErrors.Count, expected.Count];
+            for (var j = 0; j < reportedErrors.Count; j++)
             {
-                if (!expected.Any(e => matcher.Match(e, error, "") is null))
+                for (var i = 0; i < expected.Count; i++)
                 {
-                    return new(LaterKind.Fail, $"exhaustive: an error the case doesn't expect: {YamlShow(error)}", keys);
+                    back[j, i] = fits[i, j];
                 }
+            }
+
+            var owned = Matcher.Assign(back, Enumerable.Range(0, reportedErrors.Count));
+            if (Array.IndexOf(owned, false) is var extra and >= 0)
+            {
+                return new(LaterKind.Fail, $"exhaustive: an error the case doesn't expect (or more of it than expected): "
+                    + YamlShow(reportedErrors[extra]), keys, missingKeys);
             }
         }
 
-        return new(LaterKind.Pending, $"pending rule family: {string.Join(", ", keys.Select(Describe))}", keys);
+        return new(LaterKind.Pending, $"pending rule family: {string.Join(", ", missingKeys.Select(Describe))}", keys, missingKeys);
     }
 
-    /// <summary>Entries that no case needs any more: every case they apply to passes. Meaningful for a full run only.</summary>
+    /// <summary>
+    /// Entries that no case needs any more: they apply to some judged case, and in none of them is one of the entry's own
+    /// expected errors missing. Meaningful for a full run only.
+    /// </summary>
     public static IReadOnlyList<PendingEntry> Stale(IEnumerable<LaterResult> results)
     {
         var list = results.ToList();
-        var pending = list.Where(r => r.Kind == LaterKind.Pending).SelectMany(r => r.PendingKeys).ToHashSet(StringComparer.Ordinal);
-        var passed = list.Where(r => r.Kind == LaterKind.Pass).SelectMany(r => r.PendingKeys).ToHashSet(StringComparer.Ordinal);
-        return [.. PendingRuleFamilies.Entries.Where(e => passed.Contains(e.Key) && !pending.Contains(e.Key))];
+        var applies = list.SelectMany(r => r.PendingKeys).ToHashSet(StringComparer.Ordinal);
+        var needed = list.SelectMany(r => r.MissingKeys).ToHashSet(StringComparer.Ordinal);
+        return [.. PendingRuleFamilies.Entries.Where(e => applies.Contains(e.Key) && !needed.Contains(e.Key))];
     }
+
+    private static bool IsNotSupported(object? error) =>
+        (error as OrderedDictionary<string, object?>)?.GetValueOrDefault("code") is ErrorCodes.PlanNotSupported;
 
     private static string Describe(string key) =>
         PendingRuleFamilies.Entries.First(e => e.Key == key) is var e ? $"{e.Key} ({e.Task})" : key;

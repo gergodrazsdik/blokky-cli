@@ -114,8 +114,9 @@ internal sealed class CaseRunner(BlokkyAdapter adapter, HostInfo host, RunnerSet
                 (problem, note) = (null, "rejected with the case's own validation errors instead of BK_PLAN_NOT_SUPPORTED");
             }
 
-            // ADR 0009: the later-feature validation pass judges the same invocation against the case's expected errors.
-            var later = c.ExpectKind == ExpectKind.Validation ? LaterFeaturePass.Judge(c, outcome, logCount, survivors, _matcher) : null;
+            // ADR 0009: the later-feature validation pass judges the same invocation against the case's expected errors, and a
+            // valid plan (run and no-result cases too) against BK_PLAN_NOT_SUPPORTED alone.
+            var later = LaterFeaturePass.Judge(c, outcome, logCount, survivors, _matcher);
             return problem is null
                 ? new CaseResult(c.Id, Outcome.Skip, selection.Reason, SkipKind.NotSupported, c.Rules, null, clock.Elapsed, note, later)
                 : new CaseResult(c.Id, Outcome.Fail, $"not-supported check (CF-12): {problem}", SkipKind.NotSupported, c.Rules, null,

@@ -240,7 +240,7 @@ public sealed class AstBuilder
             return null;
         }
 
-        var m = Mapping(v, "inputs", "/", "an input is a mapping, such as { description: … } or { default: … }");
+        var m = Mapping(v, $"inputs.{name.Name}", "/", "a mapping such as { description: … } or { default: … }");
         if (m is null)
         {
             return null;
@@ -575,7 +575,7 @@ public sealed class AstBuilder
 
     private Probe? Probe(SyntaxNode v, string node)
     {
-        var m = Mapping(v, "probe", node, "a probe is a mapping with exec or script");
+        var m = Mapping(v, "probe", node, "a mapping with exec or script");
         if (m is null)
         {
             return null;
@@ -621,7 +621,7 @@ public sealed class AstBuilder
 
     private ServiceSpec? Service(SyntaxNode v, string node)
     {
-        var m = Mapping(v, "services", node, "a service is a mapping with name, exec or script, and ready");
+        var m = Mapping(v, "services", node, "service mappings with name, exec or script, and ready");
         if (m is null)
         {
             return null;
@@ -786,7 +786,7 @@ public sealed class AstBuilder
 
     private MountSpec? Mount(SyntaxNode v, string node)
     {
-        var m = Mapping(v, "container.mounts", node, "a mount is a mapping with host and path");
+        var m = Mapping(v, "container.mounts", node, "mount mappings with host and path");
         if (m is null)
         {
             return null;
@@ -1443,7 +1443,7 @@ public sealed class AstBuilder
         switch (v)
         {
             case SyntaxMapping { Entries.Count: 0 }:
-                _errors.Value("SY-22", v.Start, node, $"{field}: an empty mapping isn't allowed: {what}");
+                _errors.Value("SY-22", v.Start, node, $"{field}: an empty mapping isn't allowed: it takes {what}");
                 return null;
             case SyntaxMapping m:
                 return m;

@@ -79,6 +79,15 @@ public class AstBuilderTests
     }
 
     [Test]
+    [Arguments("blokky: 1.0\ninputs: { A: x }\nlog: x\n", "inputs.A: takes a mapping such as { description: … } or { default: … }")]
+    [Arguments("blokky: 1.0\nwhen: { probe: x }\nlog: x\n", "probe: takes a mapping with exec or script")]
+    [Arguments("blokky: 1.0\nenv: {}\nlog: x\n", "env: an empty mapping isn't allowed: it takes a mapping of names to values")]
+    public async Task Shape_messages_read_as_sentences(string plan, string message)
+    {
+        await Assert.That(Validate(plan).Errors.Select(e => e.Message)).Contains(message);
+    }
+
+    [Test]
     [Arguments("log: hello\n", "BK_PLAN_VERSION SY-34 1:1 /")]
     [Arguments("# head\n\nlog: hello\nblokky:\n", "BK_PLAN_VERSION SY-34 4:1 /")]
     [Arguments("blokky: 1.0.0\nlog: hello\n", "BK_PLAN_VERSION SY-51 1:9 /")]

@@ -205,12 +205,15 @@ public static class KeyShapes
         var upper = Upper(key);
         foreach (var candidate in Shapes[shape])
         {
-            if (Math.Abs(candidate.Length - key.Length) >= bestDistance)
+            // The difference in code points bounds the distance (UTF-16 lengths would count a key outside the BMP twice);
+            // it also keeps a huge key cheap.
+            var other = Upper(candidate);
+            if (Math.Abs(other.Length - upper.Length) >= bestDistance)
             {
-                continue; // the length difference bounds the distance; also keeps a huge key cheap
+                continue;
             }
 
-            var d = Distance(upper, Upper(candidate), bestDistance);
+            var d = Distance(upper, other, bestDistance);
             if (d < bestDistance)
             {
                 (best, bestDistance) = (candidate, d);

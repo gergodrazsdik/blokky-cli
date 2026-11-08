@@ -72,11 +72,67 @@ public class LaterFeaturePassTests
     {
         LaterResult[] results =
         [
-            new(LaterKind.Pass, null, ["RF-3", "SH-7"]),
-            new(LaterKind.Pending, "p", ["SH-7"]),
+            new(LaterKind.Pass, null, ["RF-3", "SH-7"], []),
+            new(LaterKind.Pending, "p", ["SH-7"], ["SH-7"]),
         ];
 
         await Assert.That(string.Join(",", LaterFeaturePass.Stale(results).Select(e => e.Key))).IsEqualTo("RF-3");
+    }
+
+    [Test]
+    public async Task An_exhaustive_pending_case_matches_reported_errors_one_to_one()
+    {
+        var c = Case("x/e", "  plan_errors:\n    - { code: BK_PLAN_VALUE, detail: { rule: SY-57 }, line: 3 }\n"
+            + "    - { code: BK_PLAN_INVALID, detail: { rule: RF-3 }, line: 4 }\n  exhaustive: true\n");
+
+        var twice = Judge(c, Envelope(Sy57, Sy57, NotSupported));
+
+        await Assert.That(twice.Kind).IsEqualTo(LaterKind.Fail);
+        await Assert.That(twice.Reason).Contains("doesn't expect");
+    }
+
+    [Test]
+    public async Task An_entry_is_still_needed_only_where_its_own_error_is_missing()
+    {
+        // RF-3's error is reported, SH-7's is missing: the case is pending on SH-7 only, and RF-3 is stale for it.
+        var c = Case("x/f", "  plan_errors:\n    - { code: BK_PLAN_INVALID, detail: { rule: RF-3 }, line: 4 }\n"
+            + "    - { code: BK_PLAN_INVALID, detail: { rule: SH-7 }, line: 5 }\n");
+
+        var result = Judge(c, Envelope(Rf3, NotSupported));
+
+        await Assert.That(result.Kind).IsEqualTo(LaterKind.Pending);
+        await Assert.That(result.PendingKeys).IsEquivalentTo(["RF-3", "SH-7"]);
+        await Assert.That(result.MissingKeys).IsEquivalentTo(["SH-7"]);
+        await Assert.That(result.Reason).DoesNotContain("RF-3");
+        await Assert.That(string.Join(",", LaterFeaturePass.Stale([result]).Select(e => e.Key))).IsEqualTo("RF-3");
+    }
+
+    [Test]
+    public async Task A_pending_error_counts_as_found_only_with_a_reported_error_left_over()
+    {
+        // One reported BK_PLAN_INVALID at line 4 fits both expected errors; the implemented rule's error takes it.
+        var c = Case("x/g", "  plan_errors:\n    - { code: BK_PLAN_INVALID, line: 4 }\n"
+            + "    - { code: BK_PLAN_INVALID, detail: { rule: RF-3 }, line: 4 }\n");
+
+        var result = Judge(c, Envelope(Rf3, NotSupported));
+
+        await Assert.That(result.Kind).IsEqualTo(LaterKind.Pending);
+        await Assert.That(result.MissingKeys).IsEquivalentTo(["RF-3"]);
+    }
+
+    [Test]
+    public async Task A_valid_plan_may_be_rejected_only_as_not_supported()
+    {
+        var run = CaseLoader.Parse("x/run", "title: t\nrules: [SY-1]\nfeatures: [log]\nplan: |\n  blokky: 1.0\n  log: x\n"
+            + "expect:\n  status: succeeded\n", "linux");
+        var input = Case("x/input", "  input_errors:\n    - { code: BK_INPUT_MISSING }\n");
+        const string Sy88 = """{"code":"BK_PLAN_VALUE","message":"m","pos":"2:6","detail":{"rule":"SY-88"}}""";
+
+        await Assert.That(Judge(run, Envelope(NotSupported)).Kind).IsEqualTo(LaterKind.Pass);
+        await Assert.That(Judge(run, Envelope(Sy88, NotSupported)).Kind).IsEqualTo(LaterKind.Fail);
+        await Assert.That(Judge(run, Envelope(Sy88, NotSupported)).Reason).Contains("SY-88");
+        await Assert.That(Judge(input, Envelope(NotSupported)).Kind).IsEqualTo(LaterKind.NotApplicable);
+        await Assert.That(Judge(input, Envelope(Sy88, NotSupported)).Kind).IsEqualTo(LaterKind.Fail);
     }
 
     [Test]

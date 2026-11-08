@@ -66,6 +66,8 @@ public class FeatureGateTests
     [Arguments("blokky: 1.0\nexec: a b\n", "exec-string")]
     [Arguments("blokky: 1.0\nscript: x\nshell: zsh\n", "script shell-zsh")]
     [Arguments("blokky: 1.0\nscript: x\n", "script")]
+    [Arguments("blokky: 1.0\nshell: sh\nscript: [ -f x ]\n", "script shell-sh")]
+    [Arguments("blokky: 1.0\nlog: x\nshell: sh\n", "log")]
     [Arguments("blokky: 1.0\ndefaults: { shell: sh }\nlog: x\n", "defaults log shell-sh")]
     [Arguments("blokky: 1.0\nexec: [a]\nkeep_descendants: detach\nstderr: merge\nok_exit: [1]\n",
         "exec keep-descendants-detach ok-exit stderr-merge")]

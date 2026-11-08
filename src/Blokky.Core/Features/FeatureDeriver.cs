@@ -99,7 +99,7 @@ public static class FeatureDeriver
             }
         }
 
-        Process(found, node.Exec, node.Script, node.Shell, node.Env, p);
+        Process(found, node.Exec, node.Key("script") is not null, node.Shell, node.Env, p);
         foreach (var (_, condition) in PlanWalk.Conditions(node))
         {
             Condition(found, condition, p);
@@ -122,7 +122,7 @@ public static class FeatureDeriver
         Value(found, node.Stdin, p);
         foreach (var service in node.Services ?? [])
         {
-            Process(found, service.Exec, service.Script, service.Shell, service.Env, p);
+            Process(found, service.Exec, service.Key("script") is not null, service.Shell, service.Env, p);
             if (service.Exec is { IsString: false } exec)
             {
                 Add(found, "exec", exec.Position, p);
@@ -151,8 +151,11 @@ public static class FeatureDeriver
         }
     }
 
-    /// <summary>A node's, probe's or service's process: the exec string form, an explicit script shell, env references.</summary>
-    private static void Process(Dictionary<string, FeatureUse> found, ExecSpec? exec, PlanScalar? script, Typed<ShellName>? shell,
+    /// <summary>
+    /// A node's, probe's or service's process: the exec string form, an explicit script shell, env references. A
+    /// <c>script</c> key counts even when its value is malformed, as in <c>check.py</c>.
+    /// </summary>
+    private static void Process(Dictionary<string, FeatureUse> found, ExecSpec? exec, bool script, Typed<ShellName>? shell,
         IReadOnlyList<NamedValue>? env, string node)
     {
         if (exec is { IsString: true })
@@ -160,7 +163,7 @@ public static class FeatureDeriver
             Add(found, "exec-string", exec.Position, node);
         }
 
-        if (script is not null && shell is not null)
+        if (script && shell is not null)
         {
             Add(found, ShellId(shell.Value), shell.Position, node);
         }
@@ -208,7 +211,7 @@ public static class FeatureDeriver
 
                 if (subject.Probe is { } probe)
                 {
-                    Process(found, probe.Exec, probe.Script, probe.Shell, probe.Env, node);
+                    Process(found, probe.Exec, probe.Key("script") is not null, probe.Shell, probe.Env, node);
                     if (probe.Key("export") is { } export)
                     {
                         Add(found, "export", export.Position, node);

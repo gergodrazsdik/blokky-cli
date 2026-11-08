@@ -10,7 +10,10 @@ namespace Blokky.Conformance.Reporting;
 /// <summary>Totals and the pass rate (CF-63).</summary>
 internal sealed record Totals(int Cases, int Pass, int Fail, int Error, int SkipNotSupported, int SkipRequirement, int SkipPlatform)
 {
-    /// <summary>The later-feature validation pass (ADR 0009): validation cases whose features aren't all validated.</summary>
+    /// <summary>
+    /// The later-feature validation pass (ADR 0009): validation cases whose features aren't all validated, and the valid plans
+    /// of not-supported run cases.
+    /// </summary>
     public LaterTotals Later { get; init; } = new(0, 0, 0, 0);
 
     public int Skip => SkipNotSupported + SkipRequirement + SkipPlatform;
