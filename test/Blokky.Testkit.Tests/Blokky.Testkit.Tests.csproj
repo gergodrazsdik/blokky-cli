@@ -17,4 +17,10 @@
     <!-- Build order only: the tests run the testkit as a separate process. -->
     <ProjectReference Include="../Blokky.Testkit/Blokky.Testkit.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- The testkit writes files under flock (TK-5, and the pid file of TK-15); .NET's own LOCK_SH|LOCK_NB on open would make the -->
+    <!-- tests' reads fail at random while a testkit holds the lock. -->
+    <RuntimeHostConfigurationOption Include="System.IO.DisableFileLocking" Value="true" />
+  </ItemGroup>
 </Project>
