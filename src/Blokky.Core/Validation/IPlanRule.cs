@@ -35,6 +35,7 @@ public static class PlanRules
     public static IReadOnlyList<IPlanRule> All { get; } =
     [
         // T-0082: syntax (exec strings, regex subset, JSON paths, globs, image references).
+        new Rules.Syntax.SyntaxRules(),
 
         // T-0083: variables and interpolation.
 
