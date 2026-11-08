@@ -254,7 +254,7 @@ public class SyntaxRulesTests
             + "    exec: [a]\n"
             + "  - container: { image: 'A' }\n"
             + "    exec: [a]\n"
-            + "  - when: { all: [{ var: X, json: x, equals: a }, { not: { var: X, matches: '(?=a)' } }] }\n"
+            + "  - when: { all: [{ var: X, json: x, equals: a }, { var: X, not_matches: '(?=a)' }] }\n"
             + "    log: x\n"
             + "  - when: { probe: { exec: 'b;c' } }\n"
             + "    log: x\n"
@@ -267,7 +267,7 @@ public class SyntaxRulesTests
         await Assert.That(Errors(Plan)).IsEqualTo(
             "BK_PLAN_VALUE RF-22 4:14 /; BK_PLAN_VALUE SH-7 7:11 /do/0; BK_PLAN_VALUE SH-10 8:12 /do/1; "
             + "BK_PLAN_VALUE SY-65 10:19 /do/2; BK_PLAN_VALUE SY-72 11:18 /do/3; BK_PLAN_VALUE SY-68 13:35 /do/4; "
-            + "BK_PLAN_VALUE SY-103 15:25 /do/5; BK_PLAN_VALUE SY-65 17:35 /do/6; BK_PLAN_VALUE RF-22 17:77 /do/6; "
+            + "BK_PLAN_VALUE SY-103 15:25 /do/5; BK_PLAN_VALUE SY-65 17:35 /do/6; BK_PLAN_VALUE RF-22 17:74 /do/6; "
             + "BK_PLAN_VALUE SH-7 19:28 /do/7; BK_PLAN_VALUE SH-10 23:15 /do/8; BK_PLAN_VALUE RF-22 24:39 /do/8");
     }
 
