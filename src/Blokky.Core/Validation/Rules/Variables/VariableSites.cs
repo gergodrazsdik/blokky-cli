@@ -1,5 +1,6 @@
 using Blokky.Core.Ast;
 using Blokky.Core.Reading;
+using Blokky.Core.Syntax;
 
 namespace Blokky.Core.Validation.Rules.Variables;
 

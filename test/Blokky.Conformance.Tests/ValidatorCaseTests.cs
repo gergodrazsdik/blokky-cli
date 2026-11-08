@@ -21,6 +21,8 @@ public class ValidatorCaseTests
 {
     private const string NoSpecs = "(no blokky-specs checkout)";
 
+    private const string NoCases = "(no case of this kind)";
+
     private static readonly Matcher Matcher = new();
 
     /// <summary>Validation cases with no input errors and no expected error of a pending rule family.</summary>
@@ -30,7 +32,7 @@ public class ValidatorCaseTests
     public static IEnumerable<string> PendingCases() => CaseIds(c => Judged(c) && PendingKeys(c).Count > 0);
 
     /// <summary>Cases whose plan is valid: run and no-result cases, and validation cases without <c>plan_errors</c>.</summary>
-    public static IEnumerable<string> ValidPlanCases() => CaseIds(c => OnThisOs(c) && !ExpectsPlanErrors(c));
+    public static IEnumerable<string> ValidPlanCases() => CaseIds(c => !ExpectsPlanErrors(c));
 
     [Test]
     [MethodDataSource(nameof(SchemaLevelCases))]
@@ -101,19 +103,25 @@ public class ValidatorCaseTests
         }
 
         var cases = AllCases(dir);
-        var pendingFeature = cases.First(c => c.ExpectKind == ExpectKind.Validation && PendingKeys(c).Count > 0).Features[0];
 
-        await Assert.That(string.Join("\n", ValidatedButPending(FeatureSupport.Validated, cases))).IsEqualTo("");
-        await Assert.That(ValidatedButPending(new HashSet<string> { pendingFeature }, cases)).IsNotEmpty();
-        await Assert.That(ValidatedButPending(new HashSet<string>(), cases)).IsEmpty();
+        // An injected entry (the live list may be empty): a validation case keyed by its id pends on it.
+        var sample = cases.First(c => ExpectsPlanErrors(c) && c.Features.Count > 0);
+        PendingEntry[] injected = [new(sample.Id, "T-0086", "sample entry keyed by case id")];
+
+        await Assert.That(string.Join("\n", ValidatedButPending(FeatureSupport.Validated, cases, PendingRuleFamilies.Entries)))
+            .IsEqualTo("");
+        await Assert.That(ValidatedButPending(new HashSet<string> { sample.Features[0] }, cases, injected)).IsNotEmpty();
+        await Assert.That(ValidatedButPending(new HashSet<string>(), cases, injected)).IsEmpty();
     }
 
     /// <summary>Validation cases that list a feature of <paramref name="validated"/> and expect an error of a pending entry.</summary>
-    private static List<string> ValidatedButPending(IReadOnlySet<string> validated, IEnumerable<ConformanceCase> cases) =>
+    private static List<string> ValidatedButPending(IReadOnlySet<string> validated, IEnumerable<ConformanceCase> cases,
+        IReadOnlyList<PendingEntry> pending) =>
         [.. cases.Where(c => c.ExpectKind == ExpectKind.Validation)
             .SelectMany(c => c.Features.Where(validated.Contains).Select(f => (Case: c, Feature: f)))
-            .Where(x => PendingKeys(x.Case).Count > 0)
-            .Select(x => $"{x.Feature}: {x.Case.Id} pends on {string.Join(", ", PendingKeys(x.Case).Distinct(StringComparer.Ordinal))}")];
+            .Where(x => PendingKeys(x.Case, pending).Count > 0)
+            .Select(x => $"{x.Feature}: {x.Case.Id} pends on "
+                + string.Join(", ", PendingKeys(x.Case, pending).Distinct(StringComparer.Ordinal)))];
 
     /// <summary>
     /// CF-11: the features derived from each plan, against the case's list. The runner ids come from <c>actions</c>,
@@ -193,20 +201,21 @@ public class ValidatorCaseTests
         [.. CaseLoader.FindCaseFiles(dir).Select(f => TryLoad(dir, f)).OfType<ConformanceCase>()];
 
     /// <summary>
-    /// Whether the case runs on this host (CF-33): environment names compare by the host's rules (VA-6), so a case for
-    /// another OS can expect what this host doesn't report.
+    /// Whether the case runs on this host (CF-33), as the runner's requirement skip decides: the validator judges host
+    /// paths (CP-41, RF-11) and environment names (VA-6) by the OS it runs on, so a case for another OS can expect what
+    /// this host doesn't report. The only OS check here: <see cref="LoadOrSkip"/> skips such cases.
     /// </summary>
-    private static bool OnThisOs(ConformanceCase c) =>
-        c.Requires.Os.Count == 0
-        || c.Requires.Os.Contains(OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux");
+    private static bool OnThisOs(ConformanceCase c) => c.Requires.Os.Count == 0 || c.Requires.Os.Contains(HostInfo.CurrentOs);
 
     private static bool Judged(ConformanceCase c) =>
-        OnThisOs(c) && c.ExpectKind == ExpectKind.Validation
+        c.ExpectKind == ExpectKind.Validation
         && c.Expect.GetValueOrDefault("input_errors") is not List<object?> { Count: > 0 };
 
-    private static List<string> PendingKeys(ConformanceCase c) =>
+    private static List<string> PendingKeys(ConformanceCase c) => PendingKeys(c, PendingRuleFamilies.Entries);
+
+    private static List<string> PendingKeys(ConformanceCase c, IReadOnlyList<PendingEntry> pending) =>
         [.. (c.Expect.GetValueOrDefault("plan_errors") as List<object?> ?? []).OfType<OrderedDictionary<string, object?>>()
-            .Select(e => PendingRuleFamilies.For(c.Id, e.GetValueOrDefault("code") as string,
+            .Select(e => PendingRuleFamilies.For(pending, c.Id, e.GetValueOrDefault("code") as string,
                 (e.GetValueOrDefault("detail") as OrderedDictionary<string, object?>)?.GetValueOrDefault("rule") as string))
             .OfType<PendingEntry>().Select(e => e.Key)];
 
@@ -225,10 +234,15 @@ public class ValidatorCaseTests
             throw new InvalidOperationException("unreachable");
         }
 
-        var c = CaseLoader.Load(dir, Path.Combine(dir, id + ".yaml"), "linux");
-        if (c.Requires.Os.Count > 0 && !c.Requires.Os.Contains(HostInfo.CurrentOs))
+        if (id == NoCases)
         {
-            // The validator judges host paths by the OS it runs on (CP-41, RF-11), as the runner's requirement skip does.
+            Skip.Test("no case of this kind in the suite (for pending cases: the pending list is empty)");
+            throw new InvalidOperationException("unreachable");
+        }
+
+        var c = CaseLoader.Load(dir, Path.Combine(dir, id + ".yaml"), HostInfo.CurrentOs);
+        if (!OnThisOs(c))
+        {
             Skip.Test($"requires {string.Join(", ", c.Requires.Os)}");
         }
 
@@ -244,14 +258,14 @@ public class ValidatorCaseTests
 
         var ids = CaseLoader.FindCaseFiles(dir).Select(f => TryLoad(dir, f)).OfType<ConformanceCase>().Where(select).Select(c => c.Id)
             .ToList();
-        return ids.Count == 0 ? [NoSpecs] : ids;
+        return ids.Count == 0 ? [NoCases] : ids;
     }
 
     private static ConformanceCase? TryLoad(string dir, string file)
     {
         try
         {
-            return CaseLoader.Load(dir, file, "linux");
+            return CaseLoader.Load(dir, file, HostInfo.CurrentOs);
         }
         catch (CaseFormatException)
         {

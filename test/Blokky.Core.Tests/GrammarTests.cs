@@ -178,6 +178,19 @@ public class GrammarTests
         await Assert.That(KeyShapes.Suggest(MappingShape.Root, key).Suggestion).IsEqualTo(suggestion);
     }
 
+    /// <summary>
+    /// SY-30 compares after CO-12's simple uppercase mapping, which maps U+0131 (dotless i) to I and U+017F (long s) to S;
+    /// .NET's invariant uppercasing leaves both alone, which would put this key 3 edits from <c>description</c>.
+    /// </summary>
+    [Test]
+    public async Task Unknown_keys_compare_by_the_simple_uppercase_mapping()
+    {
+        const string Key = "de\u017Fcr\u0131pt\u0131on";
+
+        await Assert.That(Key.ToUpperInvariant()).IsNotEqualTo("DESCRIPTION");
+        await Assert.That(KeyShapes.Suggest(MappingShape.Input, Key).Suggestion).IsEqualTo("description");
+    }
+
     [Test]
     public async Task Synonyms_apply_only_where_their_table_says()
     {

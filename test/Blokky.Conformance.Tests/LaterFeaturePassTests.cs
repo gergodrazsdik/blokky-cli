@@ -8,6 +8,13 @@ public class LaterFeaturePassTests
 {
     private static readonly Matcher Matcher = new();
 
+    /// <summary>The tests' own pending list, so removing live entries from <see cref="PendingRuleFamilies"/> never breaks them.</summary>
+    private static readonly PendingEntry[] Pending =
+    [
+        new("RF-13", "T-0084", "sample entry keyed by rule ID"),
+        new("SH-7", "T-0082", "sample entry keyed by rule ID"),
+    ];
+
     private static ConformanceCase Case(string id, string expect) =>
         CaseLoader.Parse(id, $"title: t\nrules: [SY-1]\nfeatures: [log]\nplan: |\n  blokky: 1.0\n  log: x\nexpect:\n{expect}", "linux");
 
@@ -21,7 +28,8 @@ public class LaterFeaturePassTests
 
     private const string Rf13 = """{"code":"BK_PLAN_INVALID","message":"m","pos":"4:1","detail":{"rule":"RF-13"}}""";
 
-    private static LaterResult Judge(ConformanceCase c, AdapterOutcome outcome) => LaterFeaturePass.Judge(c, outcome, 0, 0, Matcher);
+    private static LaterResult Judge(ConformanceCase c, AdapterOutcome outcome) =>
+        LaterFeaturePass.Judge(c, outcome, 0, 0, Matcher, Pending);
 
     [Test]
     public async Task Expected_errors_pass_with_not_supported_errors_beside_them()
@@ -76,7 +84,7 @@ public class LaterFeaturePassTests
             new(LaterKind.Pending, "p", ["SH-7"], ["SH-7"]),
         ];
 
-        await Assert.That(string.Join(",", LaterFeaturePass.Stale(results).Select(e => e.Key))).IsEqualTo("RF-13");
+        await Assert.That(string.Join(",", LaterFeaturePass.Stale(results, Pending).Select(e => e.Key))).IsEqualTo("RF-13");
     }
 
     [Test]
@@ -104,7 +112,7 @@ public class LaterFeaturePassTests
         await Assert.That(result.PendingKeys).IsEquivalentTo(["RF-13", "SH-7"]);
         await Assert.That(result.MissingKeys).IsEquivalentTo(["SH-7"]);
         await Assert.That(result.Reason).DoesNotContain("RF-13");
-        await Assert.That(string.Join(",", LaterFeaturePass.Stale([result]).Select(e => e.Key))).IsEqualTo("RF-13");
+        await Assert.That(string.Join(",", LaterFeaturePass.Stale([result], Pending).Select(e => e.Key))).IsEqualTo("RF-13");
     }
 
     [Test]
@@ -133,6 +141,15 @@ public class LaterFeaturePassTests
         await Assert.That(Judge(run, Envelope(Sy88, NotSupported)).Reason).Contains("SY-88");
         await Assert.That(Judge(input, Envelope(NotSupported)).Kind).IsEqualTo(LaterKind.NotApplicable);
         await Assert.That(Judge(input, Envelope(Sy88, NotSupported)).Kind).IsEqualTo(LaterKind.Fail);
+    }
+
+    [Test]
+    public async Task Without_a_pending_entry_a_missing_error_fails()
+    {
+        var c = Case("x/h", "  plan_errors:\n    - { code: BK_PLAN_INVALID, detail: { rule: RF-13 }, line: 4 }\n");
+
+        await Assert.That(LaterFeaturePass.Judge(c, Envelope(NotSupported), 0, 0, Matcher, []).Kind).IsEqualTo(LaterKind.Fail);
+        await Assert.That(LaterFeaturePass.Stale([new(LaterKind.Pass, null, [], [])], [])).IsEmpty();
     }
 
     [Test]

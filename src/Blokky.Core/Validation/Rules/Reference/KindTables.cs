@@ -17,10 +17,6 @@ internal static class KindTables
     /// <summary>The capture keys (RF-12).</summary>
     public static readonly string[] Captures = ["capture", "capture_file", "secret"];
 
-    /// <summary>The kind keys.</summary>
-    public static readonly string[] Kinds =
-        ["exec", "script", "do", "all", "any", "race", "if", "sleep", "log", "fail", "assert", "set", "return"];
-
     /// <summary>Whether <paramref name="kind"/> starts no process (RF-28): no timeout, finally or ignore_errors.</summary>
     public static bool NoProcess(NodeKind kind) =>
         kind is NodeKind.Sleep or NodeKind.Log or NodeKind.Fail or NodeKind.Set or NodeKind.Return;
@@ -57,6 +53,6 @@ internal static class KindTables
         _ => null,
     };
 
-    /// <summary>The kind key's name.</summary>
-    public static string Name(NodeKind kind) => Kinds[(int)kind];
+    /// <summary>The kind key's name (<see cref="NodeKind"/> follows <see cref="KeyShapes.Kinds"/>' order).</summary>
+    public static string Name(NodeKind kind) => KeyShapes.Kinds[(int)kind];
 }

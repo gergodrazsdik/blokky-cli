@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using Blokky.Core.Ast;
 using Blokky.Core.Errors;
 using Blokky.Core.Reading;
+using Blokky.Core.Syntax;
 
 namespace Blokky.Core.Validation.Rules.Variables;
 
@@ -115,7 +116,7 @@ public sealed class VariableRules : IPlanRule
             }
             else if (set.TryGetValue(name.Text, out var at))
             {
-                errors.Invalid("RF-10", Later(at, name.Position), node,
+                errors.Invalid("RF-10", Positions.Later(at, name.Position), node,
                     $"{name.Text} is both in env: and in export: on this node: keep one");
             }
 
@@ -131,7 +132,7 @@ public sealed class VariableRules : IPlanRule
             }
             else if (set.TryGetValue(name.Text, out var at))
             {
-                errors.Invalid("RF-10", Later(at, name.Position), node,
+                errors.Invalid("RF-10", Positions.Later(at, name.Position), node,
                     $"{name.Text} is in container.env_pass and also in env: or export: on this node: keep one (CP-42)");
             }
         }
@@ -158,7 +159,4 @@ public sealed class VariableRules : IPlanRule
             }
         }
     }
-
-    private static PlanPosition Later(PlanPosition a, PlanPosition b) =>
-        a.Line > b.Line || (a.Line == b.Line && a.Column > b.Column) ? a : b;
 }
