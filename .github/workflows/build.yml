@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
           cache: true
@@ -52,7 +52,7 @@ jobs:
           cat smoke.json
           test "$code" -eq 3
           jq -e '.status == "invalid" and .errors[0].code == "BK_PLAN_NOT_SUPPORTED"' smoke.json
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: blokky-linux-x64
           path: artifacts/publish/Blokky.Cli/release_linux-x64/blokky
@@ -100,7 +100,7 @@ jobs:
           actual="$(git -C blokky-specs rev-parse HEAD)"
           echo "blokky-specs at $actual"
           test "$actual" = "$EXPECTED"
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
           cache: true
@@ -113,7 +113,7 @@ jobs:
       # Totals and the pass rate go to the job summary.
       - name: Conformance
         run: just conformance blokky-specs linux-x64 --require-lock-match --require-testkit
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: conformance-linux-x64
